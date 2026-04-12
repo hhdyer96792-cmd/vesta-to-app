@@ -330,7 +330,7 @@ function openServiceModal(opId, opName) {
             <label>Дата (ДД.ММ.ГГГГ)</label>
             <input type="text" name="date" placeholder="дд.мм.гггг" pattern="\\d{2}\\.\\d{2}\\.\\d{4}" required>
             <label>Пробег, км</label><input type="number" name="mileage" value="${settings.currentMileage}">
-            <label>Моточасы</label><input type="number" name="motohours" value="${settings.currentMotohours}" step="0.1">
+            <label>Моточасы</label><input type="number" name="motohours" value="${settings.currentMotohours}">
             ${isOsago ? `
                 <label>Стоимость полиса, ₽</label><input type="number" name="cost" step="0.01">
                 <label>Ссылка на файл (Google Drive)</label><input type="url" name="fileLink" placeholder="https://drive.google.com/...">
