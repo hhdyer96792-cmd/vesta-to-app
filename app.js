@@ -565,22 +565,133 @@ function initEventListeners() {
     document.getElementById('add-operation-btn').onclick = () => openOperationForm();
     document.getElementById('add-part-btn').onclick = () => openPartForm();
     document.getElementById('add-fuel-btn').onclick = () => openFuelModal({});
+    document.getElementById('voice-fuel-btn').onclick = startVo// ==================== ОБРАБОТЧИКИ ====================
+function attachTOListeners() {
+    document.querySelectorAll('.add-record-btn').forEach(b => b.addEventListener('click', e => openServiceModal(b.dataset.opId, b.dataset.opName)));
+    document.querySelectorAll('.edit-op-btn').forEach(b => b.addEventListener('click', e => openOperationForm(operations.find(o => o.id == b.dataset.opId))));
+    document.querySelectorAll('.calendar-btn').forEach(b => b.addEventListener('click', e => addToCalendar(b.dataset.opName, b.dataset.planDate, b.dataset.planMileage)));
+    document.querySelectorAll('.shopping-list-btn').forEach(b => b.addEventListener('click', e => generateShoppingList(b.dataset.opId)));
+}
+
+async function addToCalendar(opName, planDate, planMileage) {
+    if (!accessToken) { alert('Авторизуйтесь'); return; }
+    const event = {
+        summary: `🔧 ТО: ${opName}`, description: `Пробег: ${planMileage} км`,
+        start: { date: planDate }, end: { date: planDate },
+        reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 14 * 24 * 60 }] }
+    };
+    try {
+        await apiCall('https://www.googleapis.com/calendar/v3/calendars/primary/events', { method: 'POST', body: JSON.stringify(event) });
+        alert(`✅ Добавлено в календарь`);
+    } catch (e) { alert(`❌ Ошибка`); }
+}
+
+function generateShoppingList(opId) {
+    const op = operations.find(o => o.id == opId);
+    const items = parts.filter(p => p.operation === op.name || p.operation === op.category);
+    if (!items.length) { alert('Нет запчастей'); return; }
+    let list = `🛒 ${op.name}:\n`;
+    items.forEach(p => { list += `- ${p.oem || p.analog} ${p.price ? p.price+'₽' : ''}\n`; });
+    alert(list);
+}
+
+function openPartForm(part = null) {
+    const modal = createModal(part ? '✏️ Запчасть' : '➕ Запчасть', `
+        <form id="part-form"><input type="hidden" name="id" value="${part?.id||''}">
+            <label>Операция</label><input type="text" name="operation" value="${part?.operation||''}" required>
+            <label>OEM</label><input type="text" name="oem" value="${part?.oem||''}">
+            <label>Аналог</label><input type="text" name="analog" value="${part?.analog||''}">
+            <label>Цена</label><input type="number" name="price" step="0.01" value="${part?.price||''}">
+            <label>Поставщик</label><input type="text" name="supplier" value="${part?.supplier||''}">
+            <label>Ссылка</label><input type="url" name="link" value="${part?.link||''}">
+            <label>Комментарий</label><input type="text" name="comment" value="${part?.comment||''}">
+            <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
+        </form>
+    `);
+    const form = modal.querySelector('#part-form');
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        const d = Object.fromEntries(new FormData(form));
+        const row = [d.operation, d.oem, d.analog, d.price, d.supplier, d.link, d.comment];
+        if (part) await writeSheet(`PartsCatalog!A${part.id}:G${part.id}`, [row]);
+        else await appendSheet('PartsCatalog!A:G', [row]);
+        modal.remove(); await loadSheet();
+    };
+    modal.querySelector('.cancel-btn').onclick = () => modal.remove();
+}
+
+async function saveSettings() {
+    settings.currentMileage = +document.getElementById('set-mileage').value;
+    settings.currentMotohours = +document.getElementById('set-motohours').value;
+    settings.avgDailyMileage = +document.getElementById('set-avg-mileage').value;
+    settings.avgDailyMotohours = +document.getElementById('set-avg-motohours').value;
+    settings.telegramToken = document.getElementById('telegram-token').value;
+    settings.telegramChatId = document.getElementById('telegram-chatid').value;
+    settings.notificationMethod = document.getElementById('notification-method').value;
+    localStorage.setItem('notificationMethod', settings.notificationMethod);
+    await writeSheet('Журнал ТО!Q1:Q8', [[settings.currentMileage],[settings.currentMotohours],[settings.avgDailyMileage],[settings.avgDailyMotohours],[], [], [settings.telegramToken],[settings.telegramChatId]]);
+    document.getElementById('settings-result').textContent = '✅ Сохранено';
+}
+
+function exportData() {
+    const data = { operations, settings, parts, fuelLog, tireLog, workCosts };
+    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `vesta_${new Date().toISOString().split('T')[0]}.json`; a.click();
+}
+
+function importData(e) {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+        try {
+            const d = JSON.parse(ev.target.result);
+            operations = d.operations; settings = d.settings; parts = d.parts || [];
+            fuelLog = d.fuelLog || []; tireLog = d.tireLog || []; workCosts = d.workCosts || [];
+            renderAll(); if (isOnline) await syncAllToSheet();
+        } catch (err) { alert('Ошибка импорта'); }
+    };
+    reader.readAsText(file); e.target.value = '';
+}
+
+async function syncAllToSheet() {
+    const opsRows = operations.map(o => [o.category, o.name, o.lastDate||'', o.lastMileage||'', o.lastMotohours||'', o.intervalKm, o.intervalMonths, o.intervalMotohours||'']);
+    await writeSheet('Журнал ТО!A2:H', opsRows);
+    await writeSheet('Журнал ТО!Q1:Q8', [[settings.currentMileage],[settings.currentMotohours],[settings.avgDailyMileage],[settings.avgDailyMotohours],[],[],[settings.telegramToken],[settings.telegramChatId]]);
+}
+
+// ==================== ИНИЦИАЛИЗАЦИЯ СОБЫТИЙ ====================
+function initEventListeners() {
+    authBtn.onclick = () => startAuth();
+    loadSheetBtn.onclick = loadSheet;
+    document.getElementById('recalculate-btn').onclick = () => { renderTOTable(); updateNextServiceWidget(); };
+    document.getElementById('export-btn').onclick = exportData;
+    document.getElementById('import-btn').onclick = () => document.getElementById('import-file').click();
+    document.getElementById('import-file').onchange = importData;
+    document.getElementById('add-operation-btn').onclick = () => openOperationForm();
+    document.getElementById('add-part-btn').onclick = () => openPartForm();
+    document.getElementById('add-fuel-btn').onclick = () => openFuelModal({});
     document.getElementById('voice-fuel-btn').onclick = startVoiceInput;
     document.getElementById('save-settings-btn').onclick = saveSettings;
     document.getElementById('subscribe-push-btn').onclick = subscribeToPush;
     document.getElementById('open-photo-folder-btn').onclick = () => window.open(`https://drive.google.com/drive/folders/${driveFolderId}`, '_blank');
     document.getElementById('share-table-btn').onclick = () => window.open(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`, '_blank');
     themeToggle.onclick = () => { document.body.classList.toggle('dark'); themeToggle.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙'; };
-    document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => {
-        document.querySelectorAll('.tab-btn').forEach(bt => bt.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        b.classList.add('active');
-        document.getElementById(`tab-${b.dataset.tab}`).classList.add('active');
+
+    // Переключение вкладок
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+        });
     });
+
     window.addEventListener('online', () => { isOnline = true; syncPendingActions(); });
     window.addEventListener('offline', () => { isOnline = false; setSyncStatus('error'); });
 }
 
+// ==================== ЗАПУСК ====================
 pendingActions = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
 settings.notificationMethod = localStorage.getItem('notificationMethod') || 'telegram';
 initGoogleApi();
