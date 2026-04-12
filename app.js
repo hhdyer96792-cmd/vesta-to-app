@@ -330,7 +330,7 @@ function openServiceModal(opId, opName) {
             <label>Дата (ДД.ММ.ГГГГ)</label>
             <input type="text" name="date" placeholder="дд.мм.гггг" pattern="\\d{2}\\.\\d{2}\\.\\d{4}" required>
             <label>Пробег, км</label><input type="number" name="mileage" value="${settings.currentMileage}">
-            <label>Моточасы</label><input type="number" name="motohours" value="${settings.currentMotohours}">
+            <label>Моточасы</label><input type="text" inputmode="decimal" name="motohours" value="${settings.currentMotohours}">
             ${isOsago ? `
                 <label>Стоимость полиса, ₽</label><input type="number" name="cost" step="0.01">
                 <label>Ссылка на файл (Google Drive)</label><input type="url" name="fileLink" placeholder="https://drive.google.com/...">
@@ -349,6 +349,7 @@ function openServiceModal(opId, opName) {
     form.onsubmit = async (e) => {
         e.preventDefault();
         const data = new FormData(form);
+        const motohours = parseFloat(data.get('motohours')) || 0;
         const photo = data.get('photo');
         let photoUrl = '';
         if (photo && photo.size > 0) photoUrl = await uploadPhoto(photo);
@@ -371,7 +372,7 @@ function openServiceModal(opId, opName) {
             fullNotes = `ОСАГО. Стоимость: ${cost} ₽. Срок: ${osagoMonths} мес. Ссылка: ${fileLink}. ` + notes;
         }
 
-        await addServiceRecord(data.get('opId'), formattedDate, data.get('mileage'), data.get('motohours'), cost, workCost, isDIY, fullNotes, photoUrl);
+        await addServiceRecord(data.get('opId'), formattedDate, data.get('mileage'), motohours, cost, workCost, isDIY, fullNotes, photoUrl);
         modal.remove();
     };
     modal.querySelector('.cancel-btn').onclick = () => modal.remove();
