@@ -42,18 +42,9 @@ const syncIndicator = document.getElementById('sync-indicator');
 const themeToggle = document.getElementById('theme-toggle');
 // ==================== 4. АВТОРИЗАЦИЯ (OAuth Implicit Flow) ====================
 function startAuth() {
-    const redirectUri = window.location.origin + window.location.pathname;
-    const cleanRedirectUri = redirectUri.replace(/\/$/, '');
-    const scope = SCOPES;
-    const authUrl = `${AUTH_URL}?` +
-        `client_id=${encodeURIComponent(CLIENT_ID)}` +
-        `&redirect_uri=${encodeURIComponent(cleanRedirectUri)}` +
-        `&response_type=token` +
-        `&scope=${encodeURIComponent(scope)}` +
-        `&prompt=select_account`;
-    window.location.href = authUrl;
+    alert('Кнопка работает!');
+    console.log('startAuth вызвана');
 }
-
 function checkTokenInUrl() {
     const hash = window.location.hash.substring(1);
     const params = new URLSearchParams(hash);
