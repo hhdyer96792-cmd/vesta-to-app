@@ -42,11 +42,14 @@ const syncIndicator = document.getElementById('sync-indicator');
 const themeToggle = document.getElementById('theme-toggle');
 // ==================== АВТОРИЗАЦИЯ (чистый OAuth) ====================
 function startAuth() {
-    const redirectUri = 'https://imaginative-blancmange-12bea5.netlify.app'; // ← ЖЁСТКО БЕЗ СЛЕША
+    const redirectUri = window.location.origin + window.location.pathname;
+    // убираем возможный слеш в конце, если он есть
+    const cleanRedirectUri = redirectUri.replace(/\/$/, '');
+    
     const scope = SCOPES;
     const authUrl = `${AUTH_URL}?` +
         `client_id=${encodeURIComponent(CLIENT_ID)}` +
-        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&redirect_uri=${encodeURIComponent(cleanRedirectUri)}` +
         `&response_type=token` +
         `&scope=${encodeURIComponent(scope)}` +
         `&prompt=select_account`;
