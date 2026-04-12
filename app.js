@@ -622,7 +622,10 @@ async function syncAllToSheet() {
 }
 // ==================== 21. ИНИЦИАЛИЗАЦИЯ СОБЫТИЙ ====================
 function initEventListeners() {
-    authBtn.onclick = () => startAuth();
+    authBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    startAuth();
+});
     loadSheetBtn.onclick = loadSheet;
     document.getElementById('recalculate-btn').onclick = () => { renderTOTable(); updateNextServiceWidget(); };
     document.getElementById('export-btn').onclick = exportData;
