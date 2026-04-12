@@ -65,6 +65,12 @@ function checkTokenInUrl() {
         authStatus.textContent = '✅ Авторизован';
         authPanel.style.display = 'none';
         spreadsheetPanel.style.display = 'block';
+        if (savedId) {
+    sheetIdInput.value = savedId;
+    loadSheet();
+} else {
+    // Если ID нет, просто показываем поле ввода
+}
         const savedId = localStorage.getItem('vesta_spreadsheet_id');
         if (savedId) {
             sheetIdInput.value = savedId;
@@ -260,8 +266,8 @@ function renderTOTable() {
         const plan = calculatePlan(op);
         let cls = ''; if (plan.daysLeft < 0) cls = 'overdue'; else if (plan.daysLeft <= 10) cls = 'critical'; else if (plan.daysLeft <= 20) cls = 'warning'; else if (plan.daysLeft <= 30) cls = 'attention';
         const tr = document.createElement('tr'); tr.className = cls; tr.dataset.rowIndex = op.rowIndex; tr.dataset.operationId = op.id;
-        tr.innerHTML = `<td><strong>${op.name}</strong><br><small>${op.category}</small></td><td>${op.lastDate||'—'}</td><td>${op.lastMileage||'—'}</td><td>${op.lastMotohours||'—'}</td><td><strong>${plan.planDate}</strong><br><small>${plan.planMileage} км</small></td><td>${plan.daysLeft < 0 ? `⚠️ ${Math.abs(plan.daysLeft)} дн.` : `${plan.daysLeft} дн.`}</td>
-            <td><button class="icon-btn add-record-btn" data-op-id="${op.id}" data-op-name="${op.name}">➕</button> <button class="icon-btn edit-op-btn" data-op-id="${op.id}">✏️</button> <button class="icon-btn calendar-btn" data-op-name="${op.name}" data-plan-date="${plan.planDate}" data-plan-mileage="${plan.planMileage}">📅</button> <button class="icon-btn shopping-list-btn" data-op-id="${op.id}">🛒</button></td>`;
+        tr.innerHTML = `<td><strong>${op.name}</strong><br><small>${op.category}</small></td><td>${op.lastDate ? new Date(op.lastDate).toLocaleDateString('ru-RU') : '—'}</td><td>${op.lastMileage||'—'}</td><td>${op.lastMotohours||'—'}</td><td><strong>${plan.planDate.split('-').reverse().join('.')}</strong><br><small>${plan.planMileage} км</small></td><td>${plan.daysLeft < 0 ? `⚠️ ${Math.abs(plan.daysLeft)} дн.` : `${plan.daysLeft} дн.`}</td>
+            <td><button class="icon-btn add-record-btn" data-op-id="${op.id}" data-op-name="${op.name}">➕</button> <button class="icon-btn edit-op-btn" data-op-id="${op.id}">✏️</button> <button class="icon-btn calendar-btn" data-op-name="${op.name}" data-plan-date="${plan.planDate.split('-').reverse().join('.')}" data-plan-mileage="${plan.planMileage}">📅</button> <button class="icon-btn shopping-list-btn" data-op-id="${op.id}">🛒</button></td>`;
         tbody.appendChild(tr);
     });
     attachTOListeners();
@@ -315,15 +321,25 @@ function createModal(title, content) {
 }
 
 function openServiceModal(opId, opName) {
+    const op = operations.find(o => o.id == opId);
+    const isOsago = (op && op.category === 'Документы' && op.name.includes('ОСАГО'));
+
     const modal = createModal('➕ Выполнить ТО', `
         <form id="service-form" enctype="multipart/form-data">
             <input type="hidden" name="opId" value="${opId}"><p><strong>${opName}</strong></p>
-            <label>Дата</label><input type="date" name="date" required>
-            <label>Пробег, км</label><input type="number" name="mileage" value="${settings.currentMileage}" required>
-            <label>Моточасы</label><input type="number" name="motohours" value="${settings.currentMotohours}">
-            <h4>🛠️ Запчасти</h4><label>Стоимость, ₽</label><input type="number" name="cost" step="0.01">
-            <h4>🔧 Работы</h4><label>Стоимость, ₽</label><input type="number" name="workCost" step="0.01">
-            <label><input type="checkbox" name="isDIY" value="true"> Сделал сам</label>
+            <label>Дата (ДД.ММ.ГГГГ)</label>
+            <input type="text" name="date" placeholder="дд.мм.гггг" pattern="\\d{2}\\.\\d{2}\\.\\d{4}" required>
+            <label>Пробег, км</label><input type="number" name="mileage" value="${settings.currentMileage}">
+            <label>Моточасы</label><input type="number" name="motohours" value="${settings.currentMotohours}" step="0.1">
+            ${isOsago ? `
+                <label>Стоимость полиса, ₽</label><input type="number" name="cost" step="0.01">
+                <label>Ссылка на файл (Google Drive)</label><input type="url" name="fileLink" placeholder="https://drive.google.com/...">
+                <label>Срок действия (мес.)</label><input type="number" name="osagoMonths" value="12" min="1" max="12">
+            ` : `
+                <h4>🛠️ Запчасти</h4><label>Стоимость, ₽</label><input type="number" name="cost" step="0.01">
+                <h4>🔧 Работы</h4><label>Стоимость, ₽</label><input type="number" name="workCost" step="0.01">
+                <label><input type="checkbox" name="isDIY" value="true"> Сделал сам</label>
+            `}
             <h4>📸 Фото</h4><input type="file" name="photo" accept="image/*" capture="environment">
             <label>Примечание</label><input type="text" name="notes">
             <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
@@ -336,7 +352,26 @@ function openServiceModal(opId, opName) {
         const photo = data.get('photo');
         let photoUrl = '';
         if (photo && photo.size > 0) photoUrl = await uploadPhoto(photo);
-        await addServiceRecord(data.get('opId'), data.get('date'), data.get('mileage'), data.get('motohours'), data.get('cost'), data.get('workCost'), data.get('isDIY') === 'true', data.get('notes'), photoUrl);
+        const cost = data.get('cost') || '0';
+        const workCost = data.get('workCost') || '0';
+        const isDIY = data.get('isDIY') === 'true';
+        const notes = data.get('notes') || '';
+        const fileLink = data.get('fileLink') || '';
+        const osagoMonths = data.get('osagoMonths') || '12';
+        let rawDate = data.get('date');
+        // Преобразование ДД.ММ.ГГГГ в YYYY-MM-DD
+        let formattedDate = rawDate;
+        if (/^\d{2}\.\d{2}\.\d{4}$/.test(rawDate)) {
+            const parts = rawDate.split('.');
+            formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+
+        let fullNotes = notes;
+        if (isOsago) {
+            fullNotes = `ОСАГО. Стоимость: ${cost} ₽. Срок: ${osagoMonths} мес. Ссылка: ${fileLink}. ` + notes;
+        }
+
+        await addServiceRecord(data.get('opId'), formattedDate, data.get('mileage'), data.get('motohours'), cost, workCost, isDIY, fullNotes, photoUrl);
         modal.remove();
     };
     modal.querySelector('.cancel-btn').onclick = () => modal.remove();
@@ -370,7 +405,7 @@ async function addServiceRecord(opId, date, mileage, motohours, partsCost, workC
         await loadSheet();
     } else {
         addPendingAction({ type: 'service', opId, date, mileage, motohours, partsCost, workCost, isDIY, notes, photoUrl, rowIndex: op.rowIndex });
-        op.lastDate = date; op.lastMileage = +mileage; op.lastMotohours = +motohours;
+        op.lastDate ? new Date(op.lastDate).toLocaleDateString('ru-RU') : '—' = date; op.lastMileage = +mileage; op.lastMotohours = +motohours;
         renderTOTable(); updateNextServiceWidget();
         localStorage.setItem(CACHE_KEY, JSON.stringify({ operations, settings, parts, fuelLog, tireLog, workCosts }));
     }
@@ -506,10 +541,12 @@ function attachTOListeners() {
 
 async function addToCalendar(opName, planDate, planMileage) {
     if (!accessToken) { alert('Авторизуйтесь'); return; }
+    let minutesBefore = 14 * 24 * 60;
+    if (opName.includes('ОСАГО')) minutesBefore = 1 * 24 * 60;
     const event = {
         summary: `🔧 ТО: ${opName}`, description: `Пробег: ${planMileage} км`,
         start: { date: planDate }, end: { date: planDate },
-        reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 14 * 24 * 60 }] }
+        reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: minutesBefore }] }
     };
     try {
         await apiCall('https://www.googleapis.com/calendar/v3/calendars/primary/events', { method: 'POST', body: JSON.stringify(event) });
