@@ -462,7 +462,7 @@ function openServiceModal(opId, opName) {
         const osagoMonths = data.get('osagoMonths') || '12';
         const motohours = parseFloat(data.get('motohours')) || 0;
         let rawDate = data.get('date');
-        let formattedDate = rawDate;
+        let formattedDate = data.get('date');
         if (/^\d{2}\.\d{2}\.\d{4}$/.test(rawDate)) {
             const parts = rawDate.split('.');
             formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
@@ -779,7 +779,7 @@ function openHistoryEdit(e) {
     const modal = createModal('✏️ Редактировать запись истории', `
         <form id="history-edit-form">
             <input type="hidden" name="rowIndex" value="${rowIndex}">
-            <label>Дата (ДД.ММ.ГГГГ)</label><input type="text" name="date" value="${date}" placeholder="ДД.ММ.ГГГГ" pattern="\\d{2}\\.\\d{2}\\.\\d{4}" required oninput="applyDateMask(event)">
+            <label>Дата (ДД.ММ.ГГГГ)</label><input type="text" name="date" value="${date}" placeholder="ГГГГ-ММ-ДД" pattern="\d{4}-\d{2}-\d{2}" required oninput="applyDateMaskISO(event)">
             <label>Пробег, км</label><input type="number" name="mileage" value="${mileage}">
             <label>Моточасы</label><input type="text" name="motohours" value="${motohours}">
             <label>Запчасти, ₽</label><input type="number" name="partsCost" value="${partsCost}" step="0.01">
