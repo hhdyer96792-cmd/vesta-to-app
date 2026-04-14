@@ -512,11 +512,23 @@ async function addServiceRecord(opId, date, mileage, motohours, partsCost, workC
 }
 
 async function saveOperation(data) {
-    const rowData = [data.category, data.name, '', '', '', data.km, data.months, data.moto || ''];
-    const rowIndex = parseInt(data.rowIndex);
-    if (data.id && !isNaN(rowIndex) && rowIndex >= 2) {
+    const category = data.category;
+    const name = data.name;
+    const km = data.km || '';
+    const months = data.months || '';
+    const moto = data.moto || '';
+    const rowIndex = parseInt(data.rowIndex, 10);
+    const id = data.id;
+
+    console.log('saveOperation called with:', { category, name, km, months, moto, rowIndex, id });
+
+    const rowData = [category, name, '', '', '', km, months, moto];
+
+    if (id && !isNaN(rowIndex) && rowIndex >= 2) {
+        console.log('Updating row at index:', rowIndex);
         await writeSheet(`Журнал ТО!A${rowIndex}:H${rowIndex}`, [rowData]);
     } else {
+        console.log('Appending new row');
         await appendSheet('Журнал ТО!A:H', [rowData]);
     }
     await loadSheet();
