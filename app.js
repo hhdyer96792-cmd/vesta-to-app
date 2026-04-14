@@ -876,9 +876,11 @@ function initEventListeners() {
     voiceFuelBtn.onclick = startVoiceInput;
     saveSettingsBtn.onclick = saveSettings;
     subscribePushBtn.onclick = subscribeToPush;
-    openPhotoFolderBtn.onclick = async () => {
+    async function sendTelegramMessage(text) {
+    if (!settings.telegramToken || !settings.telegramChatId) return;
+    try {
+        await fetch(`https://api.telegram.org/bot${settings.telegramToken}/openPhotoFolderBtn.onclick = async () => {
     if (!driveFolderId) {
-        // Пробуем получить ID папки сейчас
         driveFolderId = await getOrCreatePhotoFolder();
     }
     if (driveFolderId) {
@@ -886,7 +888,16 @@ function initEventListeners() {
     } else {
         alert('Папка с фото ещё не создана. Загрузите первое фото, и она появится автоматически.');
     }
-};
+};`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: settings.telegramChatId, text: text })
+        });
+    } catch (e) {
+        // Игнорируем ошибки сети, чтобы не мешать работе приложения
+    }
+}
+
     shareTableBtn.onclick = () => window.open(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`, '_blank');
     themeToggle.onclick = () => { document.body.classList.toggle('dark'); themeToggle.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙'; };
 
