@@ -297,6 +297,7 @@ function renderAll() {
 
 function renderTOTable() {
     const tbody = tableBody;
+    console.log('renderTOTable called. operations length:', operations.length);
     tbody.innerHTML = '';
     const grouped = {};
     operations.forEach(op => {
