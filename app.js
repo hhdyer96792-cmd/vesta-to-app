@@ -526,14 +526,31 @@ async function saveOperation(data) {
 
     if (id && !isNaN(rowIndex) && rowIndex >= 2) {
         console.log('Updating row at index:', rowIndex);
+        // Сохраняем изменения на сервере
         await writeSheet(`Журнал ТО!A${rowIndex}:H${rowIndex}`, [rowData]);
+
+        // Обновляем локальные данные мгновенно, чтобы UI не дёргался
+        const op = operations.find(o => o.id == id);
+        if (op) {
+            op.category = category;
+            op.name = name;
+            op.intervalKm = parseInt(km) || 0;
+            op.intervalMonths = parseInt(months) || 0;
+            op.intervalMotohours = moto ? parseInt(moto) : null;
+        }
+
+        // Перерисовываем интерфейс сразу с новыми данными
+        renderAll();
+
+        // В фоне синхронизируемся с сервером (на случай, если были другие изменения)
+        loadSheet().catch(e => console.warn('Background sync failed:', e));
     } else {
         console.log('Appending new row');
         await appendSheet('Журнал ТО!A:H', [rowData]);
+        // Для новой операции нужна полная перезагрузка, чтобы получить корректный rowIndex
+        await loadSheet();
     }
-    await loadSheet();
 }
-
 // ==================== 12. ОФЛАЙН ====================
 function addPendingAction(action) {
     pendingActions.push(action);
