@@ -834,7 +834,17 @@ function initEventListeners() {
     voiceFuelBtn.onclick = startVoiceInput;
     saveSettingsBtn.onclick = saveSettings;
     subscribePushBtn.onclick = subscribeToPush;
-    openPhotoFolderBtn.onclick = () => window.open(`https://drive.google.com/drive/folders/${driveFolderId}`, '_blank');
+    openPhotoFolderBtn.onclick = async () => {
+    if (!driveFolderId) {
+        // Пробуем получить ID папки сейчас
+        driveFolderId = await getOrCreatePhotoFolder();
+    }
+    if (driveFolderId) {
+        window.open(`https://drive.google.com/drive/folders/${driveFolderId}`, '_blank');
+    } else {
+        alert('Папка с фото ещё не создана. Загрузите первое фото, и она появится автоматически.');
+    }
+};
     shareTableBtn.onclick = () => window.open(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`, '_blank');
     themeToggle.onclick = () => { document.body.classList.toggle('dark'); themeToggle.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙'; };
 
