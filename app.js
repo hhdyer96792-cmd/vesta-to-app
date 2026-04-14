@@ -722,7 +722,6 @@ function renderStats() {
 
 // ==================== 17. ИСТОРИЯ ====================
 async function loadHistory() {
-async function loadHistory() {
     if (!spreadsheetId) return;
     try {
         const historyData = (await readSheet('История!A2:J')).filter(row => row.some(cell => cell !== ''));
@@ -764,7 +763,6 @@ async function loadHistory() {
         console.warn('История не загружена:', e);
     }
 }
-
 function openHistoryEdit(e) {
     const btn = e.currentTarget;
     const rowIndex = btn.dataset.row;
