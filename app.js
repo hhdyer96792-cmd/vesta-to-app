@@ -409,6 +409,18 @@ function createModal(title, content) {
     modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
     return modal;
 }
+function applyDateMask(event) {
+    let input = event.target;
+    let value = input.value.replace(/\D/g, ''); // оставляем только цифры
+    if (value.length > 8) value = value.slice(0, 8);
+    let formatted = '';
+    if (value.length > 0) {
+        formatted = value.substring(0, 2);
+        if (value.length >= 3) formatted += '.' + value.substring(2, 4);
+        if (value.length >= 5) formatted += '.' + value.substring(4, 8);
+    }
+    input.value = formatted;
+}
 
 function openServiceModal(opId, opName) {
     const op = operations.find(o => o.id == opId);
@@ -418,7 +430,7 @@ function openServiceModal(opId, opName) {
         <form id="service-form" enctype="multipart/form-data">
             <input type="hidden" name="opId" value="${opId}"><p><strong>${opName}</strong></p>
             <label>Дата (ДД.ММ.ГГГГ)</label>
-            <input type="text" name="date" placeholder="дд.мм.гггг" pattern="\\d{2}\\.\\d{2}\\.\\d{4}" required>
+            <input type="text" name="date" placeholder="ДД.ММ.ГГГГ" pattern="\\d{2}\\.\\d{2}\\.\\d{4}" required oninput="applyDateMask(event)">
             <label>Пробег, км</label><input type="number" name="mileage" value="${settings.currentMileage}">
             <label>Моточасы</label><input type="text" inputmode="decimal" name="motohours" value="${settings.currentMotohours}">
             ${isOsago ? `
@@ -769,7 +781,7 @@ function openHistoryEdit(e) {
     const modal = createModal('✏️ Редактировать запись истории', `
         <form id="history-edit-form">
             <input type="hidden" name="rowIndex" value="${rowIndex}">
-            <label>Дата (ДД.ММ.ГГГГ)</label><input type="text" name="date" value="${date}" pattern="\\d{2}\\.\\d{2}\\.\\d{4}" required>
+            <label>Дата (ДД.ММ.ГГГГ)</label><input type="text" name="date" value="${date}" placeholder="ДД.ММ.ГГГГ" pattern="\\d{2}\\.\\d{2}\\.\\d{4}" required oninput="applyDateMask(event)">
             <label>Пробег, км</label><input type="number" name="mileage" value="${mileage}">
             <label>Моточасы</label><input type="text" name="motohours" value="${motohours}">
             <label>Запчасти, ₽</label><input type="number" name="partsCost" value="${partsCost}" step="0.01">
