@@ -614,11 +614,17 @@ async function sendNotification(title, body, tag = null) {
 
 async function sendTelegramMessage(text) {
     if (!settings.telegramToken || !settings.telegramChatId) return;
-    await fetch(`https://api.telegram.org/bot${settings.telegramToken}/sendMessage`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: settings.telegramChatId, text: text })
-    });
+    try {
+        await fetch(`https://api.telegram.org/bot${settings.telegramToken}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: settings.telegramChatId, text: text })
+        });
+    } catch (e) {
+        // Игнорируем ошибки сети, чтобы не мешать работе приложения
+    }
 }
+
 
 async function sendPushNotification(title, body, tag) {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
