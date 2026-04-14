@@ -710,6 +710,7 @@ function renderStats() {
 
 // ==================== 17. ИСТОРИЯ ====================
 async function loadHistory() {
+async function loadHistory() {
     if (!spreadsheetId) return;
     try {
         const historyData = (await readSheet('История!A2:J')).filter(row => row.some(cell => cell !== ''));
@@ -720,9 +721,24 @@ async function loadHistory() {
             const tr = document.createElement('tr');
             const opId = row[0];
             const op = operations.find(o => o.id == opId) || { name: 'Неизвестно' };
+            
+            // Преобразование даты из ГГГГ-ММ-ДД в ДД.ММ.ГГГГ
+            let formattedDate = row[1] || '';
+            if (formattedDate && formattedDate.includes('-')) {
+                const parts = formattedDate.split('-');
+                if (parts.length === 3) {
+                    formattedDate = `${parts[2]}.${parts[1]}.${parts[0]}`;
+                }
+            }
+
             tr.innerHTML = `
-                <td>${row[1] || ''}</td><td>${op.name}</td><td>${row[2] || ''}</td><td>${row[3] || ''}</td>
-                <td>${row[4] || ''}</td><td>${row[5] || ''}</td><td>${row[7] || ''}</td>
+                <td>${formattedDate}</td>
+                <td>${op.name}</td>
+                <td>${row[2] || ''}</td>
+                <td>${row[3] || ''}</td>
+                <td>${row[4] || ''}</td>
+                <td>${row[5] || ''}</td>
+                <td>${row[7] || ''}</td>
                 <td>
                     <button class="icon-btn edit-history-btn" data-row="${index + 2}" data-opid="${opId}" data-date="${row[1]}" data-mileage="${row[2]}" data-motohours="${row[3]}" data-parts="${row[4]}" data-work="${row[5]}" data-diy="${row[6]}" data-notes="${row[7]}" data-photo="${row[8]}">✏️</button>
                     <button class="icon-btn delete-history-btn" data-row="${index + 2}">🗑️</button>
@@ -732,7 +748,9 @@ async function loadHistory() {
         });
         document.querySelectorAll('.edit-history-btn').forEach(b => b.addEventListener('click', openHistoryEdit));
         document.querySelectorAll('.delete-history-btn').forEach(b => b.addEventListener('click', deleteHistoryEntry));
-    } catch (e) { console.warn('История не загружена:', e); }
+    } catch (e) {
+        console.warn('История не загружена:', e);
+    }
 }
 
 function openHistoryEdit(e) {
