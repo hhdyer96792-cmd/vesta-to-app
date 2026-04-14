@@ -505,7 +505,8 @@ async function addServiceRecord(opId, date, mileage, motohours, partsCost, workC
     const values = [[date, mileage, motohours || '']];
     if (isOnline) {
         await writeSheet(`Журнал ТО!C${op.rowIndex}:E${op.rowIndex}`, values);
-        await appendSheet('История!A:J', [[opId, date, mileage, motohours, partsCost, workCost, isDIY, notes, photoUrl, new Date().toISOString()]]);
+        // Явно указываем столбец A, Google Sheets сам расширит диапазон до нужной ширины
+        await appendSheet('История!A:A', [[opId, date, mileage, motohours, partsCost, workCost, isDIY, notes, photoUrl, new Date().toISOString()]]);
         await appendSheet('WorkCosts!A:D', [[opId, workCost, isDIY, notes]]);
         sendNotification('✅ Выполнено ТО', `${op.name}\nПробег: ${mileage} км\nЗатраты: ${+partsCost + +workCost} ₽`);
         await loadSheet();
