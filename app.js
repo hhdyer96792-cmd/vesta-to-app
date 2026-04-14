@@ -538,11 +538,12 @@ async function saveOperation(data) {
 
     const rowData = [category, name, '', '', '', km, months, moto];
 
+    // Существующая операция
     if (id && !isNaN(rowIndex) && rowIndex >= 2) {
         // 1. Сохраняем на сервере
         await writeSheet(`Журнал ТО!A${rowIndex}:H${rowIndex}`, [rowData]);
 
-        // 2. Обновляем локально
+        // 2. Обновляем локальный объект операции
         const op = operations.find(o => o.id == id);
         if (op) {
             op.category = category;
@@ -552,19 +553,21 @@ async function saveOperation(data) {
             op.intervalMotohours = moto ? parseInt(moto) : null;
         }
 
-        // 3. Перерисовываем только таблицу ТО
+        // 3. Перерисовываем ТОЛЬКО таблицу ТО (без полной перезагрузки)
         renderTOTable();
         updateNextServiceWidget();
 
-        // 4. Тихая фоновая синхронизация (не трогает UI)
+        // 4. Фоновая синхронизация (не влияет на UI)
         setTimeout(() => {
             loadSheet().catch(e => console.warn('Фоновая синхронизация не удалась:', e));
         }, 100);
     } else {
+        // Новая операция – добавляем строку и полностью перезагружаем
         await appendSheet('Журнал ТО!A:H', [rowData]);
         await loadSheet();
     }
 }
+
 // ==================== 12. ОФЛАЙН ====================
 function addPendingAction(action) {
     pendingActions.push(action);
