@@ -520,16 +520,13 @@ async function saveOperation(data) {
     const rowIndex = parseInt(data.rowIndex, 10);
     const id = data.id;
 
-    console.log('saveOperation called with:', { category, name, km, months, moto, rowIndex, id });
-
     const rowData = [category, name, '', '', '', km, months, moto];
 
     if (id && !isNaN(rowIndex) && rowIndex >= 2) {
-        console.log('Updating row at index:', rowIndex);
-        // Сохраняем изменения на сервере
+        // 1. Обновляем данные на сервере (Google Sheets)
         await writeSheet(`Журнал ТО!A${rowIndex}:H${rowIndex}`, [rowData]);
 
-        // Обновляем локальные данные мгновенно, чтобы UI не дёргался
+        // 2. Мгновенно обновляем локальный объект операции
         const op = operations.find(o => o.id == id);
         if (op) {
             op.category = category;
@@ -539,15 +536,14 @@ async function saveOperation(data) {
             op.intervalMotohours = moto ? parseInt(moto) : null;
         }
 
-        // Перерисовываем интерфейс сразу с новыми данными
-        renderAll();
+        // 3. Перерисовываем только таблицу ТО (без моргания и пропадания)
+        renderTOTable();
 
-        // В фоне синхронизируемся с сервером (на случай, если были другие изменения)
-        loadSheet().catch(e => console.warn('Background sync failed:', e));
+        // 4. Фоновая синхронизация (на случай, если что-то ещё поменялось)
+        loadSheet().catch(e => console.warn('Фоновая синхронизация не удалась:', e));
     } else {
-        console.log('Appending new row');
+        // Новая операция – добавляем строку и полностью перезагружаем данные
         await appendSheet('Журнал ТО!A:H', [rowData]);
-        // Для новой операции нужна полная перезагрузка, чтобы получить корректный rowIndex
         await loadSheet();
     }
 }
