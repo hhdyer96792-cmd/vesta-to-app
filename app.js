@@ -296,36 +296,26 @@ function renderAll() {
 }
 
 function renderTOTable() {
-    console.log('renderTOTable started');
     const tbody = tableBody;
-    if (!tbody) {
-        console.error('tableBody is null!');
-        return;
-    }
-    console.log('tableBody found, clearing...');
-    tbody.innerHTML = '';
+    if (!tbody) return; // Защита от отсутствия элемента
 
+    tbody.innerHTML = '';
     const grouped = {};
     operations.forEach(op => {
         if (!grouped[op.category]) grouped[op.category] = [];
         grouped[op.category].push(op);
     });
-
     const categories = Object.keys(grouped).sort((a,b) => {
         if (a === 'Прочее') return 1;
         if (b === 'Прочее') return -1;
         return a.localeCompare(b);
     });
-
-    console.log('Categories:', categories);
-
     categories.forEach(cat => {
         const headerRow = document.createElement('tr');
         headerRow.style.background = '#34495e';
         headerRow.style.color = 'white';
         headerRow.innerHTML = `<td colspan="7" style="padding:8px; font-weight:bold;">${cat}</td>`;
         tbody.appendChild(headerRow);
-
         const opsInCat = grouped[cat].sort((a,b) => calculatePlan(a).daysLeft - calculatePlan(b).daysLeft);
         opsInCat.forEach(op => {
             const plan = calculatePlan(op);
@@ -334,12 +324,10 @@ function renderTOTable() {
             else if (plan.daysLeft <= 10) cls = 'critical';
             else if (plan.daysLeft <= 20) cls = 'warning';
             else if (plan.daysLeft <= 30) cls = 'attention';
-
             const tr = document.createElement('tr');
             tr.className = cls;
             tr.dataset.rowIndex = op.rowIndex;
             tr.dataset.operationId = op.id;
-
             tr.innerHTML = `
                 <td><strong>${op.name}</strong></td>
                 <td>${op.lastDate ? new Date(op.lastDate).toLocaleDateString('ru-RU') : '—'}</td>
@@ -357,6 +345,8 @@ function renderTOTable() {
             tbody.appendChild(tr);
         });
     });
+    attachTOListeners();
+}
 
     console.log('renderTOTable finished, rows appended:', tbody.children.length);
     attachTOListeners();
