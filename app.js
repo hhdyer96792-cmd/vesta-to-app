@@ -330,7 +330,7 @@ function renderTOTable() {
             tr.dataset.operationId = op.id;
             tr.innerHTML = `
                 <td><strong>${op.name}</strong></td>
-                <td>${op.lastDate ? new Date(op.lastDate).toLocaleDateString('ru-RU') : '—'}</td>
+                <td>${op.lastDate || '—'}</td>
                 <td>${op.lastMileage||'—'}</td>
                 <td>${op.lastMotohours||'—'}</td>
                 <td><strong>${plan.planDate.split('-').reverse().join('.')}</strong><br><small>${plan.planMileage} км</small></td>
