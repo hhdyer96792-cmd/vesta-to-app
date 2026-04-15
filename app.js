@@ -416,6 +416,7 @@ function updateNextServiceWidget() {
     progressBar.style.width = (isNaN(percent) ? 0 : percent) + '%';
     progressDetails.textContent = `Пробег: ${settings.currentMileage} / ${plan.planMileage} км | Осталось: ${plan.daysLeft} дн.`;
 }
+
 // ==================== 10. МОДАЛЬНЫЕ ОКНА ====================
 function createModal(title, content) {
     const modal = document.createElement('div'); modal.className = 'modal'; modal.style.display = 'flex';
