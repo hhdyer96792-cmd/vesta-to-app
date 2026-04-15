@@ -407,7 +407,8 @@ function createModal(title, content) {
     return modal;
 }
 
-function applyDateMaskISO(event) {
+// Глобальная функция маски ввода даты ГГГГ-ММ-ДД
+window.applyDateMaskISO = function(event) {
     let input = event.target;
     let value = input.value.replace(/\D/g, '');
     if (value.length > 8) value = value.slice(0, 8);
@@ -418,7 +419,7 @@ function applyDateMaskISO(event) {
         if (value.length >= 7) formatted += '-' + value.substring(6, 8);
     }
     input.value = formatted;
-}
+};
 
 function openServiceModal(opId, opName) {
     const op = operations.find(o => o.id == opId);
@@ -467,94 +468,11 @@ function openServiceModal(opId, opName) {
         }
 
         await addServiceRecord(data.get('opId'), formattedDate, data.get('mileage'), motohours, cost, workCost, isDIY, fullNotes, photoUrl);
-        modal.remove();
-    };
-    modal.querySelector('.cancel-btn').onclick = () => modal.remove();
-}
 
-function openOperationForm(op = null) {
-    const modal = createModal(op ? '✏️ Редактировать' : '➕ Новая операция', `
-        <form id="op-form"><input type="hidden" name="id" value="${op?.id||''}"><input type="hidden" name="rowIndex" value="${op?.rowIndex||''}">
-            <label>Категория</label>
-            <select name="category" required>
-                <option value="ДВС" ${op?.category === 'ДВС' ? 'selected' : ''}>ДВС</option>
-// ==================== 10. МОДАЛЬНЫЕ ОКНА ====================
-function createModal(title, content) {
-    const modal = document.createElement('div'); modal.className = 'modal'; modal.style.display = 'flex';
-    modal.innerHTML = `<div class="modal-content"><span class="close">&times;</span><h3>${title}</h3>${content}</div>`;
-    document.body.appendChild(modal);
-    modal.querySelector('.close').onclick = () => modal.remove();
-    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
-    return modal;
-}
-
-function applyDateMaskISO(event) {
-    let input = event.target;
-    let value = input.value.replace(/\D/g, '');
-    if (value.length > 8) value = value.slice(0, 8);
-    let formatted = '';
-    if (value.length > 0) {
-        formatted = value.substring(0, 4);
-        if (value.length >= 5) formatted += '-' + value.substring(4, 6);
-        if (value.length >= 7) formatted += '-' + value.substring(6, 8);
-    }
-    input.value = formatted;
-}
-
-function openServiceModal(opId, opName) {
-    const op = operations.find(o => o.id == opId);
-    const isOsago = (op && op.category === 'Документы' && op.name.includes('ОСАГО'));
-
-    const modal = createModal('➕ Выполнить ТО', `
-        <form id="service-form" enctype="multipart/form-data">
-            <input type="hidden" name="opId" value="${opId}"><p><strong>${opName}</strong></p>
-            <label>Дата (ГГГГ-ММ-ДД)</label>
-            <input type="text" name="date" placeholder="ГГГГ-ММ-ДД" pattern="\\d{4}-\\d{2}-\\d{2}" required oninput="applyDateMaskISO(event)">
-            <label>Пробег, км</label><input type="number" name="mileage" value="${settings.currentMileage}">
-            <label>Моточасы</label><input type="text" inputmode="decimal" name="motohours" value="${settings.currentMotohours}">
-            ${isOsago ? `
-                <label>Стоимость полиса, ₽</label><input type="number" name="cost" step="0.01">
-                <label>Ссылка на файл (Google Drive)</label><input type="url" name="fileLink" placeholder="https://drive.google.com/...">
-                <label>Срок действия (мес.)</label><input type="number" name="osagoMonths" value="12" min="1" max="12">
-            ` : `
-                <h4>🛠️ Запчасти</h4><label>Стоимость, ₽</label><input type="number" name="cost" step="0.01">
-                <h4>🔧 Работы</h4><label>Стоимость, ₽</label><input type="number" name="workCost" step="0.01">
-                <label><input type="checkbox" name="isDIY" value="true"> Сделал сам</label>
-            `}
-            <h4>📸 Фото</h4><input type="file" name="photo" accept="image/*" capture="environment">
-            <label>Примечание</label><input type="text" name="notes">
-            <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
-        </form>
-    `);
-    const form = modal.querySelector('#service-form');
-    form.onsubmit = async (e) => {
-        e.preventDefault();
-        const data = new FormData(form);
-        const photo = data.get('photo');
-        let photoUrl = '';
-        if (photo && photo.size > 0) photoUrl = await uploadPhoto(photo);
-        const cost = data.get('cost') || '0';
-        const workCost = data.get('workCost') || '0';
-        const isDIY = data.get('isDIY') === 'true';
-        const notes = data.get('notes') || '';
-        const fileLink = data.get('fileLink') || '';
-        const osagoMonths = data.get('osagoMonths') || '12';
-        const motohours = parseFloat(data.get('motohours')) || 0;
-        let formattedDate = data.get('date');
-
-        let fullNotes = notes;
-        if (isOsago) {
-            fullNotes = `ОСАГО. Стоимость: ${cost} ₽. Срок: ${osagoMonths} мес. Ссылка: ${fileLink}. ` + notes;
-        }
-
-        // Сохраняем основную операцию
-        await addServiceRecord(data.get('opId'), formattedDate, data.get('mileage'), motohours, cost, workCost, isDIY, fullNotes, photoUrl);
-
-        // Автоматическая отметка фильтра вариатора (только один раз и если такой записи ещё нет сегодня)
+        // Автоматическая отметка фильтра вариатора (однократно с проверкой дублирования)
         if (opName.includes('Масло JF015E (частичная)')) {
             const filterOp = operations.find(o => o.name.includes('Фильтр вариатора'));
             if (filterOp) {
-                // Проверяем, не выполнялась ли уже замена фильтра в этот день
                 const today = formattedDate;
                 const alreadyDone = serviceRecords.some(rec => 
                     rec.operation_id === filterOp.id && rec.date === today
@@ -569,8 +487,6 @@ function openServiceModal(opId, opName) {
                         'Автоматически вместе с частичной заменой масла',
                         ''
                     );
-                } else {
-                    console.log('Запись о фильтре вариатора за сегодня уже существует, пропускаем.');
                 }
             }
         }
@@ -581,8 +497,36 @@ function openServiceModal(opId, opName) {
 }
 
 function openOperationForm(op = null) {
-    // ... (остаётся без изменений)
+    const modal = createModal(op ? '✏️ Редактировать' : '➕ Новая операция', `
+        <form id="op-form"><input type="hidden" name="id" value="${op?.id||''}"><input type="hidden" name="rowIndex" value="${op?.rowIndex||''}">
+            <label>Категория</label>
+            <select name="category" required>
+                <option value="ДВС" ${op?.category === 'ДВС' ? 'selected' : ''}>ДВС</option>
+                <option value="Вариатор" ${op?.category === 'Вариатор' ? 'selected' : ''}>Вариатор</option>
+                <option value="Тормозная система" ${op?.category === 'Тормозная система' ? 'selected' : ''}>Тормозная система</option>
+                <option value="Подвеска" ${op?.category === 'Подвеска' ? 'selected' : ''}>Подвеска</option>
+                <option value="Зажигание" ${op?.category === 'Зажигание' ? 'selected' : ''}>Зажигание</option>
+                <option value="Охлаждение" ${op?.category === 'Охлаждение' ? 'selected' : ''}>Охлаждение</option>
+                <option value="ГРМ" ${op?.category === 'ГРМ' ? 'selected' : ''}>ГРМ</option>
+                <option value="Навесное" ${op?.category === 'Навесное' ? 'selected' : ''}>Навесное</option>
+                <option value="Трансмиссия" ${op?.category === 'Трансмиссия' ? 'selected' : ''}>Трансмиссия</option>
+                <option value="Топливная система" ${op?.category === 'Топливная система' ? 'selected' : ''}>Топливная система</option>
+                <option value="Сезонное" ${op?.category === 'Сезонное' ? 'selected' : ''}>Сезонное</option>
+                <option value="Документы" ${op?.category === 'Документы' ? 'selected' : ''}>Документы</option>
+                <option value="Прочее" ${op?.category === 'Прочее' ? 'selected' : ''}>Прочее</option>
+            </select>
+            <label>Название</label><input type="text" name="name" value="${op?.name||''}" required>
+            <label>Интервал, км</label><input type="number" name="km" value="${op?.intervalKm||''}">
+            <label>Интервал, мес</label><input type="number" name="months" value="${op?.intervalMonths||''}">
+            <label>Интервал, моточасов</label><input type="number" name="moto" value="${op?.intervalMotohours||''}">
+            <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
+        </form>
+    `);
+    const form = modal.querySelector('#op-form');
+    form.onsubmit = async (e) => { e.preventDefault(); await saveOperation(Object.fromEntries(new FormData(form))); modal.remove(); };
+    modal.querySelector('.cancel-btn').onclick = () => modal.remove();
 }
+
 // ==================== 11. СОХРАНЕНИЕ ====================
 async function addServiceRecord(opId, date, mileage, motohours, partsCost, workCost, isDIY, notes, photoUrl) {
     const op = operations.find(o => o.id == opId);
