@@ -470,7 +470,7 @@ function openServiceModal(opId, opName) {
         await addServiceRecord(data.get('opId'), formattedDate, data.get('mileage'), motohours, cost, workCost, isDIY, fullNotes, photoUrl);
 
         // Автоматическая отметка фильтра вариатора (однократно с проверкой дублирования)
-        if (opName.includes('Масло JF015E (частичная)')) {
+        if (opName.includes('Масло CVT (частичная)')) {
             const filterOp = operations.find(o => o.name.includes('Фильтр вариатора'));
             if (filterOp) {
                 const today = formattedDate;
