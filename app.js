@@ -330,10 +330,11 @@ function renderTOTable() {
             tr.dataset.operationId = op.id;
             tr.innerHTML = `
                 <td><strong>${op.name}</strong></td>
-                <td>${op.lastDate || '—'}</td>
+                <td>${op.lastDate ? op.lastDate.split('-').reverse().join('-') : '—'}</td>
+                >
                 <td>${op.lastMileage||'—'}</td>
                 <td>${op.lastMotohours||'—'}</td>
-                <td><strong>${plan.planDate}</strong><br><small>${plan.planMileage} км</small></td>
+                <td><strong>${plan.planDate.split('-').reverse().join('-')}</strong><br><small>${plan.planMileage} км</small></td>
                 <td>${plan.daysLeft < 0 ? `⚠️ ${Math.abs(plan.daysLeft)} дн.` : `${plan.daysLeft} дн.`}</td>
                 <td>
                     <button class="icon-btn add-record-btn" data-op-id="${op.id}" data-op-name="${op.name}">➕</button>
