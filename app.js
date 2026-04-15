@@ -582,7 +582,13 @@ async function saveOperation(data) {
     const rowIndex = parseInt(data.rowIndex, 10);
     const id = data.id;
 
-    const rowData = [category, name, '', '', '', km, months, moto];
+    // Находим операцию в локальном массиве, чтобы взять текущие значения last*
+    const existingOp = operations.find(o => o.id == id);
+    const lastDate = existingOp ? existingOp.lastDate || '' : '';
+    const lastMileage = existingOp ? existingOp.lastMileage || '' : '';
+    const lastMotohours = existingOp ? existingOp.lastMotohours || '' : '';
+
+    const rowData = [category, name, lastDate, lastMileage, lastMotohours, km, months, moto];
 
     if (id && !isNaN(rowIndex) && rowIndex >= 2) {
         await writeSheet(`Журнал ТО!A${rowIndex}:H${rowIndex}`, [rowData]);
@@ -594,6 +600,7 @@ async function saveOperation(data) {
             op.intervalKm = parseInt(km) || 0;
             op.intervalMonths = parseInt(months) || 0;
             op.intervalMotohours = moto ? parseInt(moto) : null;
+            // Поля lastDate, lastMileage, lastMotohours не меняются
         }
 
         renderTOTable();
