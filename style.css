@@ -467,3 +467,10 @@ input, select {
         width: 100%;
     }
 }
+/* Кнопка загрузки ID таблицы */
+#load-sheet-btn {
+    max-width: 200px;       /* максимальная ширина */
+    width: auto;            /* по содержимому */
+    margin-left: auto;      /* центрирование, если нужно */
+    margin-right: auto;
+}
