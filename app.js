@@ -253,8 +253,14 @@ function getOilMotohoursInterval(op, avgSpeed) {
 
 function calculatePlan(op) {
     const today = new Date(); today.setHours(0,0,0,0);
-    let recDate = op.lastDate ? new Date(op.lastDate) : new Date(today);
-    recDate.setMonth(recDate.getMonth() + op.intervalMonths);
+    
+    // Календарная дата: если интервал месяцев не задан, ставим дату в далёкое будущее
+    let recDate = new Date(8640000000000000); // максимально далеко
+    if (op.intervalMonths) {
+        recDate = op.lastDate ? new Date(op.lastDate) : new Date(today);
+        recDate.setMonth(recDate.getMonth() + op.intervalMonths);
+    }
+    
     const recMileage = op.lastMileage ? op.lastMileage + op.intervalKm : op.intervalKm;
     const avgSpeed = settings.avgDailyMileage / settings.avgDailyMotohours;
     const motoInterval = getOilMotohoursInterval(op, avgSpeed);
@@ -265,15 +271,18 @@ function calculatePlan(op) {
         const days = Math.ceil((recMileage - settings.currentMileage) / settings.avgDailyMileage);
         dateByMileage = new Date(today); dateByMileage.setDate(today.getDate() + days);
     }
+    
     let dateByMoto = new Date(8640000000000000);
     if (recMotohours && recMotohours > settings.currentMotohours && settings.avgDailyMotohours > 0) {
         const days = Math.ceil((recMotohours - settings.currentMotohours) / settings.avgDailyMotohours);
         dateByMoto = new Date(today); dateByMoto.setDate(today.getDate() + days);
     }
+    
     const planDate = new Date(Math.min(recDate, dateByMileage, dateByMoto));
     const daysLeft = Math.ceil((planDate - today) / 86400000);
+    
     return {
-        recDate: recDate.toISOString().split('T')[0],
+        recDate: recDate > new Date(8640000000000000) ? '' : recDate.toISOString().split('T')[0],
         recMileage,
         recMotohours: recMotohours || '',
         planDate: planDate.toISOString().split('T')[0],
@@ -281,6 +290,7 @@ function calculatePlan(op) {
         daysLeft
     };
 }
+
 // ==================== 9. ОТРИСОВКА ====================
 function renderAll() {
     displayMileage.textContent = settings.currentMileage;
@@ -320,10 +330,12 @@ function renderTOTable() {
         opsInCat.forEach(op => {
             const plan = calculatePlan(op);
             let cls = '';
-            if (plan.daysLeft < 0) cls = 'overdue';
-            else if (plan.daysLeft <= 10) cls = 'critical';
-            else if (plan.daysLeft <= 20) cls = 'warning';
-            else if (plan.daysLeft <= 30) cls = 'attention';
+            if (isFinite(plan.daysLeft)) {
+                if (plan.daysLeft < 0) cls = 'overdue';
+                else if (plan.daysLeft <= 10) cls = 'critical';
+                else if (plan.daysLeft <= 20) cls = 'warning';
+                else if (plan.daysLeft <= 30) cls = 'attention';
+            }
             const tr = document.createElement('tr');
             tr.className = cls;
             tr.dataset.rowIndex = op.rowIndex;
@@ -331,7 +343,6 @@ function renderTOTable() {
             tr.innerHTML = `
                 <td><strong>${op.name}</strong></td>
                 <td>${op.lastDate ? op.lastDate.split('-').reverse().join('-') : '—'}</td>
-                >
                 <td>${op.lastMileage||'—'}</td>
                 <td>${op.lastMotohours||'—'}</td>
                 <td><strong>${plan.planDate.split('-').reverse().join('-')}</strong><br><small>${plan.planMileage} км</small></td>
