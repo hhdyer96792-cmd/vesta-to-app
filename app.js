@@ -752,6 +752,20 @@ async function loadHistory() {
     if (!spreadsheetId) return;
     try {
         const historyData = (await readSheet('История!A2:J')).filter(row => row.some(cell => cell !== ''));
+        // Заполняем глобальный массив serviceRecords для проверки дублирования
+        serviceRecords = historyData.map(row => ({
+            operation_id: row[0],
+            date: row[1],
+            mileage: row[2],
+            motohours: row[3],
+            parts_cost: row[4],
+            work_cost: row[5],
+            is_diy: row[6],
+            notes: row[7],
+            photo_url: row[8],
+            timestamp: row[9]
+        }));
+
         const tbody = historyBody;
         if (!tbody) return;
         tbody.innerHTML = '';
