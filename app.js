@@ -125,6 +125,7 @@ function initGoogleApi() {
     }
     authPanel.style.display = 'block';
 }
+
 // ==================== 5. УТИЛИТЫ API ====================
 async function apiCall(url, options = {}) {
     if (!accessToken) throw new Error('Not authorized');
@@ -169,6 +170,7 @@ function setSyncStatus(status) {
     syncIndicator.className = status;
     syncIndicator.title = status === 'synced' ? 'Синхронизировано' : status === 'syncing' ? 'Синхронизация...' : 'Ошибка соединения';
 }
+
 // ==================== 7. ЗАГРУЗКА ДАННЫХ ====================
 async function loadSheet() {
     spreadsheetId = sheetIdInput.value.trim();
@@ -242,13 +244,6 @@ async function loadSheet() {
             renderAll(); dataPanel.style.display = 'block';
         }
     }
-}
-// ==================== 8. РАСЧЁТ ПЛАНОВ ====================
-function getOilMotohoursInterval(op, avgSpeed) {
-    if (op.name.includes('Масло') && op.category.includes('ДВС')) {
-        return avgSpeed < 20 ? 200 : 250;
-    }
-    return op.intervalMotohours;
 }
 
 // ==================== 8. РАСЧЁТ ПЛАНОВ ====================
