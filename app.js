@@ -256,7 +256,8 @@ function getOilMotohoursInterval(op, avgSpeed) {
 function calculatePlan(op) {
     const today = new Date(); today.setHours(0,0,0,0);
     
-    let recDate = new Date(8640000000000000);
+    // Календарная дата: если интервал месяцев не задан, не учитываем
+    let recDate = null;
     if (op.intervalMonths) {
         recDate = op.lastDate ? new Date(op.lastDate) : new Date(today);
         recDate.setMonth(recDate.getMonth() + op.intervalMonths);
@@ -267,28 +268,39 @@ function calculatePlan(op) {
     const motoInterval = getOilMotohoursInterval(op, avgSpeed);
     let recMotohours = motoInterval ? (op.lastMotohours ? op.lastMotohours + motoInterval : settings.currentMotohours + motoInterval) : null;
 
-    let dateByMileage = new Date(8640000000000000);
+    let dateByMileage = null;
     if (recMileage > settings.currentMileage && settings.avgDailyMileage > 0) {
         const days = Math.ceil((recMileage - settings.currentMileage) / settings.avgDailyMileage);
-        dateByMileage = new Date(today); dateByMileage.setDate(today.getDate() + days);
+        dateByMileage = new Date(today);
+        dateByMileage.setDate(today.getDate() + days);
     }
     
-    let dateByMoto = new Date(8640000000000000);
+    let dateByMoto = null;
     if (recMotohours && recMotohours > settings.currentMotohours && settings.avgDailyMotohours > 0) {
         const days = Math.ceil((recMotohours - settings.currentMotohours) / settings.avgDailyMotohours);
-        dateByMoto = new Date(today); dateByMoto.setDate(today.getDate() + days);
+        dateByMoto = new Date(today);
+        dateByMoto.setDate(today.getDate() + days);
     }
     
-    const planDate = new Date(Math.min(recDate, dateByMileage, dateByMoto));
+    // Собираем все валидные даты
+    const validDates = [recDate, dateByMileage, dateByMoto].filter(d => d instanceof Date && !isNaN(d));
+    
+    let planDate;
+    if (validDates.length > 0) {
+        planDate = new Date(Math.min(...validDates.map(d => d.getTime())));
+    } else {
+        planDate = new Date(today);
+    }
+    
     const daysLeft = Math.ceil((planDate - today) / 86400000);
     
     return {
-        recDate: recDate > new Date(8640000000000000) ? '' : recDate.toISOString().split('T')[0],
+        recDate: recDate ? recDate.toISOString().split('T')[0] : '',
         recMileage,
         recMotohours: recMotohours || '',
         planDate: planDate.toISOString().split('T')[0],
         planMileage: recMileage,
-        daysLeft
+        daysLeft: isFinite(daysLeft) ? daysLeft : 0
     };
 }
 // ==================== 9. ОТРИСОВКА ====================
