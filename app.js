@@ -120,6 +120,7 @@ function initGoogleApi() {
         authStatus.textContent = '✅ Авторизован';
         authPanel.style.display = 'none';
         spreadsheetPanel.style.display = 'block';
+        setSyncStatus('synced');
         return;
     }
     authPanel.style.display = 'block';
