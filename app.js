@@ -254,11 +254,14 @@ function getOilMotohoursInterval(op, avgSpeed) {
 function calculatePlan(op) {
     const today = new Date(); today.setHours(0,0,0,0);
     
-    // Календарная дата: если интервал месяцев не задан, ставим дату в далёкое будущее
-    let recDate = new Date(8640000000000000); // максимально далеко
+    // Календарная дата: если интервал месяцев не задан, ставим очень далёкую дату (через 100 лет)
+    let recDate;
     if (op.intervalMonths) {
         recDate = op.lastDate ? new Date(op.lastDate) : new Date(today);
         recDate.setMonth(recDate.getMonth() + op.intervalMonths);
+    } else {
+        recDate = new Date(today);
+        recDate.setFullYear(today.getFullYear() + 100);
     }
     
     const recMileage = op.lastMileage ? op.lastMileage + op.intervalKm : op.intervalKm;
@@ -266,23 +269,27 @@ function calculatePlan(op) {
     const motoInterval = getOilMotohoursInterval(op, avgSpeed);
     let recMotohours = motoInterval ? (op.lastMotohours ? op.lastMotohours + motoInterval : settings.currentMotohours + motoInterval) : null;
 
-    let dateByMileage = new Date(8640000000000000);
+    let dateByMileage = new Date(today);
+    dateByMileage.setFullYear(today.getFullYear() + 100);
     if (recMileage > settings.currentMileage && settings.avgDailyMileage > 0) {
         const days = Math.ceil((recMileage - settings.currentMileage) / settings.avgDailyMileage);
-        dateByMileage = new Date(today); dateByMileage.setDate(today.getDate() + days);
+        dateByMileage = new Date(today);
+        dateByMileage.setDate(today.getDate() + days);
     }
     
-    let dateByMoto = new Date(8640000000000000);
+    let dateByMoto = new Date(today);
+    dateByMoto.setFullYear(today.getFullYear() + 100);
     if (recMotohours && recMotohours > settings.currentMotohours && settings.avgDailyMotohours > 0) {
         const days = Math.ceil((recMotohours - settings.currentMotohours) / settings.avgDailyMotohours);
-        dateByMoto = new Date(today); dateByMoto.setDate(today.getDate() + days);
+        dateByMoto = new Date(today);
+        dateByMoto.setDate(today.getDate() + days);
     }
     
-    const planDate = new Date(Math.min(recDate, dateByMileage, dateByMoto));
+    const planDate = new Date(Math.min(recDate.getTime(), dateByMileage.getTime(), dateByMoto.getTime()));
     const daysLeft = Math.ceil((planDate - today) / 86400000);
     
     return {
-        recDate: recDate > new Date(8640000000000000) ? '' : recDate.toISOString().split('T')[0],
+        recDate: recDate.toISOString().split('T')[0],
         recMileage,
         recMotohours: recMotohours || '',
         planDate: planDate.toISOString().split('T')[0],
