@@ -86,6 +86,7 @@ const shareTableBtn = document.getElementById('share-table-btn');
 const oilChart = document.getElementById('oilChart');
 const costsChart = document.getElementById('costsChart');
 const fuelChart = document.getElementById('fuelChart');
+
 // ==================== 4. АВТОРИЗАЦИЯ ====================
 function startAuth() {
     const redirectUri = window.location.origin + window.location.pathname;
@@ -133,6 +134,7 @@ function initGoogleApi() {
     }
     authPanel.style.display = 'block';
 }
+
 // ==================== 5. УТИЛИТЫ API ====================
 async function apiCall(url, options = {}) {
     if (!accessToken) throw new Error('Not authorized');
@@ -177,6 +179,7 @@ function setSyncStatus(status) {
     syncIndicator.className = status;
     syncIndicator.title = status === 'synced' ? 'Синхронизировано' : status === 'syncing' ? 'Синхронизация...' : 'Ошибка соединения';
 }
+
 // ==================== 7. ЗАГРУЗКА ДАННЫХ ====================
 async function loadSheet() {
     spreadsheetId = sheetIdInput.value.trim();
@@ -268,6 +271,7 @@ async function loadSheet() {
         }
     }
 }
+
 // ==================== 8. РАСЧЁТ ПЛАНОВ ====================
 function getOilMotohoursInterval(op, avgSpeed) {
     if (op.name.includes('Масло') && op.category.includes('ДВС')) {
@@ -279,6 +283,7 @@ function getOilMotohoursInterval(op, avgSpeed) {
 function calculatePlan(op) {
     const today = new Date(); today.setHours(0,0,0,0);
     
+    // Календарная дата
     let recDate = new Date(8640000000000000);
     if (op.intervalMonths) {
         recDate = op.lastDate ? new Date(op.lastDate) : new Date(today);
@@ -288,8 +293,26 @@ function calculatePlan(op) {
     const recMileage = op.lastMileage ? op.lastMileage + op.intervalKm : op.intervalKm;
     const avgSpeed = settings.avgDailyMileage / settings.avgDailyMotohours;
     const motoInterval = getOilMotohoursInterval(op, avgSpeed);
-    let recMotohours = motoInterval ? (op.lastMotohours ? op.lastMotohours + motoInterval : settings.currentMotohours + motoInterval) : null;
-
+    
+    // Проверка актуальности моточасов для масла ДВС
+    let isMotohoursFresh = true;
+    if (op.name.includes('Масло') && op.category.includes('ДВС')) {
+        if (mileageHistory.length >= 1) {
+            const lastEntry = mileageHistory[mileageHistory.length - 1];
+            const motoDiff = settings.currentMotohours - lastEntry.motohours;
+            const mileageDiff = settings.currentMileage - lastEntry.mileage;
+            if (motoDiff > 20 || mileageDiff > 500) {
+                isMotohoursFresh = false;
+            }
+        }
+    }
+    
+    let recMotohours = null;
+    if (motoInterval && isMotohoursFresh) {
+        recMotohours = op.lastMotohours ? op.lastMotohours + motoInterval : settings.currentMotohours + motoInterval;
+    }
+    
+    // Даты по пробегу и моточасам
     let dateByMileage = new Date(8640000000000000);
     if (recMileage > settings.currentMileage && settings.avgDailyMileage > 0) {
         const days = Math.ceil((recMileage - settings.currentMileage) / settings.avgDailyMileage);
@@ -314,6 +337,7 @@ function calculatePlan(op) {
         daysLeft
     };
 }
+
 // ==================== 9. ОТРИСОВКА ====================
 function renderAll() {
     // Виджеты показателей (с проверками)
@@ -322,7 +346,7 @@ function renderAll() {
     if (displayAvgMileage) displayAvgMileage.textContent = settings.avgDailyMileage;
     if (displayAvgMotohours) displayAvgMotohours.textContent = settings.avgDailyMotohours;
 
-    renderTOTable(); renderPartsTable(); renderFuelTable(); renderTiresTable(); updateNextServiceWidget(); renderStats();
+    renderTOTable(); renderPartsTable(); renderFuelTable(); renderTiresTable(); updateNextServiceWidget(); renderStats();renderTop5Widget();
 
     // Поля настроек (с проверками)
     if (setMileage) setMileage.value = settings.currentMileage;
@@ -1018,6 +1042,7 @@ function initEventListeners() {
             document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
             if (btn.dataset.tab === 'history') loadHistory();
             if (btn.dataset.tab === 'stats') renderStats();
+            if (btn.dataset.tab === 'to') renderTop5Widget();
         });
     });
 
@@ -1080,6 +1105,7 @@ async function updateMileageAndAverages() {
     
     renderAll();
     updateNextServiceWidget();
+    renderTop5Widget();
     alert('Показатели обновлены');
 }
 
@@ -1096,6 +1122,146 @@ function calculateOwnershipDays() {
     const diffTime = Math.abs(today - purchase);
     ownershipDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     daysInput.value = ownershipDays;
+}
+// ==================== 20-А. ВИДЖЕТ ТОП-5 С ГРУППИРОВКОЙ И ПРИОРИТЕТОМ МОТОЧАСОВ ====================
+const LINKED_PAIRS = [
+    { main: 'Масло', linked: 'Масляный фильтр', combinedName: 'Масло + фильтр' },
+    { main: 'Масло CVT (частичная)', linked: 'Фильтр вариатора', combinedName: 'Масло CVT + фильтр' }
+];
+
+function renderTop5Widget() {
+    const container = document.getElementById('top5-container');
+    if (!container) return;
+
+    let candidates = operations.filter(op => {
+        if (!op.intervalKm && !op.intervalMonths && !op.intervalMotohours) return false;
+        const plan = calculatePlan(op);
+        return plan.daysLeft !== null && isFinite(plan.daysLeft) && plan.planDate;
+    });
+
+    if (candidates.length === 0) {
+        container.innerHTML = '<p class="hint">Нет данных для отображения</p>';
+        return;
+    }
+
+    const groupedOps = [];
+    const usedIds = new Set();
+
+    for (const op of candidates) {
+        if (usedIds.has(op.id)) continue;
+
+        let isMainOfPair = false;
+        let pair = null;
+        for (const p of LINKED_PAIRS) {
+            if (op.name === p.main) {
+                isMainOfPair = true;
+                pair = p;
+                break;
+            }
+        }
+
+        if (isMainOfPair) {
+            const linkedOp = candidates.find(o => o.name === pair.linked && !usedIds.has(o.id));
+            if (linkedOp) {
+                const mainPlan = calculatePlan(op);
+                const linkedPlan = calculatePlan(linkedOp);
+                const primaryPlan = mainPlan.daysLeft <= linkedPlan.daysLeft ? mainPlan : linkedPlan;
+                const primaryOp = mainPlan.daysLeft <= linkedPlan.daysLeft ? op : linkedOp;
+
+                groupedOps.push({
+                    name: pair.combinedName,
+                    op: primaryOp,
+                    plan: primaryPlan,
+                    isGroup: true
+                });
+                usedIds.add(op.id);
+                usedIds.add(linkedOp.id);
+                continue;
+            }
+        }
+
+        let isLinkedInPair = false;
+        for (const p of LINKED_PAIRS) {
+            if (op.name === p.linked) {
+                isLinkedInPair = true;
+                break;
+            }
+        }
+        if (isLinkedInPair) {
+            const mainOp = candidates.find(o => o.name === LINKED_PAIRS.find(p => p.linked === op.name)?.main);
+            if (mainOp && !usedIds.has(mainOp.id)) continue;
+        }
+
+        if (!usedIds.has(op.id)) {
+            groupedOps.push({
+                name: op.name,
+                op: op,
+                plan: calculatePlan(op),
+                isGroup: false
+            });
+            usedIds.add(op.id);
+        }
+    }
+
+    const sorted = groupedOps.sort((a, b) => a.plan.daysLeft - b.plan.daysLeft);
+    const top5 = sorted.slice(0, 5);
+
+    let html = '';
+    top5.forEach(item => {
+        const op = item.op;
+        const plan = item.plan;
+
+        // Проверка свежести моточасов для масла ДВС (дублируем логику)
+        let motoFresh = true;
+        if (op.name.includes('Масло') && op.category.includes('ДВС')) {
+            if (mileageHistory.length >= 1) {
+                const lastEntry = mileageHistory[mileageHistory.length - 1];
+                const motoDiff = settings.currentMotohours - lastEntry.motohours;
+                const mileageDiff = settings.currentMileage - lastEntry.mileage;
+                if (motoDiff > 20 || mileageDiff > 500) {
+                    motoFresh = false;
+                }
+            }
+        }
+
+        let percent = 0;
+        if (op.intervalKm && plan.planMileage > (op.lastMileage || 0)) {
+            percent = Math.min(100, Math.round((settings.currentMileage - (op.lastMileage || 0)) / (plan.planMileage - (op.lastMileage || 0)) * 100));
+        } else if (op.intervalMotohours && motoFresh && plan.recMotohours > (op.lastMotohours || 0)) {
+            percent = Math.min(100, Math.round((settings.currentMotohours - (op.lastMotohours || 0)) / (plan.recMotohours - (op.lastMotohours || 0)) * 100));
+        } else if (op.intervalMonths) {
+            const lastDate = op.lastDate ? new Date(op.lastDate) : new Date();
+            const totalDays = op.intervalMonths * 30;
+            const elapsed = Math.floor((new Date() - lastDate) / 86400000);
+            percent = Math.min(100, Math.round((elapsed / totalDays) * 100));
+        }
+        if (percent < 0) percent = 0;
+
+        const daysLeft = plan.daysLeft;
+        const mileageLeft = plan.planMileage - settings.currentMileage;
+        const motoLeft = plan.recMotohours ? (plan.recMotohours - settings.currentMotohours) : null;
+
+        let statusText = '';
+        if (daysLeft < 0) statusText = `⚠️ просрочено на ${Math.abs(daysLeft)} дн.`;
+        else statusText = `осталось ${daysLeft} дн.`;
+
+        if (mileageLeft > 0 && op.intervalKm) statusText += ` / ${mileageLeft} км`;
+        else if (motoLeft > 0 && op.intervalMotohours && motoFresh) statusText += ` / ${motoLeft.toFixed(0)} м/ч`;
+
+        html += `
+            <div class="top5-item">
+                <div class="top5-header">
+                    <span class="top5-name">${item.name}</span>
+                    <span class="top5-stats">${statusText}</span>
+                </div>
+                <div class="top5-progress-container">
+                    <div class="top5-progress-bar" style="width: ${percent}%;"></div>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
 }
 
 // ==================== 21. ЗАПУСК ====================
