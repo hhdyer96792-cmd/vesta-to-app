@@ -1018,6 +1018,11 @@ function initEventListeners() {
         appendSheet('Tires!A:D', [[date, type, settings.currentMileage, '']]); loadSheet();
     };
 }
+// Обработчик кнопки "Обновить" на вкладке ТО
+const updateBtn = document.getElementById('update-mileage-btn');
+if (updateBtn) {
+    updateBtn.addEventListener('click', updateMileageAndAverages);
+}
 
 // ==================== 20. ЗАПУСК ====================
 pendingActions = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
