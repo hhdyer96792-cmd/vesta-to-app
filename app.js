@@ -505,11 +505,13 @@ form.onsubmit = (e) => {
     e.preventDefault();
     const data = new FormData(form);
     const photo = data.get('photo');
+    const currentOpName = opName;
+    const currentIsOsago = isOsago;
     
-    // Закрываем окно мгновенно
+    // Мгновенно закрываем окно
     modal.remove();
 
-    // Всё остальное делаем в фоне
+    // Фоновое сохранение
     (async () => {
         try {
             let photoUrl = '';
@@ -524,14 +526,14 @@ form.onsubmit = (e) => {
             let formattedDate = data.get('date');
 
             let fullNotes = notes;
-            if (isOsago) {
+            if (currentIsOsago) {
                 fullNotes = `ОСАГО. Стоимость: ${cost} ₽. Срок: ${osagoMonths} мес. Ссылка: ${fileLink}. ` + notes;
             }
 
             await addServiceRecord(data.get('opId'), formattedDate, data.get('mileage'), motohours, cost, workCost, isDIY, fullNotes, photoUrl);
 
             // Автоматическая отметка масляного фильтра
-            if (opName === 'Масло') {
+            if (currentOpName === 'Масло') {
                 const filterOp = operations.find(o => o.name === 'Масляный фильтр' && o.category === 'ДВС');
                 if (filterOp) {
                     const today = formattedDate;
@@ -545,7 +547,7 @@ form.onsubmit = (e) => {
             }
 
             // Автоматическая отметка фильтра вариатора
-            if (opName.includes('Масло CVT (частичная)')) {
+            if (currentOpName.includes('Масло CVT (частичная)')) {
                 const filterOp = operations.find(o => o.name.includes('Фильтр вариатора'));
                 if (filterOp) {
                     const today = formattedDate;
@@ -563,7 +565,6 @@ form.onsubmit = (e) => {
         }
     })();
 };
-
 
 function openOperationForm(op = null) {
     const modal = createModal(op ? '✏️ Редактировать' : '➕ Новая операция', `
@@ -592,10 +593,10 @@ function openOperationForm(op = null) {
         </form>
     `);
     const form = modal.querySelector('#op-form');
-   form.onsubmit = (e) => {
+  form.onsubmit = (e) => {
     e.preventDefault();
     const formData = Object.fromEntries(new FormData(form));
-    modal.remove(); // закрываем мгновенно
+    modal.remove();
     saveOperation(formData).catch(e => console.warn('Ошибка сохранения операции:', e));
 };
 
