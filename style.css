@@ -278,6 +278,34 @@ input, select {
     margin: 0 auto;
     display: block;
 }
+/* Виджет ТОП-5 */
+.top5-item {
+    margin-bottom: 16px;
+}
+.top5-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    font-size: 0.95rem;
+}
+.top5-name {
+    font-weight: 600;
+}
+.top5-stats {
+    color: var(--text-muted);
+}
+.top5-progress-container {
+    background: var(--border);
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.top5-progress-bar {
+    background: var(--primary);
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s;
+}
 
 /* Мобильная оптимизация */
 @media (max-width: 768px) {
