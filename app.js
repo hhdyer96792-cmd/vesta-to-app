@@ -592,7 +592,13 @@ function openOperationForm(op = null) {
         </form>
     `);
     const form = modal.querySelector('#op-form');
-    form.onsubmit = async (e) => { e.preventDefault(); await saveOperation(Object.fromEntries(new FormData(form))); modal.remove(); };
+   form.onsubmit = (e) => {
+    e.preventDefault();
+    const formData = Object.fromEntries(new FormData(form));
+    modal.remove(); // закрываем мгновенно
+    saveOperation(formData).catch(e => console.warn('Ошибка сохранения операции:', e));
+};
+
     modal.querySelector('.cancel-btn').onclick = () => modal.remove();
 }
 
