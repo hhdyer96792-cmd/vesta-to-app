@@ -53,9 +53,6 @@ const displayMileage = document.getElementById('display-mileage');
 const displayMotohours = document.getElementById('display-motohours');
 const displayAvgMileage = document.getElementById('display-avg-mileage');
 const displayAvgMotohours = document.getElementById('display-avg-motohours');
-const nextServiceName = document.getElementById('next-service-name');
-const progressBar = document.getElementById('progress-bar');
-const progressDetails = document.getElementById('progress-details');
 const addOperationBtn = document.getElementById('add-operation-btn');
 const recalculateBtn = document.getElementById('recalculate-btn');
 const exportBtn = document.getElementById('export-btn');
@@ -346,7 +343,7 @@ function renderAll() {
     if (displayAvgMileage) displayAvgMileage.textContent = settings.avgDailyMileage;
     if (displayAvgMotohours) displayAvgMotohours.textContent = settings.avgDailyMotohours;
 
-    renderTOTable(); renderPartsTable(); renderFuelTable(); renderTiresTable(); updateNextServiceWidget(); renderStats();renderTop5Widget();
+    renderTOTable(); renderPartsTable(); renderFuelTable(); renderTiresTable(); renderStats();renderTop5Widget();
 
     // Поля настроек (с проверками)
     if (setMileage) setMileage.value = settings.currentMileage;
@@ -454,21 +451,6 @@ function renderTiresTable() {
     });
 }
 
-function updateNextServiceWidget() {
-    if (!operations.length) return;
-    const validOps = operations.filter(op => {
-        const plan = calculatePlan(op);
-        return plan.daysLeft !== null && isFinite(plan.daysLeft) && plan.planDate && plan.daysLeft < 10000;
-    });
-    if (!validOps.length) return;
-    const sorted = [...validOps].sort((a,b) => calculatePlan(a).daysLeft - calculatePlan(b).daysLeft);
-    const next = sorted[0];
-    const plan = calculatePlan(next);
-    nextServiceName.textContent = `${next.name} (${next.category})`;
-    const percent = Math.min(100, Math.round((settings.currentMileage - next.lastMileage) / (plan.planMileage - next.lastMileage) * 100));
-    progressBar.style.width = (isNaN(percent) ? 0 : percent) + '%';
-    progressDetails.textContent = `Пробег: ${settings.currentMileage} / ${plan.planMileage} км | Осталось: ${plan.daysLeft} дн.`;
-}
 // ==================== 10. МОДАЛЬНЫЕ ОКНА ====================
 function createModal(title, content) {
     const modal = document.createElement('div'); modal.className = 'modal'; modal.style.display = 'flex';
@@ -624,6 +606,7 @@ function openOperationForm(op = null) {
     form.onsubmit = async (e) => { e.preventDefault(); await saveOperation(Object.fromEntries(new FormData(form))); modal.remove(); };
     modal.querySelector('.cancel-btn').onclick = () => modal.remove();
 }
+
 // ==================== 11. СОХРАНЕНИЕ ====================
 async function addServiceRecord(opId, date, mileage, motohours, partsCost, workCost, isDIY, notes, photoUrl) {
     const op = operations.find(o => o.id == opId);
@@ -638,7 +621,7 @@ async function addServiceRecord(opId, date, mileage, motohours, partsCost, workC
     } else {
         addPendingAction({ type: 'service', opId, date, mileage, motohours, partsCost, workCost, isDIY, notes, photoUrl, rowIndex: op.rowIndex });
         op.lastDate = date; op.lastMileage = +mileage; op.lastMotohours = +motohours;
-        renderTOTable(); updateNextServiceWidget();
+        renderTOTable();
         localStorage.setItem(CACHE_KEY, JSON.stringify({ operations, settings, parts, fuelLog, tireLog, workCosts }));
     }
 }
@@ -672,8 +655,7 @@ async function saveOperation(data) {
         }
 
         renderTOTable();
-        updateNextServiceWidget();
-
+        
         setTimeout(() => {
             loadSheet().catch(e => console.warn('Фоновая синхронизация не удалась:', e));
         }, 100);
@@ -1012,11 +994,12 @@ async function syncAllToSheet() {
     await writeSheet('Журнал ТО!A2:H', opsRows);
     await writeSheet('Журнал ТО!Q1:Q12', [[settings.currentMileage],[settings.currentMotohours],[settings.avgDailyMileage],[settings.avgDailyMotohours],[],[],[settings.telegramToken],[settings.telegramChatId],[baseMileage],[baseMotohours],[purchaseDate],[]]);
 }
+
 // ==================== 19. ИНИЦИАЛИЗАЦИЯ СОБЫТИЙ ====================
 function initEventListeners() {
     authBtn.addEventListener('click', (e) => { e.preventDefault(); startAuth(); });
     loadSheetBtn.onclick = loadSheet;
-    recalculateBtn.onclick = () => { renderTOTable(); updateNextServiceWidget(); };
+    recalculateBtn.onclick = () => { renderTOTable(); };
     exportBtn.onclick = exportData;
     importBtn.onclick = () => importFile.click();
     importFile.onchange = importData;
