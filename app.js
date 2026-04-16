@@ -29,6 +29,12 @@ let settings = {
 
 let isOnline = navigator.onLine;
 let pendingActions = [];
+// ==================== 2-А. НОВЫЕ ПЕРЕМЕННЫЕ ====================
+let mileageHistory = [];        // история вводов [{ date, mileage, motohours }]
+let baseMileage = 0;            // точка отсчёта: пробег
+let baseMotohours = 0;          // точка отсчёта: моточасы
+let purchaseDate = '';          // дата приобретения (ГГГГ-ММ-ДД)
+let ownershipDays = 0;          // дней владения (вычисляется)
 
 // ==================== 3. DOM ЭЛЕМЕНТЫ ====================
 const authPanel = document.getElementById('auth-panel');
@@ -223,7 +229,23 @@ async function loadSheet() {
         fuelLog = fuelData.map(r => ({ date: r[0], mileage: +r[1], liters: +r[2], pricePerLiter: +r[3], fullTank: r[4], notes: r[5] }));
         tireLog = tiresData.map(r => ({ date: r[0], type: r[1], mileage: +r[2], notes: r[3] }));
         workCosts = workCostsData.map(r => ({ operationId: +r[0], cost: +r[1], isDIY: r[2] === 'TRUE', notes: r[3] }));
+// Загрузка истории пробега
+const mileageData = await readSheet('MileageLog!A2:C').catch(() => []);
+mileageHistory = mileageData.map(r => ({
+    date: r[0],
+    mileage: +r[1],
+    motohours: +r[2]
+})).sort((a,b) => new Date(a.date) - new Date(b.date));
 
+// Загрузка дополнительных настроек из Q9:Q12
+const extraSettings = await readSheet('Журнал ТО!Q9:Q12').catch(() => []);
+if (extraSettings.length >= 4) {
+    baseMileage = +extraSettings[0][0] || 0;
+    baseMotohours = +extraSettings[1][0] || 0;
+    purchaseDate = extraSettings[2]?.[0] || '';
+    // Q12 зарезервировано
+}
+calculateOwnershipDays();
         localStorage.setItem(CACHE_KEY, JSON.stringify({ operations, settings, parts, fuelLog, tireLog, workCosts }));
         renderAll();
         dataPanel.style.display = 'block';
@@ -316,6 +338,14 @@ function renderAll() {
     telegramTokenInput.value = settings.telegramToken || '';
     telegramChatIdInput.value = settings.telegramChatId || '';
     notificationMethodSelect.value = settings.notificationMethod || 'telegram';
+// Заполнение полей точки отсчёта и даты приобретения
+const baseMileageInput = document.getElementById('set-base-mileage');
+if (baseMileageInput) baseMileageInput.value = baseMileage;
+const baseMotohoursInput = document.getElementById('set-base-motohours');
+if (baseMotohoursInput) baseMotohoursInput.value = baseMotohours;
+const purchaseDateInput = document.getElementById('purchase-date');
+if (purchaseDateInput) purchaseDateInput.value = purchaseDate;
+calculateOwnershipDays();
 }
 
 function renderTOTable() {
@@ -896,11 +926,36 @@ function openPartForm(part = null) {
 }
 
 async function saveSettings() {
-    settings.currentMileage = +setMileage.value; settings.currentMotohours = +setMotohours.value; settings.avgDailyMileage = +setAvgMileage.value; settings.avgDailyMotohours = +setAvgMotohours.value;
-    settings.telegramToken = telegramTokenInput.value; settings.telegramChatId = telegramChatIdInput.value; settings.notificationMethod = notificationMethodSelect.value;
+    settings.currentMileage = +setMileage?.value || settings.currentMileage;
+    settings.currentMotohours = +setMotohours?.value || settings.currentMotohours;
+    settings.telegramToken = telegramTokenInput.value;
+    settings.telegramChatId = telegramChatIdInput.value;
+    settings.notificationMethod = notificationMethodSelect.value;
     localStorage.setItem('notificationMethod', settings.notificationMethod);
-    await writeSheet('Журнал ТО!Q1:Q8', [[settings.currentMileage],[settings.currentMotohours],[settings.avgDailyMileage],[settings.avgDailyMotohours],[], [], [settings.telegramToken],[settings.telegramChatId]]);
-    settingsResult.textContent = '✅ Сохранено';
+    
+    // Сохраняем точку отсчёта и дату приобретения
+    baseMileage = +document.getElementById('set-base-mileage').value || 0;
+    baseMotohours = +document.getElementById('set-base-motohours').value || 0;
+    purchaseDate = document.getElementById('purchase-date').value;
+    calculateOwnershipDays();
+    
+    // Записываем в Q1:Q12
+    await writeSheet('Журнал ТО!Q1:Q12', [
+        [settings.currentMileage],
+        [settings.currentMotohours],
+        [settings.avgDailyMileage],
+        [settings.avgDailyMotohours],
+        [], // Q5
+        [], // Q6
+        [settings.telegramToken],
+        [settings.telegramChatId],
+        [baseMileage],
+        [baseMotohours],
+        [purchaseDate],
+        []  // Q12 резерв
+    ]);
+    
+    document.getElementById('settings-result').textContent = '✅ Сохранено';
 }
 
 function exportData() {
@@ -971,6 +1026,71 @@ initGoogleApi();
 initEventListeners();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js');
 
+// ==================== 21. ОБНОВЛЕНИЕ ПРОБЕГА И РАСЧЁТ СРЕДНИХ ====================
+async function updateMileageAndAverages() {
+    const newMileage = parseFloat(document.getElementById('new-mileage').value);
+    const newMotohours = parseFloat(document.getElementById('new-motohours').value);
+    if (isNaN(newMileage) || isNaN(newMotohours)) {
+        alert('Введите корректные числовые значения');
+        return;
+    }
+
+    const today = new Date().toISOString().split('T')[0]; // ГГГГ-ММ-ДД
+    
+    // Сохраняем запись в историю (лист MileageLog)
+    await appendSheet('MileageLog!A:C', [[today, newMileage, newMotohours]]);
+    
+    // Обновляем локальную историю
+    mileageHistory.push({ date: today, mileage: newMileage, motohours: newMotohours });
+    mileageHistory.sort((a,b) => new Date(a.date) - new Date(b.date));
+    
+    // Рассчитываем средние на основе последних двух записей
+    if (mileageHistory.length >= 2) {
+        const last = mileageHistory[mileageHistory.length - 1];
+        const prev = mileageHistory[mileageHistory.length - 2];
+        const daysDiff = (new Date(last.date) - new Date(prev.date)) / 86400000;
+        if (daysDiff > 0) {
+            settings.avgDailyMileage = (last.mileage - prev.mileage) / daysDiff;
+            settings.avgDailyMotohours = (last.motohours - prev.motohours) / daysDiff;
+        }
+    } else {
+        // Если истории недостаточно, берём из точки отсчёта или дефолтные
+        settings.avgDailyMileage = baseMileage > 0 ? (newMileage - baseMileage) / 30 : 20;
+        settings.avgDailyMotohours = baseMotohours > 0 ? (newMotohours - baseMotohours) / 30 : 1.65;
+    }
+    
+    // Обновляем текущие показатели
+    settings.currentMileage = newMileage;
+    settings.currentMotohours = newMotohours;
+    
+    // Сохраняем текущие показатели и средние в таблицу (Q1:Q4)
+    await writeSheet('Журнал ТО!Q1:Q4', [
+        [settings.currentMileage],
+        [settings.currentMotohours],
+        [settings.avgDailyMileage],
+        [settings.avgDailyMotohours]
+    ]);
+    
+    // Перерисовываем интерфейс
+    renderAll();
+    updateNextServiceWidget();
+    alert('Показатели обновлены');
+}
+
+function calculateOwnershipDays() {
+    const daysInput = document.getElementById('ownership-days');
+    if (!daysInput) return;
+    if (!purchaseDate) {
+        ownershipDays = 0;
+        daysInput.value = '';
+        return;
+    }
+    const today = new Date();
+    const purchase = new Date(purchaseDate);
+    const diffTime = Math.abs(today - purchase);
+    ownershipDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    daysInput.value = ownershipDays;
+}
 
 
 
