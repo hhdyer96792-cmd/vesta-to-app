@@ -316,20 +316,24 @@ function calculatePlan(op) {
 }
 // ==================== 9. ОТРИСОВКА ====================
 function renderAll() {
-    displayMileage.textContent = settings.currentMileage;
-    displayMotohours.textContent = settings.currentMotohours;
-    displayAvgMileage.textContent = settings.avgDailyMileage;
-    displayAvgMotohours.textContent = settings.avgDailyMotohours;
-    renderTOTable(); renderPartsTable(); renderFuelTable(); renderTiresTable(); updateNextServiceWidget(); renderStats();
-    setMileage.value = settings.currentMileage;
-    setMotohours.value = settings.currentMotohours;
-    setAvgMileage.value = settings.avgDailyMileage;
-    setAvgMotohours.value = settings.avgDailyMotohours;
-        telegramTokenInput.value = settings.telegramToken || '';
-    telegramChatIdInput.value = settings.telegramChatId || '';
-    notificationMethodSelect.value = settings.notificationMethod || 'telegram';
+    // Виджеты показателей (с проверками)
+    if (displayMileage) displayMileage.textContent = settings.currentMileage;
+    if (displayMotohours) displayMotohours.textContent = settings.currentMotohours;
+    if (displayAvgMileage) displayAvgMileage.textContent = settings.avgDailyMileage;
+    if (displayAvgMotohours) displayAvgMotohours.textContent = settings.avgDailyMotohours;
 
-    // v2.1: Заполнение полей точки отсчёта и даты приобретения (с проверками)
+    renderTOTable(); renderPartsTable(); renderFuelTable(); renderTiresTable(); updateNextServiceWidget(); renderStats();
+
+    // Поля настроек (с проверками)
+    if (setMileage) setMileage.value = settings.currentMileage;
+    if (setMotohours) setMotohours.value = settings.currentMotohours;
+    if (setAvgMileage) setAvgMileage.value = settings.avgDailyMileage;
+    if (setAvgMotohours) setAvgMotohours.value = settings.avgDailyMotohours;
+    if (telegramTokenInput) telegramTokenInput.value = settings.telegramToken || '';
+    if (telegramChatIdInput) telegramChatIdInput.value = settings.telegramChatId || '';
+    if (notificationMethodSelect) notificationMethodSelect.value = settings.notificationMethod || 'telegram';
+
+    // Поля точки отсчёта и даты приобретения (v2.1)
     const baseMileageInput = document.getElementById('set-base-mileage');
     if (baseMileageInput) baseMileageInput.value = baseMileage;
     const baseMotohoursInput = document.getElementById('set-base-motohours');
