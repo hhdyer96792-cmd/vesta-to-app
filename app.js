@@ -499,72 +499,73 @@ function openServiceModal(opId, opName) {
             <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
         </form>
     `);
-  
     const form = modal.querySelector('#service-form');
-form.onsubmit = (e) => {
-    e.preventDefault();
-    const data = new FormData(form);
-    const photo = data.get('photo');
-    const currentOpName = opName;
-    const currentIsOsago = isOsago;
-    
-    // Мгновенно закрываем окно
-    modal.remove();
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        const data = new FormData(form);
+        const photo = data.get('photo');
+        const currentOpName = opName;
+        const currentIsOsago = isOsago;
+        
+        // Мгновенно закрываем окно
+        modal.remove();
 
-    // Фоновое сохранение
-    (async () => {
-        try {
-            let photoUrl = '';
-            if (photo && photo.size > 0) photoUrl = await uploadPhoto(photo);
-            const cost = data.get('cost') || '0';
-            const workCost = data.get('workCost') || '0';
-            const isDIY = data.get('isDIY') === 'true';
-            const notes = data.get('notes') || '';
-            const fileLink = data.get('fileLink') || '';
-            const osagoMonths = data.get('osagoMonths') || '12';
-            const motohours = parseFloat(data.get('motohours')) || 0;
-            let formattedDate = data.get('date');
+        // Фоновое сохранение
+        (async () => {
+            try {
+                let photoUrl = '';
+                if (photo && photo.size > 0) photoUrl = await uploadPhoto(photo);
+                const cost = data.get('cost') || '0';
+                const workCost = data.get('workCost') || '0';
+                const isDIY = data.get('isDIY') === 'true';
+                const notes = data.get('notes') || '';
+                const fileLink = data.get('fileLink') || '';
+                const osagoMonths = data.get('osagoMonths') || '12';
+                const motohours = parseFloat(data.get('motohours')) || 0;
+                let formattedDate = data.get('date');
 
-            let fullNotes = notes;
-            if (currentIsOsago) {
-                fullNotes = `ОСАГО. Стоимость: ${cost} ₽. Срок: ${osagoMonths} мес. Ссылка: ${fileLink}. ` + notes;
-            }
+                let fullNotes = notes;
+                if (currentIsOsago) {
+                    fullNotes = `ОСАГО. Стоимость: ${cost} ₽. Срок: ${osagoMonths} мес. Ссылка: ${fileLink}. ` + notes;
+                }
 
-            await addServiceRecord(data.get('opId'), formattedDate, data.get('mileage'), motohours, cost, workCost, isDIY, fullNotes, photoUrl);
+                await addServiceRecord(data.get('opId'), formattedDate, data.get('mileage'), motohours, cost, workCost, isDIY, fullNotes, photoUrl);
 
-            // Автоматическая отметка масляного фильтра
-            if (currentOpName === 'Масло') {
-                const filterOp = operations.find(o => o.name === 'Масляный фильтр' && o.category === 'ДВС');
-                if (filterOp) {
-                    const today = formattedDate;
-                    const alreadyDone = serviceRecords.some(rec => 
-                        rec.operation_id === filterOp.id && rec.date === today
-                    );
-                    if (!alreadyDone) {
-                        await addServiceRecord(filterOp.id, formattedDate, data.get('mileage'), motohours, 0, 0, false, 'Автоматически вместе с заменой масла', '');
+                // Автоматическая отметка масляного фильтра
+                if (currentOpName === 'Масло') {
+                    const filterOp = operations.find(o => o.name === 'Масляный фильтр' && o.category === 'ДВС');
+                    if (filterOp) {
+                        const today = formattedDate;
+                        const alreadyDone = serviceRecords.some(rec => 
+                            rec.operation_id === filterOp.id && rec.date === today
+                        );
+                        if (!alreadyDone) {
+                            await addServiceRecord(filterOp.id, formattedDate, data.get('mileage'), motohours, 0, 0, false, 'Автоматически вместе с заменой масла', '');
+                        }
                     }
                 }
-            }
 
-            // Автоматическая отметка фильтра вариатора
-            if (currentOpName.includes('Масло CVT (частичная)')) {
-                const filterOp = operations.find(o => o.name.includes('Фильтр вариатора'));
-                if (filterOp) {
-                    const today = formattedDate;
-                    const alreadyDone = serviceRecords.some(rec => 
-                        rec.operation_id === filterOp.id && rec.date === today
-                    );
-                    if (!alreadyDone) {
-                        await addServiceRecord(filterOp.id, formattedDate, data.get('mileage'), motohours, 0, 0, false, 'Автоматически вместе с частичной заменой масла', '');
+                // Автоматическая отметка фильтра вариатора
+                if (currentOpName.includes('Масло CVT (частичная)')) {
+                    const filterOp = operations.find(o => o.name.includes('Фильтр вариатора'));
+                    if (filterOp) {
+                        const today = formattedDate;
+                        const alreadyDone = serviceRecords.some(rec => 
+                            rec.operation_id === filterOp.id && rec.date === today
+                        );
+                        if (!alreadyDone) {
+                            await addServiceRecord(filterOp.id, formattedDate, data.get('mileage'), motohours, 0, 0, false, 'Автоматически вместе с частичной заменой масла', '');
+                        }
                     }
                 }
+            } catch (error) {
+                console.error('Ошибка при сохранении ТО:', error);
+                alert('Не удалось сохранить запись. Проверьте консоль (F12).');
             }
-        } catch (error) {
-            console.error('Ошибка при сохранении ТО:', error);
-            alert('Не удалось сохранить запись. Проверьте консоль (F12).');
-        }
-    })();
-};
+        })();
+    };
+    modal.querySelector('.cancel-btn').onclick = () => modal.remove();
+}
 
 function openOperationForm(op = null) {
     const modal = createModal(op ? '✏️ Редактировать' : '➕ Новая операция', `
