@@ -801,11 +801,20 @@ function renderStats() {
         }
     }
 }
-// ==================== 17. ИСТОРИЯ ====================
 async function loadHistory() {
     if (!spreadsheetId) return;
     try {
-        const historyData = (await readSheet('История!A2:J')).filter(row => row.some(cell => cell !== ''));
+        const rawData = await readSheet('История!A2:J');
+        // Создаём массив с индексами, где есть хотя бы одна непустая ячейка
+        const validRows = [];
+        const historyData = [];
+        rawData.forEach((row, idx) => {
+            if (row.some(cell => cell !== '' && cell !== null && cell !== undefined)) {
+                historyData.push(row);
+                validRows.push(idx + 2); // физический номер строки в таблице (A2 = 2)
+            }
+        });
+
         serviceRecords = historyData.map(row => ({
             operation_id: row[0],
             date: row[1],
@@ -822,7 +831,9 @@ async function loadHistory() {
         const tbody = historyBody;
         if (!tbody) return;
         tbody.innerHTML = '';
-        historyData.reverse().forEach((row, index) => {
+        // Перебираем отфильтрованные данные
+        historyData.reverse().forEach((row, displayIndex) => {
+            const physicalRow = validRows[historyData.length - 1 - displayIndex]; // физический номер строки
             const tr = document.createElement('tr');
             const opId = row[0];
             const op = operations.find(o => o.id == opId) || { name: 'Неизвестно' };
@@ -836,8 +847,8 @@ async function loadHistory() {
                 <td>${row[5] || ''}</td>
                 <td>${row[7] || ''}</td>
                 <td>
-                    <button class="icon-btn edit-history-btn" data-row="${index + 2}" data-opid="${opId}" data-date="${row[1]}" data-mileage="${row[2]}" data-motohours="${row[3]}" data-parts="${row[4]}" data-work="${row[5]}" data-diy="${row[6]}" data-notes="${row[7]}" data-photo="${row[8]}">✏️</button>
-                    <button class="icon-btn delete-history-btn" data-row="${index + 2}">🗑️</button>
+                    <button class="icon-btn edit-history-btn" data-row="${physicalRow}" data-opid="${opId}" data-date="${row[1]}" data-mileage="${row[2]}" data-motohours="${row[3]}" data-parts="${row[4]}" data-work="${row[5]}" data-diy="${row[6]}" data-notes="${row[7]}" data-photo="${row[8]}">✏️</button>
+                    <button class="icon-btn delete-history-btn" data-row="${physicalRow}">🗑️</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -891,11 +902,13 @@ function openHistoryEdit(e) {
 
 async function deleteHistoryEntry(e) {
     const btn = e.currentTarget;
-    const rowIndex = btn.dataset.row;
+    const rowIndex = btn.dataset.row; // теперь это физический номер строки
     if (!confirm('Удалить запись из истории? Это действие нельзя отменить.')) return;
+    // Очищаем ячейки в указанной строке
     await writeSheet(`История!A${rowIndex}:J${rowIndex}`, [['','','','','','','','','','']]);
-    loadHistory();
+    loadHistory(); // перезагружаем список (пустые строки будут отфильтрованы)
 }
+
 // ==================== 18. ОБРАБОТЧИКИ ====================
 function attachTOListeners() {
     document.querySelectorAll('.add-record-btn').forEach(b => b.addEventListener('click', e => openServiceModal(b.dataset.opId, b.dataset.opName)));
