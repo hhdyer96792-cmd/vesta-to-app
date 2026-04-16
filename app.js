@@ -499,7 +499,7 @@ function openServiceModal(opId, opName) {
             <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
         </form>
     `);
-    const form = modal.querySelector('#service-form');
+  
     const form = modal.querySelector('#service-form');
 form.onsubmit = (e) => {
     e.preventDefault();
