@@ -999,7 +999,7 @@ async function syncAllToSheet() {
 function initEventListeners() {
     authBtn.addEventListener('click', (e) => { e.preventDefault(); startAuth(); });
     loadSheetBtn.onclick = loadSheet;
-    recalculateBtn.onclick = () => { renderTOTable(); };
+    recalculateBtn.onclick = () => { renderTOTable(); renderTopWidget(); };
     exportBtn.onclick = exportData;
     importBtn.onclick = () => importFile.click();
     importFile.onchange = importData;
