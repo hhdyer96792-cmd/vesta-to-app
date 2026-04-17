@@ -408,3 +408,7 @@ input, select {
         width: 100%;
     }
 }
+.modal-content {
+    margin: 16px;
+    max-width: 500px;
+}
