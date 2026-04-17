@@ -137,6 +137,57 @@ function initGoogleApi() {
     authPanel.style.display = 'block';
 }
 
+// ==================== 4-А. РАБОТА С ПРОФИЛЯМИ ====================
+function loadProfiles() {
+    const stored = localStorage.getItem(PROFILES_KEY);
+    if (stored) {
+        try {
+            carProfiles = JSON.parse(stored);
+        } catch (e) {
+            carProfiles = [];
+        }
+    }
+    // Сортируем по дате последнего использования (сначала свежие)
+    carProfiles.sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
+}
+
+function saveProfiles() {
+    localStorage.setItem(PROFILES_KEY, JSON.stringify(carProfiles));
+}
+
+function addOrUpdateProfile(id, name = null) {
+    const existing = carProfiles.find(p => p.id === id);
+    const now = Date.now();
+    if (existing) {
+        existing.lastUsed = now;
+        if (name) existing.name = name;
+    } else {
+        carProfiles.push({
+            id: id,
+            name: name || 'Мой автомобиль',
+            lastUsed: now
+        });
+    }
+    carProfiles.sort((a, b) => b.lastUsed - a.lastUsed);
+    saveProfiles();
+    currentProfileId = id;
+}
+
+function getLastUsedProfileId() {
+    loadProfiles();
+    return carProfiles.length > 0 ? carProfiles[0].id : null;
+}
+
+// Загрузить таблицу по ID профиля
+async function loadProfileById(id) {
+    if (!id) return;
+    sheetIdInput.value = id;
+    spreadsheetId = id;
+    currentProfileId = id;
+    await loadSheet();
+    addOrUpdateProfile(id); // обновляем lastUsed
+}
+
 // ==================== 5. УТИЛИТЫ API ====================
 async function apiCall(url, options = {}) {
     if (!accessToken) throw new Error('Not authorized');
