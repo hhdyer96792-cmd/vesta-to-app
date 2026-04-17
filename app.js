@@ -319,25 +319,24 @@ fuelLog = fuelData.map(r => ({
         }
         calculateOwnershipDays();
 
-        localStorage.setItem(CACHE_KEY, JSON.stringify({ operations, settings, parts, fuelLog, tireLog, workCosts }));
-        renderAll();
-        dataPanel.style.display = 'block';
-        setSyncStatus('synced');
-        syncPendingActions();
-        driveFolderId = await getOrCreatePhotoFolder();
-        loadHistory();
-        addOrUpdateProfile(spreadsheetId);
-    } catch (e) {
-        setSyncStatus('error');
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (cached) {
-            const d = JSON.parse(cached);
-            operations = d.operations; settings = d.settings; parts = d.parts || [];
-            fuelLog = d.fuelLog || []; tireLog = d.tireLog || []; workCosts = d.workCosts || [];
-            renderAll(); dataPanel.style.display = 'block';
-        }
+           localStorage.setItem(CACHE_KEY, JSON.stringify({ operations, settings, parts, fuelLog, tireLog, workCosts }));
+    renderAll();
+    dataPanel.style.display = 'block';
+    setSyncStatus('synced');
+    syncPendingActions();
+    driveFolderId = await getOrCreatePhotoFolder();
+    loadHistory();
+    addOrUpdateProfile(spreadsheetId);
+} catch (e) {
+    setSyncStatus('error');
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+        const d = JSON.parse(cached);
+        operations = d.operations; settings = d.settings; parts = d.parts || [];
+        fuelLog = d.fuelLog || []; tireLog = d.tireLog || []; workCosts = d.workCosts || [];
+        renderAll(); dataPanel.style.display = 'block';
     }
-}
+    }
 
 
 // ==================== 8. РАСЧЁТ ПЛАНОВ ====================
