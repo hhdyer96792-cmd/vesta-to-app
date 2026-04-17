@@ -815,8 +815,8 @@ function parseFuelVoice(text) {
 }
 
 function openFuelModal(record = null) {
-    const isEdit = !!record;
-    // Определяем значение даты по умолчанию
+    // Редактирование – только если есть rowIndex (физическая строка в таблице)
+    const isEdit = !!(record && record.rowIndex);
     let defaultDate;
     if (record && record.date) {
         defaultDate = isoToDDMMYYYY(record.date);
@@ -824,6 +824,7 @@ function openFuelModal(record = null) {
         const todayISO = new Date().toISOString().split('T')[0];
         defaultDate = isoToDDMMYYYY(todayISO);
     }
+    
     // Пробег: при редактировании берём из записи, иначе текущий из настроек
     const mileageValue = record && record.mileage ? record.mileage : settings.currentMileage;
     // Литры, цена, примечание — с защитой от undefined
