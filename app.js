@@ -269,6 +269,15 @@ async function loadSheet() {
     }
 }
 
+
+// ==================== 8. РАСЧЁТ ПЛАНОВ ====================
+function getOilMotohoursInterval(op, avgSpeed) {
+    if (op.name.includes('Масло') && op.category.includes('ДВС')) {
+        return avgSpeed < 20 ? 200 : 250;
+    }
+    return op.intervalMotohours;
+}
+
 function calculatePlan(op) {
     const today = new Date(); today.setHours(0,0,0,0);
     
@@ -336,6 +345,7 @@ function calculatePlan(op) {
         daysLeft: isFinite(daysLeft) ? daysLeft : 0
     };
 }
+
 
 // ==================== 9. ОТРИСОВКА ====================
 function renderAll() {
