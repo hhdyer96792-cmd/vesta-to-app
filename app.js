@@ -813,81 +813,6 @@ function excelDateToISO(serial) {
 }
 
 // ==================== 17. ИСТОРИЯ ====================
-async function loadHistory() {
-    if (!spreadsheetId) return;
-    try {
-        const rawData = await readSheet('История!A2:J');
-        const validRows = [];
-        const historyData = [];
-        rawData.forEach((row, idx) => {
-            if (row.some(cell => cell !== '' && cell !== null && cell !== undefined)) {
-                historyData.push(row);
-                validRows.push(idx + 2);
-            }
-        });
-
-        serviceRecords = historyData.map(row => ({
-            operation_id: row[0],
-            date: row[1],
-            mileage: row[2],
-            motohours: row[3],
-            parts_cost: row[4],
-            work_cost: row[5],
-            is_diy: row[6],
-            notes: row[7],
-            photo_url: row[8],
-            timestamp: row[9]
-        }));
-
-        const tbody = historyBody;
-        if (!tbody) return;
-        tbody.innerHTML = '';
-        historyData.reverse().forEach((row, displayIndex) => {
-            const physicalRow = validRows[historyData.length - 1 - displayIndex];
-            const tr = document.createElement('tr');
-            const opId = row[0];
-            const op = operations.find(o => o.id == opId) || { name: 'Неизвестно' };
-            const formattedDate = row[1] || '';
-            const diyFlag = row[6] === 'TRUE' || row[6] === true;
-            tr.innerHTML = `
-                <td>${formattedDate}</td>
-                <td>${op.name}</td>
-                <td>${row[2] || ''}</td>
-                <td>${row[3] || ''}</td>
-                <td>${row[4] || ''}</td>
-                <td>${row[5] || ''}</td>
-                <td>${row[7] || ''}</td>
-                <td style="text-align:center;">${diyFlag ? '✅' : '—'}</td>
-                <td>
-                    <button class="icon-btn edit-history-btn" data-row="${physicalRow}" data-opid="${opId}" data-date="${row[1]}" data-mileage="${row[2]}" data-motohours="${row[3]}" data-parts="${row[4]}" data-work="${row[5]}" data-diy="${row[6]}" data-notes="${row[7]}" data-photo="${row[8]}">✏️</button>
-                    <button class="icon-btn delete-history-btn" data-row="${physicalRow}">🗑️</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-        document.querySelectorAll('.edit-history-btn').forEach(b => b.addEventListener('click', openHistoryEdit));
-        document.querySelectorAll('.delete-history-btn').forEach(b => b.addEventListener('click', deleteHistoryEntry));
-    } catch (e) {
-        console.warn('История не загружена:', e);
-    }
-}
-
-function openHistoryEdit(e) {
-    const btn = e.currentTarget;
-    const rowIndex = btn.dataset.row;
-    const opId = btn.dataset.opid;
-    const date = btn.dataset.date;
-    const mileage = btn.dataset.mileage;
-    const motohours = btn.dataset.motohours;
-    const partsCost = btn.dataset.parts;
-    const workCost = btn.dataset.work;
-    const isDIY = btn.dataset.diy === 'true';
-    const notes = btn.dataset.notes;
-    const photoUrl = btn.dataset.photo;
-
-    const modal = createModal('✏️ Редактировать запись истории', `
-        <form id="history-edit-form">
-// ==================== 17. ИСТОРИЯ ====================
 function excelDateToISO(serial) {
     if (!serial || typeof serial !== 'number') return '';
     const utcDays = Math.floor(serial - 25569);
@@ -1003,7 +928,7 @@ async function deleteHistoryEntry(e) {
     await writeSheet(`История!A${rowIndex}:J${rowIndex}`, [['','','','','','','','','','']]);
     loadHistory();
 }
-    
+
 // ==================== 18. ОБРАБОТЧИКИ ====================
 function attachTOListeners() {
     document.querySelectorAll('.add-record-btn').forEach(b => b.addEventListener('click', e => openServiceModal(b.dataset.opId, b.dataset.opName)));
