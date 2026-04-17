@@ -1305,7 +1305,12 @@ function initEventListeners() {
     };
     shareTableBtn.onclick = () => window.open(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`, '_blank');
     themeToggle.onclick = () => { document.body.classList.toggle('dark'); themeToggle.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙'; };
-
+   
+    const selectCarBtn = document.getElementById('select-car-btn');
+    if (selectCarBtn) {
+    selectCarBtn.addEventListener('click', openCarSelectModal);
+}
+      
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
