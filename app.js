@@ -227,16 +227,16 @@ async function loadSheet() {
             price: r[3] || '', supplier: r[4] || '', link: r[5] || '', comment: r[6] || ''
         }));
 
-        // Загрузка топлива
-         const fuelData = await readSheet('FuelLog!A2:G').catch(() => []);
-        fuelLog = fuelData.map(r => ({
-           date: typeof r[0] === 'number' ? excelDateToISO(r[0]) : r[0],
-           mileage: +r[1],
-           liters: +r[2],
-           pricePerLiter: +r[3],
-           fullTank: r[4],
-           fuelType: r[5] || 'Бензин',
-           notes: r[6]
+        // Загрузка топлива (столбцы A–G)
+const fuelData = await readSheet('FuelLog!A2:G').catch(() => []);
+fuelLog = fuelData.map(r => ({
+    date: typeof r[0] === 'number' ? excelDateToISO(r[0]) : r[0],
+    mileage: +r[1],
+    liters: +r[2],
+    pricePerLiter: +r[3],
+    fullTank: r[4],
+    fuelType: r[5] || 'Бензин',
+    notes: r[6]
 }));
          
         tireLog = tiresData.map(r => ({ date: r[0], type: r[1], mileage: +r[2], notes: r[3] }));
