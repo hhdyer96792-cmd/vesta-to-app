@@ -184,14 +184,13 @@ async function loadSheet() {
     localStorage.setItem('vesta_spreadsheet_id', spreadsheetId);
     setSyncStatus('syncing');
     try {
-        const [opsData, settingsData, partsData, fuelData, tiresData, workCostsData] = await Promise.all([
-            readSheet('Журнал ТО!A2:H'),
-            readSheet('Журнал ТО!Q1:Q8'),
-            readSheet('PartsCatalog!A2:G').catch(() => []),
-            readSheet('FuelLog!A2:F').catch(() => []),
-            readSheet('Tires!A2:D').catch(() => []),
-            readSheet('WorkCosts!A2:D').catch(() => [])
-        ]);
+    const [opsData, settingsData, partsData, tiresData, workCostsData] = await Promise.all([
+     readSheet('Журнал ТО!A2:H'),
+     readSheet('Журнал ТО!Q1:Q8'),
+     readSheet('PartsCatalog!A2:G').catch(() => []),
+     readSheet('Tires!A2:D').catch(() => []),
+     readSheet('WorkCosts!A2:D').catch(() => [])
+]);
 
         operations = opsData.filter(r => r[1]).map((r, i) => {
             let lastDate = null;
@@ -1155,7 +1154,7 @@ async function syncAllToSheet() {
 function initEventListeners() {
     authBtn.addEventListener('click', (e) => { e.preventDefault(); startAuth(); });
     loadSheetBtn.onclick = loadSheet;
-    recalculateBtn.onclick = () => { renderTOTable(); renderTopWidget(); };
+    recalculateBtn.onclick = () => { renderTOTable(); renderTop5Widget(); };
     exportBtn.onclick = exportData;
     importBtn.onclick = () => importFile.click();
     importFile.onchange = importData;
