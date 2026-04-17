@@ -758,6 +758,8 @@ async function uploadPhoto(file) {
     const data = await res.json();
     return `https://drive.google.com/file/d/${data.id}/view`;
 }
+
+
 // ==================== 14. УВЕДОМЛЕНИЯ ====================
 async function sendNotification(title, body, tag = null) {
     if (settings.notificationMethod === 'telegram' || settings.notificationMethod === 'both') await sendTelegramMessage(`${title}\n${body}`);
@@ -788,6 +790,7 @@ async function subscribeToPush() {
     localStorage.setItem('push_subscribed', 'true');
     pushStatus.textContent = '✅ Push активны';
 }
+
 // ==================== 15. ГОЛОС ====================
 function startVoiceInput() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -813,24 +816,32 @@ function parseFuelVoice(text) {
 
 function openFuelModal(record = null) {
     const isEdit = !!record;
-     let defaultDate;
-if (record && record.date) {
-    defaultDate = isoToDDMMYYYY(record.date);
-} else {
-    // Сегодняшняя дата в формате ГГГГ-ММ-ДД, преобразованная в ДД-ММ-ГГГГ
-    const todayISO = new Date().toISOString().split('T')[0];
-    defaultDate = isoToDDMMYYYY(todayISO);
-}
+    // Определяем значение даты по умолчанию
+    let defaultDate;
+    if (record && record.date) {
+        defaultDate = isoToDDMMYYYY(record.date);
+    } else {
+        const todayISO = new Date().toISOString().split('T')[0];
+        defaultDate = isoToDDMMYYYY(todayISO);
+    }
+    // Пробег: при редактировании берём из записи, иначе текущий из настроек
+    const mileageValue = record && record.mileage ? record.mileage : settings.currentMileage;
+    // Литры, цена, примечание — с защитой от undefined
+    const litersValue = record && record.liters ? record.liters : '';
+    const priceValue = record && record.pricePerLiter ? record.pricePerLiter : '';
+    const notesValue = record && record.notes ? record.notes : '';
+    const fullTankChecked = record && record.fullTank ? 'checked' : '';
+
     const modal = createModal(isEdit ? '✏️ Редактировать заправку' : '⛽ Добавить заправку', `
         <form id="fuel-form">
             ${isEdit ? `<input type="hidden" name="rowIndex" value="${record.rowIndex}">` : ''}
             <label>Дата (ДД-ММ-ГГГГ)</label>
             <input type="text" name="date" placeholder="ДД-ММ-ГГГГ" pattern="\\d{2}-\\d{2}-\\d{4}" required oninput="applyDateMaskDDMMYYYY(event)" value="${defaultDate}">
-            <label>Пробег</label><input type="number" name="mileage" value="${record ? record.mileage : settings.currentMileage}" required>
-            <label>Литры</label><input type="number" name="liters" step="0.01" value="${record ? record.liters : ''}" required>
-            <label>Цена/л</label><input type="number" name="pricePerLiter" step="0.01" value="${record ? record.pricePerLiter : ''}">
-            <label>Полный бак? <input type="checkbox" name="fullTank" value="true" ${record && record.fullTank ? 'checked' : ''}></label>
-            <label>Примечание</label><input type="text" name="notes" value="${record ? record.notes : ''}">
+            <label>Пробег</label><input type="number" name="mileage" value="${mileageValue}" required>
+            <label>Литры</label><input type="number" name="liters" step="0.01" value="${litersValue}" required>
+            <label>Цена/л</label><input type="number" name="pricePerLiter" step="0.01" value="${priceValue}">
+            <label>Полный бак? <input type="checkbox" name="fullTank" value="true" ${fullTankChecked}></label>
+            <label>Примечание</label><input type="text" name="notes" value="${notesValue}">
             <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
         </form>
     `);
@@ -858,7 +869,7 @@ if (record && record.date) {
 // ==================== 16. СТАТИСТИКА ====================
 function renderStats() {
     const oilOp = operations.find(op => op.name.includes('Масло') && op.category.includes('ДВС'));
-    if (oilOp) {
+    if (oilOp)  {
         const plan = calculatePlan(oilOp);
         const canvas = oilChart;
         if (canvas) {
