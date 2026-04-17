@@ -742,23 +742,24 @@ function openCarSelectModal() {
     let optionsHtml = '';
     carProfiles.forEach((p, index) => {
         optionsHtml += `
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
                 <input type="radio" name="carProfile" value="${p.id}" id="profile_${index}" ${p.id === currentProfileId ? 'checked' : ''}>
                 <input type="text" id="name_${index}" value="${p.name}" style="flex:1;" placeholder="Имя авто">
-                <button class="icon-btn delete-profile-btn" data-id="${p.id}">🗑️</button>
+                <button type="button" class="icon-btn delete-profile-btn" data-id="${p.id}">🗑️</button>
             </div>
         `;
     });
-    optionsHtml += `
-        <div style="margin-top:16px;">
-            <label>Новый автомобиль (вставьте ID):</label>
-            <input type="text" id="new-profile-id" placeholder="ID таблицы Google Sheets">
-        </div>
-    `;
-
+    
     const modal = createModal('🚗 Выбор автомобиля', `
         <form id="car-select-form">
-            ${optionsHtml}
+            <div style="max-height:300px; overflow-y:auto; margin-bottom:16px;">
+                ${optionsHtml || '<p>Нет сохранённых автомобилей</p>'}
+            </div>
+            <div style="border-top:1px solid var(--border); padding-top:16px;">
+                <label>Добавить новый автомобиль</label>
+                <input type="text" id="new-profile-id" placeholder="ID таблицы Google Sheets" style="margin-bottom:8px;">
+                <input type="text" id="new-profile-name" placeholder="Название (например, Vesta)" value="Мой автомобиль">
+            </div>
             <div class="modal-actions">
                 <button type="submit" class="primary-btn">Загрузить</button>
                 <button type="button" class="cancel-btn secondary-btn">Отмена</button>
@@ -781,7 +782,6 @@ function openCarSelectModal() {
     const form = modal.querySelector('#car-select-form');
     form.onsubmit = (e) => {
         e.preventDefault();
-        // Проверяем, выбран ли существующий или новый
         const selectedRadio = form.querySelector('input[name="carProfile"]:checked');
         let selectedId;
         if (selectedRadio) {
@@ -794,12 +794,14 @@ function openCarSelectModal() {
             saveProfiles();
         } else {
             // Новый ID
-            selectedId = document.getElementById('new-profile-id').value.trim();
-            if (!selectedId) {
-                alert('Выберите существующий профиль или введите новый ID');
+            const newId = document.getElementById('new-profile-id').value.trim();
+            const newName = document.getElementById('new-profile-name').value.trim() || 'Мой автомобиль';
+            if (!newId) {
+                alert('Введите ID таблицы Google Sheets');
                 return;
             }
-            addOrUpdateProfile(selectedId, 'Новый автомобиль');
+            selectedId = newId;
+            addOrUpdateProfile(selectedId, newName);
         }
         modal.remove();
         loadProfileById(selectedId);
