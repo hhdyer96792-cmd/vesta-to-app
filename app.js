@@ -115,9 +115,11 @@ function checkTokenInUrl() {
         spreadsheetPanel.style.display = 'block';
         const savedId = localStorage.getItem('vesta_spreadsheet_id');
         if (savedId) {
-            sheetIdInput.value = savedId;
-            loadSheet();
+        sheetIdInput.value = savedId;
+         loadSheet();
+         addOrUpdateProfile(savedId);
         }
+        
         return true;
     }
     return false;
@@ -728,6 +730,77 @@ function openOperationForm(op = null) {
         modal.remove();
         saveOperation(formData).catch(e => console.warn('Ошибка сохранения операции:', e));
     };
+    modal.querySelector('.cancel-btn').onclick = () => modal.remove();
+}
+
+function openCarSelectModal() {
+    loadProfiles();
+    let optionsHtml = '';
+    carProfiles.forEach((p, index) => {
+        optionsHtml += `
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                <input type="radio" name="carProfile" value="${p.id}" id="profile_${index}" ${p.id === currentProfileId ? 'checked' : ''}>
+                <input type="text" id="name_${index}" value="${p.name}" style="flex:1;" placeholder="Имя авто">
+                <button class="icon-btn delete-profile-btn" data-id="${p.id}">🗑️</button>
+            </div>
+        `;
+    });
+    optionsHtml += `
+        <div style="margin-top:16px;">
+            <label>Новый автомобиль (вставьте ID):</label>
+            <input type="text" id="new-profile-id" placeholder="ID таблицы Google Sheets">
+        </div>
+    `;
+
+    const modal = createModal('🚗 Выбор автомобиля', `
+        <form id="car-select-form">
+            ${optionsHtml}
+            <div class="modal-actions">
+                <button type="submit" class="primary-btn">Загрузить</button>
+                <button type="button" class="cancel-btn secondary-btn">Отмена</button>
+            </div>
+        </form>
+    `);
+
+    // Обработчики удаления
+    modal.querySelectorAll('.delete-profile-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const id = btn.dataset.id;
+            carProfiles = carProfiles.filter(p => p.id !== id);
+            saveProfiles();
+            modal.remove();
+            openCarSelectModal(); // переоткрыть с обновлённым списком
+        });
+    });
+
+    const form = modal.querySelector('#car-select-form');
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        // Проверяем, выбран ли существующий или новый
+        const selectedRadio = form.querySelector('input[name="carProfile"]:checked');
+        let selectedId;
+        if (selectedRadio) {
+            selectedId = selectedRadio.value;
+            // Обновляем имена для существующих
+            carProfiles.forEach((p, index) => {
+                const nameInput = document.getElementById(`name_${index}`);
+                if (nameInput) p.name = nameInput.value || p.name;
+            });
+            saveProfiles();
+        } else {
+            // Новый ID
+            selectedId = document.getElementById('new-profile-id').value.trim();
+            if (!selectedId) {
+                alert('Выберите существующий профиль или введите новый ID');
+                return;
+            }
+            addOrUpdateProfile(selectedId, 'Новый автомобиль');
+        }
+        modal.remove();
+        loadProfileById(selectedId);
+    };
+
     modal.querySelector('.cancel-btn').onclick = () => modal.remove();
 }
 
