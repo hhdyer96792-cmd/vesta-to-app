@@ -445,9 +445,21 @@ function renderPartsTable() {
 function renderFuelTable() {
     const tbody = fuelBody;
     tbody.innerHTML = '';
-    fuelLog.forEach((f,i) => {
+    fuelLog.forEach((f, i) => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${f.date}</td><td>${f.mileage}</td><td>${f.liters}</td><td>${f.pricePerLiter}</td><td>${f.fullTank||''}</td><td>${f.notes||''}</td><td><button class="icon-btn delete-fuel-btn" data-index="${i}">🗑️</button></td>`;
+        const displayDate = isoToDDMMYYYY(f.date) || f.date;
+        tr.innerHTML = `
+            <td>${displayDate}</td>
+            <td>${f.mileage}</td>
+            <td>${f.liters}</td>
+            <td>${f.pricePerLiter}</td>
+            <td>${f.fullTank || ''}</td>
+            <td>${f.notes || ''}</td>
+            <td>
+                <button class="icon-btn edit-fuel-btn" data-index="${i}">✏️</button>
+                <button class="icon-btn delete-fuel-btn" data-index="${i}">🗑️</button>
+            </td>
+        `;
         tbody.appendChild(tr);
     });
     attachFuelListeners();
