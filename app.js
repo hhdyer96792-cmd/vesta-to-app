@@ -46,14 +46,9 @@ const PROFILES_KEY = 'vesta_car_profiles';
 const authPanel = document.getElementById('auth-panel');
 const authBtn = document.getElementById('authorize-btn');
 const authStatus = document.getElementById('auth-status');
-const spreadsheetPanel = document.getElementById('spreadsheet-panel');
 const dataPanel = document.getElementById('data-panel');
-const sheetIdInput = document.getElementById('spreadsheet-id');
-const loadSheetBtn = document.getElementById('load-sheet-btn');
-const sheetStatus = document.getElementById('sheet-status');
 const syncIndicator = document.getElementById('sync-indicator');
 const themeToggle = document.getElementById('theme-toggle');
-
 const displayMileage = document.getElementById('display-mileage');
 const displayMotohours = document.getElementById('display-motohours');
 const displayAvgMileage = document.getElementById('display-avg-mileage');
