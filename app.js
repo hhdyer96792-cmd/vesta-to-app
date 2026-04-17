@@ -562,7 +562,7 @@ function openServiceModal(opId, opName) {
                 const fileLink = data.get('fileLink') || '';
                 const osagoMonths = data.get('osagoMonths') || '12';
                 const motohours = parseFloat(data.get('motohours')) || 0;
-                let formattedDate = data.get('date');
+                let formattedDate = ddmmYYYYtoISO(data.get('date'));
 
                 let fullNotes = notes;
                 if (currentIsOsago) {
@@ -799,26 +799,43 @@ function parseFuelVoice(text) {
     openFuelModal({ mileage: parseInt(numbers[0]), liters: parseFloat(numbers[1]), pricePerLiter: numbers[2] ? parseFloat(numbers[2]) : null });
 }
 
-function openFuelModal(prefill = {}) {
-    const modal = createModal('⛽ Заправка', `
-        <form id="fuel-form"><label>Дата</label><input type="date" name="date" value="${new Date().toISOString().split('T')[0]}" required>
-            <label>Пробег</label><input type="number" name="mileage" value="${prefill.mileage || settings.currentMileage}" required>
-            <label>Литры</label><input type="number" name="liters" step="0.01" value="${prefill.liters || ''}" required>
-            <label>Цена/л</label><input type="number" name="pricePerLiter" step="0.01" value="${prefill.pricePerLiter || ''}">
-            <label>Полный бак? <input type="checkbox" name="fullTank" value="true"></label>
-            <label>Примечание</label><input type="text" name="notes">
+function openFuelModal(record = null) {
+    const isEdit = !!record;
+    const defaultDate = record ? isoToDDMMYYYY(record.date) : new Date().toISOString().split('T')[0];
+    const modal = createModal(isEdit ? '✏️ Редактировать заправку' : '⛽ Добавить заправку', `
+        <form id="fuel-form">
+            ${isEdit ? `<input type="hidden" name="rowIndex" value="${record.rowIndex}">` : ''}
+            <label>Дата (ДД-ММ-ГГГГ)</label>
+            <input type="text" name="date" placeholder="ДД-ММ-ГГГГ" pattern="\\d{2}-\\d{2}-\\d{4}" required oninput="applyDateMaskDDMMYYYY(event)" value="${defaultDate}">
+            <label>Пробег</label><input type="number" name="mileage" value="${record ? record.mileage : settings.currentMileage}" required>
+            <label>Литры</label><input type="number" name="liters" step="0.01" value="${record ? record.liters : ''}" required>
+            <label>Цена/л</label><input type="number" name="pricePerLiter" step="0.01" value="${record ? record.pricePerLiter : ''}">
+            <label>Полный бак? <input type="checkbox" name="fullTank" value="true" ${record && record.fullTank ? 'checked' : ''}></label>
+            <label>Примечание</label><input type="text" name="notes" value="${record ? record.notes : ''}">
             <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
         </form>
     `);
     const form = modal.querySelector('#fuel-form');
-    form.onsubmit = async (e) => {
+    form.onsubmit = (e) => {
         e.preventDefault();
         const d = Object.fromEntries(new FormData(form));
-        await appendSheet('FuelLog!A:F', [[d.date, d.mileage, d.liters, d.pricePerLiter, d.fullTank || '', d.notes || '']]);
-        modal.remove(); await loadSheet();
+        const rowIndex = d.rowIndex;
+        const dateISO = ddmmYYYYtoISO(d.date);
+        const rowData = [dateISO, d.mileage, d.liters, d.pricePerLiter, d.fullTank || '', d.notes || ''];
+        modal.remove();
+        if (isEdit) {
+            writeSheet(`FuelLog!A${rowIndex}:F${rowIndex}`, [rowData])
+                .then(() => loadSheet())
+                .catch(e => console.warn('Ошибка обновления заправки:', e));
+        } else {
+            appendSheet('FuelLog!A:F', [rowData])
+                .then(() => loadSheet())
+                .catch(e => console.warn('Ошибка сохранения заправки:', e));
+        }
     };
     modal.querySelector('.cancel-btn').onclick = () => modal.remove();
 }
+
 // ==================== 16. СТАТИСТИКА ====================
 function renderStats() {
     const oilOp = operations.find(op => op.name.includes('Масло') && op.category.includes('ДВС'));
