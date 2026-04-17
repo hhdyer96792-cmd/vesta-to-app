@@ -241,7 +241,6 @@ function setSyncStatus(status) {
 
 // ==================== 7. ЗАГРУЗКА ДАННЫХ ====================
 async function loadSheet() {
-    spreadsheetId = sheetIdInput.value.trim();
     if (!spreadsheetId) return;
     localStorage.setItem('vesta_spreadsheet_id', spreadsheetId);
     setSyncStatus('syncing');
