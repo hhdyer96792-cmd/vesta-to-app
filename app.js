@@ -813,7 +813,14 @@ function parseFuelVoice(text) {
 
 function openFuelModal(record = null) {
     const isEdit = !!record;
-    const defaultDate = record ? isoToDDMMYYYY(record.date) : new Date().toISOString().split('T')[0];
+     let defaultDate;
+if (record && record.date) {
+    defaultDate = isoToDDMMYYYY(record.date);
+} else {
+    // Сегодняшняя дата в формате ГГГГ-ММ-ДД, преобразованная в ДД-ММ-ГГГГ
+    const todayISO = new Date().toISOString().split('T')[0];
+    defaultDate = isoToDDMMYYYY(todayISO);
+}
     const modal = createModal(isEdit ? '✏️ Редактировать заправку' : '⛽ Добавить заправку', `
         <form id="fuel-form">
             ${isEdit ? `<input type="hidden" name="rowIndex" value="${record.rowIndex}">` : ''}
