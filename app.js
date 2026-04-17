@@ -801,17 +801,18 @@ function renderStats() {
         }
     }
 }
+
+// ==================== 17. ИСТОРИЯ ====================
 async function loadHistory() {
     if (!spreadsheetId) return;
     try {
         const rawData = await readSheet('История!A2:J');
-        // Создаём массив с индексами, где есть хотя бы одна непустая ячейка
         const validRows = [];
         const historyData = [];
         rawData.forEach((row, idx) => {
             if (row.some(cell => cell !== '' && cell !== null && cell !== undefined)) {
                 historyData.push(row);
-                validRows.push(idx + 2); // физический номер строки в таблице (A2 = 2)
+                validRows.push(idx + 2); // физический номер строки (A2 = 2)
             }
         });
 
@@ -831,9 +832,8 @@ async function loadHistory() {
         const tbody = historyBody;
         if (!tbody) return;
         tbody.innerHTML = '';
-        // Перебираем отфильтрованные данные
         historyData.reverse().forEach((row, displayIndex) => {
-            const physicalRow = validRows[historyData.length - 1 - displayIndex]; // физический номер строки
+            const physicalRow = validRows[historyData.length - 1 - displayIndex];
             const tr = document.createElement('tr');
             const opId = row[0];
             const op = operations.find(o => o.id == opId) || { name: 'Неизвестно' };
@@ -888,25 +888,26 @@ function openHistoryEdit(e) {
         </form>
     `);
     const form = modal.querySelector('#history-edit-form');
-    form.onsubmit = async (ev) => {
+    form.onsubmit = (ev) => {
         ev.preventDefault();
         const data = new FormData(form);
         const row = data.get('rowIndex');
         let newDate = data.get('date');
         const newValues = [opId, newDate, data.get('mileage'), data.get('motohours'), data.get('partsCost'), data.get('workCost'), data.get('isDIY') === 'true', data.get('notes'), photoUrl];
-        await writeSheet(`История!A${row}:J${row}`, [newValues.concat(new Date().toISOString())]);
-        modal.remove(); loadHistory(); await loadSheet();
+        modal.remove();
+        writeSheet(`История!A${row}:J${row}`, [newValues.concat(new Date().toISOString())])
+            .then(() => { loadHistory(); loadSheet(); })
+            .catch(e => { console.error('Ошибка сохранения:', e); alert('Не удалось сохранить'); });
     };
     modal.querySelector('.cancel-btn').onclick = () => modal.remove();
 }
 
 async function deleteHistoryEntry(e) {
     const btn = e.currentTarget;
-    const rowIndex = btn.dataset.row; // теперь это физический номер строки
+    const rowIndex = btn.dataset.row;
     if (!confirm('Удалить запись из истории? Это действие нельзя отменить.')) return;
-    // Очищаем ячейки в указанной строке
     await writeSheet(`История!A${rowIndex}:J${rowIndex}`, [['','','','','','','','','','']]);
-    loadHistory(); // перезагружаем список (пустые строки будут отфильтрованы)
+    loadHistory();
 }
 
 // ==================== 18. ОБРАБОТЧИКИ ====================
