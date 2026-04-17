@@ -323,14 +323,12 @@ fuelLog = fuelData.map(r => ({
         renderAll();
         dataPanel.style.display = 'block';
         setSyncStatus('synced');
-        sheetStatus.textContent = '✅ Данные загружены';
         syncPendingActions();
         driveFolderId = await getOrCreatePhotoFolder();
         loadHistory();
         addOrUpdateProfile(spreadsheetId);
     } catch (e) {
         setSyncStatus('error');
-        sheetStatus.textContent = `❌ ${e.message}`;
         const cached = localStorage.getItem(CACHE_KEY);
         if (cached) {
             const d = JSON.parse(cached);
