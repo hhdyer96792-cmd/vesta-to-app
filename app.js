@@ -324,6 +324,7 @@ fuelLog = fuelData.map(r => ({
         syncPendingActions();
         driveFolderId = await getOrCreatePhotoFolder();
         loadHistory();
+        addOrUpdateProfile(spreadsheetId);
     } catch (e) {
         setSyncStatus('error');
         sheetStatus.textContent = `❌ ${e.message}`;
