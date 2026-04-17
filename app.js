@@ -107,14 +107,16 @@ function checkTokenInUrl() {
         window.location.hash = '';
         authStatus.textContent = '✅ Авторизован';
         authPanel.style.display = 'none';
-        spreadsheetPanel.style.display = 'block';
-        const savedId = localStorage.getItem('vesta_spreadsheet_id');
-        if (savedId) {
-        sheetIdInput.value = savedId;
-         loadSheet();
-         addOrUpdateProfile(savedId);
+        setSyncStatus('synced');
+        // Проверяем, есть ли сохранённый профиль
+        const lastId = getLastUsedProfileId();
+        if (lastId) {
+            spreadsheetId = lastId;
+            loadSheet();
+            addOrUpdateProfile(lastId);
+        } else {
+            openCarSelectModal();
         }
-        
         return true;
     }
     return false;
@@ -127,8 +129,15 @@ function initGoogleApi() {
         accessToken = savedToken;
         authStatus.textContent = '✅ Авторизован';
         authPanel.style.display = 'none';
-        spreadsheetPanel.style.display = 'block';
         setSyncStatus('synced');
+        // Автоматически загружаем последний профиль или показываем модалку
+        const lastId = getLastUsedProfileId();
+        if (lastId) {
+            spreadsheetId = lastId;
+            loadSheet();
+        } else {
+            openCarSelectModal();
+        }
         return;
     }
     authPanel.style.display = 'block';
