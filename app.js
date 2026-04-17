@@ -269,14 +269,6 @@ async function loadSheet() {
     }
 }
 
-// ==================== 8. РАСЧЁТ ПЛАНОВ ====================
-function getOilMotohoursInterval(op, avgSpeed) {
-    if (op.name.includes('Масло') && op.category.includes('ДВС')) {
-        return avgSpeed < 20 ? 200 : 250;
-    }
-    return op.intervalMotohours;
-}
-
 function calculatePlan(op) {
     const today = new Date(); today.setHours(0,0,0,0);
     
@@ -323,15 +315,25 @@ function calculatePlan(op) {
     }
     
     const planDate = new Date(Math.min(recDate, dateByMileage, dateByMoto));
-    const daysLeft = Math.ceil((planDate - today) / 86400000);
+    let daysLeft = Math.ceil((planDate - today) / 86400000);
+    
+    // Если дата ушла в бесконечность (нет интервалов), сбрасываем daysLeft
+    if (planDate.getFullYear() > 275000) {
+        daysLeft = 0;
+    }
+    
+    let planDateStr = '';
+    if (planDate.getFullYear() < 275000) {
+        planDateStr = planDate.toISOString().split('T')[0];
+    }
     
     return {
-        recDate: recDate > new Date(8640000000000000) ? '' : recDate.toISOString().split('T')[0],
+        recDate: recDate.getFullYear() < 275000 ? recDate.toISOString().split('T')[0] : '',
         recMileage,
         recMotohours: recMotohours || '',
-        planDate: planDate.toISOString().split('T')[0],
+        planDate: planDateStr,
         planMileage: recMileage,
-        daysLeft
+        daysLeft: isFinite(daysLeft) ? daysLeft : 0
     };
 }
 
@@ -802,6 +804,13 @@ function renderStats() {
     }
 }
 
+// Преобразование серийного числа Excel (дней от 30.12.1899) в YYYY-MM-DD
+function excelDateToISO(serial) {
+    if (!serial || typeof serial !== 'number') return '';
+    const utcDays = Math.floor(serial - 25569);
+    const date = new Date(utcDays * 86400000);
+    return date.toISOString().split('T')[0];
+}
 
 // ==================== 17. ИСТОРИЯ ====================
 async function loadHistory() {
