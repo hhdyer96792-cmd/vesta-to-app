@@ -839,18 +839,21 @@ async function loadHistory() {
             const op = operations.find(o => o.id == opId) || { name: 'Неизвестно' };
             const formattedDate = row[1] || '';
             tr.innerHTML = `
-                <td>${formattedDate}</td>
-                <td>${op.name}</td>
-                <td>${row[2] || ''}</td>
-                <td>${row[3] || ''}</td>
-                <td>${row[4] || ''}</td>
-                <td>${row[5] || ''}</td>
-                <td>${row[7] || ''}</td>
-                <td>
-                    <button class="icon-btn edit-history-btn" data-row="${physicalRow}" data-opid="${opId}" data-date="${row[1]}" data-mileage="${row[2]}" data-motohours="${row[3]}" data-parts="${row[4]}" data-work="${row[5]}" data-diy="${row[6]}" data-notes="${row[7]}" data-photo="${row[8]}">✏️</button>
-                    <button class="icon-btn delete-history-btn" data-row="${physicalRow}">🗑️</button>
-                </td>
-            `;
+         const diyFlag = row[6] === 'TRUE' || row[6] === true;
+            tr.innerHTML = `
+             <td>${formattedDate}</td>
+             <td>${op.name}</td>
+             <td>${row[2] || ''}</td>
+             <td>${row[3] || ''}</td>
+             <td>${row[4] || ''}</td>
+             <td>${row[5] || ''}</td>
+             <td>${row[7] || ''}</td>
+             <td style="text-align:center;">${diyFlag ? '✅' : '—'}</td>
+             <td>
+               <button class="icon-btn edit-history-btn" data-row="${physicalRow}" data-opid="${opId}" data-date="${row[1]}" data-mileage="${row[2]}" data-motohours="${row[3]}" data-parts="${row[4]}" data-work="${row[5]}" data-diy="${row[6]}" data-notes="${row[7]}" data-photo="${row[8]}">✏️</button>
+               <button class="icon-btn delete-history-btn" data-row="${physicalRow}">🗑️</button>
+        </td>
+`;
             tbody.appendChild(tr);
         });
         document.querySelectorAll('.edit-history-btn').forEach(b => b.addEventListener('click', openHistoryEdit));
