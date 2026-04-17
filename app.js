@@ -835,7 +835,6 @@ function parseFuelVoice(text) {
 }
 
 function openFuelModal(record = null) {
-    // Редактирование – только если есть rowIndex (физическая строка в таблице)
     const isEdit = !!(record && record.rowIndex);
     let defaultDate;
     if (record && record.date) {
@@ -844,14 +843,12 @@ function openFuelModal(record = null) {
         const todayISO = new Date().toISOString().split('T')[0];
         defaultDate = isoToDDMMYYYY(todayISO);
     }
-    
-    // Пробег: при редактировании берём из записи, иначе текущий из настроек
     const mileageValue = record && record.mileage ? record.mileage : settings.currentMileage;
-    // Литры, цена, примечание — с защитой от undefined
     const litersValue = record && record.liters ? record.liters : '';
     const priceValue = record && record.pricePerLiter ? record.pricePerLiter : '';
     const notesValue = record && record.notes ? record.notes : '';
     const fullTankChecked = record && record.fullTank ? 'checked' : '';
+    const fuelTypeValue = record && record.fuelType ? record.fuelType : 'Бензин';
 
     const modal = createModal(isEdit ? '✏️ Редактировать заправку' : '⛽ Добавить заправку', `
         <form id="fuel-form">
@@ -862,6 +859,13 @@ function openFuelModal(record = null) {
             <label>Литры</label><input type="number" name="liters" step="0.01" value="${litersValue}" required>
             <label>Цена/л</label><input type="number" name="pricePerLiter" step="0.01" value="${priceValue}">
             <label>Полный бак? <input type="checkbox" name="fullTank" value="true" ${fullTankChecked}></label>
+            <label>Тип топлива</label>
+            <select name="fuelType">
+                <option value="Бензин" ${fuelTypeValue === 'Бензин' ? 'selected' : ''}>Бензин</option>
+                <option value="Дизель" ${fuelTypeValue === 'Дизель' ? 'selected' : ''}>Дизель</option>
+                <option value="Газ (ГБО)" ${fuelTypeValue === 'Газ (ГБО)' ? 'selected' : ''}>Газ (ГБО)</option>
+                <option value="Электричество" ${fuelTypeValue === 'Электричество' ? 'selected' : ''}>Электричество</option>
+            </select>
             <label>Примечание</label><input type="text" name="notes" value="${notesValue}">
             <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
         </form>
@@ -872,14 +876,14 @@ function openFuelModal(record = null) {
         const d = Object.fromEntries(new FormData(form));
         const rowIndex = d.rowIndex;
         const dateISO = ddmmYYYYtoISO(d.date);
-        const rowData = [dateISO, d.mileage, d.liters, d.pricePerLiter, d.fullTank || '', d.notes || ''];
+        const rowData = [dateISO, d.mileage, d.liters, d.pricePerLiter, d.fullTank || '', d.fuelType, d.notes || ''];
         modal.remove();
         if (isEdit) {
-            writeSheet(`FuelLog!A${rowIndex}:F${rowIndex}`, [rowData])
+            writeSheet(`FuelLog!A${rowIndex}:G${rowIndex}`, [rowData])
                 .then(() => loadSheet())
                 .catch(e => console.warn('Ошибка обновления заправки:', e));
         } else {
-            appendSheet('FuelLog!A:F', [rowData])
+            appendSheet('FuelLog!A:G', [rowData])
                 .then(() => loadSheet())
                 .catch(e => console.warn('Ошибка сохранения заправки:', e));
         }
