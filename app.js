@@ -1282,7 +1282,6 @@ async function syncAllToSheet() {
 // ==================== 19. ИНИЦИАЛИЗАЦИЯ СОБЫТИЙ ====================
 function initEventListeners() {
     authBtn.addEventListener('click', (e) => { e.preventDefault(); startAuth(); });
-    loadSheetBtn.onclick = loadSheet;
     recalculateBtn.onclick = () => { renderTOTable(); renderTop5Widget(); };
     exportBtn.onclick = exportData;
     importBtn.onclick = () => importFile.click();
