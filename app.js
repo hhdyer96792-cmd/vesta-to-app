@@ -684,7 +684,7 @@ function openCarSelectModal() {
         optionsHtml += `
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
                 <input type="radio" name="carProfile" value="${p.id}" id="profile_${index}" ${p.id === currentProfileId ? 'checked' : ''}>
-                <input type="text" id="name_${index}" value="${p.name}" style="flex:1; min-width:120px" placeholder="Имя авто">
+                <input type="text" id="name_${index}" value="${p.name}" style="flex:1; min-width:150px" placeholder="Имя авто">
                 <button type="button" class="icon-btn delete-profile-btn" data-id="${p.id}">🗑️</button>
             </div>
         `;
