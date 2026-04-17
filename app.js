@@ -486,6 +486,34 @@ window.applyDateMaskISO = function(event) {
     input.value = formatted;
 };
 
+// Маска ввода для ДД-ММ-ГГГГ
+window.applyDateMaskDDMMYYYY = function(event) {
+    let input = event.target;
+    let value = input.value.replace(/\D/g, '');
+    if (value.length > 8) value = value.slice(0, 8);
+    let formatted = '';
+    if (value.length > 0) {
+        formatted = value.substring(0, 2);
+        if (value.length >= 3) formatted += '-' + value.substring(2, 4);
+        if (value.length >= 5) formatted += '-' + value.substring(4, 8);
+    }
+    input.value = formatted;
+};
+
+// Преобразование ДД-ММ-ГГГГ → ГГГГ-ММ-ДД
+function ddmmYYYYtoISO(dateStr) {
+    if (!dateStr || !/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) return dateStr;
+    const parts = dateStr.split('-');
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+}
+
+// Преобразование ГГГГ-ММ-ДД → ДД-ММ-ГГГГ
+function isoToDDMMYYYY(isoStr) {
+    if (!isoStr || isoStr.length !== 10) return isoStr;
+    const parts = isoStr.split('-');
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+}
+
 function openServiceModal(opId, opName) {
     const op = operations.find(o => o.id == opId);
     const isOsago = (op && op.category === 'Документы' && op.name.includes('ОСАГО'));
@@ -494,7 +522,7 @@ function openServiceModal(opId, opName) {
         <form id="service-form" enctype="multipart/form-data">
             <input type="hidden" name="opId" value="${opId}"><p><strong>${opName}</strong></p>
             <label>Дата (ГГГГ-ММ-ДД)</label>
-            <input type="text" name="date" placeholder="ГГГГ-ММ-ДД" pattern="\\d{4}-\\d{2}-\\d{2}" required oninput="applyDateMaskISO(event)">
+            <input type="text" name="date" placeholder="ДД-ММ-ГГГГ" pattern="\\d{2}-\\d{2}-\\d{4}" required oninput="applyDateMaskDDMMYYYY(event)">
             <label>Пробег, км</label><input type="number" name="mileage" value="${settings.currentMileage}">
             <label>Моточасы</label><input type="text" inputmode="decimal" name="motohours" value="${settings.currentMotohours}">
             ${isOsago ? `
