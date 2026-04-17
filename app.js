@@ -802,6 +802,7 @@ function renderStats() {
     }
 }
 
+
 // ==================== 17. ИСТОРИЯ ====================
 async function loadHistory() {
     if (!spreadsheetId) return;
@@ -812,7 +813,7 @@ async function loadHistory() {
         rawData.forEach((row, idx) => {
             if (row.some(cell => cell !== '' && cell !== null && cell !== undefined)) {
                 historyData.push(row);
-                validRows.push(idx + 2); // физический номер строки (A2 = 2)
+                validRows.push(idx + 2);
             }
         });
 
@@ -838,22 +839,21 @@ async function loadHistory() {
             const opId = row[0];
             const op = operations.find(o => o.id == opId) || { name: 'Неизвестно' };
             const formattedDate = row[1] || '';
+            const diyFlag = row[6] === 'TRUE' || row[6] === true;
             tr.innerHTML = `
-         const diyFlag = row[6] === 'TRUE' || row[6] === true;
-            tr.innerHTML = `
-             <td>${formattedDate}</td>
-             <td>${op.name}</td>
-             <td>${row[2] || ''}</td>
-             <td>${row[3] || ''}</td>
-             <td>${row[4] || ''}</td>
-             <td>${row[5] || ''}</td>
-             <td>${row[7] || ''}</td>
-             <td style="text-align:center;">${diyFlag ? '✅' : '—'}</td>
-             <td>
-               <button class="icon-btn edit-history-btn" data-row="${physicalRow}" data-opid="${opId}" data-date="${row[1]}" data-mileage="${row[2]}" data-motohours="${row[3]}" data-parts="${row[4]}" data-work="${row[5]}" data-diy="${row[6]}" data-notes="${row[7]}" data-photo="${row[8]}">✏️</button>
-               <button class="icon-btn delete-history-btn" data-row="${physicalRow}">🗑️</button>
-        </td>
-`;
+                <td>${formattedDate}</td>
+                <td>${op.name}</td>
+                <td>${row[2] || ''}</td>
+                <td>${row[3] || ''}</td>
+                <td>${row[4] || ''}</td>
+                <td>${row[5] || ''}</td>
+                <td>${row[7] || ''}</td>
+                <td style="text-align:center;">${diyFlag ? '✅' : '—'}</td>
+                <td>
+                    <button class="icon-btn edit-history-btn" data-row="${physicalRow}" data-opid="${opId}" data-date="${row[1]}" data-mileage="${row[2]}" data-motohours="${row[3]}" data-parts="${row[4]}" data-work="${row[5]}" data-diy="${row[6]}" data-notes="${row[7]}" data-photo="${row[8]}">✏️</button>
+                    <button class="icon-btn delete-history-btn" data-row="${physicalRow}">🗑️</button>
+                </td>
+            `;
             tbody.appendChild(tr);
         });
         document.querySelectorAll('.edit-history-btn').forEach(b => b.addEventListener('click', openHistoryEdit));
@@ -913,6 +913,7 @@ async function deleteHistoryEntry(e) {
     loadHistory();
 }
 
+    
 // ==================== 18. ОБРАБОТЧИКИ ====================
 function attachTOListeners() {
     document.querySelectorAll('.add-record-btn').forEach(b => b.addEventListener('click', e => openServiceModal(b.dataset.opId, b.dataset.opName)));
