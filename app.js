@@ -227,7 +227,18 @@ async function loadSheet() {
             price: r[3] || '', supplier: r[4] || '', link: r[5] || '', comment: r[6] || ''
         }));
 
-        fuelLog = fuelData.map(r => ({ date: r[0], mileage: +r[1], liters: +r[2], pricePerLiter: +r[3], fullTank: r[4], notes: r[5] }));
+        // Загрузка топлива
+         const fuelData = await readSheet('FuelLog!A2:G').catch(() => []);
+        fuelLog = fuelData.map(r => ({
+           date: typeof r[0] === 'number' ? excelDateToISO(r[0]) : r[0],
+           mileage: +r[1],
+           liters: +r[2],
+           pricePerLiter: +r[3],
+           fullTank: r[4],
+           fuelType: r[5] || 'Бензин',
+           notes: r[6]
+}));
+         
         tireLog = tiresData.map(r => ({ date: r[0], type: r[1], mileage: +r[2], notes: r[3] }));
         workCosts = workCostsData.map(r => ({ operationId: +r[0], cost: +r[1], isDIY: r[2] === 'TRUE', notes: r[3] }));
 
@@ -447,13 +458,23 @@ function renderFuelTable() {
     tbody.innerHTML = '';
     fuelLog.forEach((f, i) => {
         const tr = document.createElement('tr');
-        const displayDate = isoToDDMMYYYY(f.date) || f.date;
+        // Преобразуем дату из ГГГГ-ММ-ДД в ДД-ММ-ГГГГ
+        let displayDate = f.date;
+        if (f.date && f.date.includes('-')) {
+            const parts = f.date.split('-');
+            if (parts.length === 3) {
+                displayDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+        }
+        // Иконка для полного бака
+        const fullTankIcon = f.fullTank === 'TRUE' || f.fullTank === true ? '✅' : '';
         tr.innerHTML = `
             <td>${displayDate}</td>
             <td>${f.mileage}</td>
             <td>${f.liters}</td>
             <td>${f.pricePerLiter}</td>
-            <td>${f.fullTank || ''}</td>
+            <td style="text-align:center;">${fullTankIcon}</td>
+            <td>${f.fuelType || ''}</td>
             <td>${f.notes || ''}</td>
             <td>
                 <button class="icon-btn edit-fuel-btn" data-index="${i}">✏️</button>
@@ -463,7 +484,7 @@ function renderFuelTable() {
         tbody.appendChild(tr);
     });
     attachFuelListeners();
-}
+} 
 
 function renderTiresTable() {
     const tbody = tiresBody;
@@ -1036,7 +1057,7 @@ function attachFuelListeners() {
             const index = b.dataset.index;
             if (!confirm('Удалить заправку?')) return;
             const rowIndex = parseInt(index) + 2;
-            await writeSheet(`FuelLog!A${rowIndex}:F${rowIndex}`, [['','','','','','']]);
+            await writeSheet(`FuelLog!A${rowIndex}:G${rowIndex}`, [['','','','','','','']]);
             await loadSheet();
         });
     });
