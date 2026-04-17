@@ -37,6 +37,11 @@ let baseMotohours = 0;
 let purchaseDate = '';
 let ownershipDays = 0;
 
+// ==================== 2-Б. ПРОФИЛИ АВТОМОБИЛЕЙ ====================
+let carProfiles = [];                // [{ id, name, lastUsed }]
+let currentProfileId = '';
+const PROFILES_KEY = 'vesta_car_profiles';
+
 // ==================== 3. DOM ЭЛЕМЕНТЫ ====================
 const authPanel = document.getElementById('auth-panel');
 const authBtn = document.getElementById('authorize-btn');
