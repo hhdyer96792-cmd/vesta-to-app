@@ -1011,7 +1011,27 @@ function attachPartsListeners() {
 }
 
 function attachFuelListeners() {
-    document.querySelectorAll('.delete-fuel-btn').forEach(b => b.addEventListener('click', async e => { if (confirm('Удалить заправку?')) { const rowIndex = parseInt(b.dataset.index) + 2; await writeSheet(`FuelLog!A${rowIndex}:F${rowIndex}`, [['','','','','','']]); await loadSheet(); } }));
+    // Удаление
+    document.querySelectorAll('.delete-fuel-btn').forEach(b => {
+        b.addEventListener('click', async e => {
+            const index = b.dataset.index;
+            if (!confirm('Удалить заправку?')) return;
+            const rowIndex = parseInt(index) + 2;
+            await writeSheet(`FuelLog!A${rowIndex}:F${rowIndex}`, [['','','','','','']]);
+            await loadSheet();
+        });
+    });
+    // Редактирование
+    document.querySelectorAll('.edit-fuel-btn').forEach(b => {
+        b.addEventListener('click', e => {
+            const index = b.dataset.index;
+            const record = fuelLog[index];
+            if (record) {
+                record.rowIndex = parseInt(index) + 2;
+                openFuelModal(record);
+            }
+        });
+    });
 }
 
 async function addToCalendar(opName, planDate, planMileage) {
