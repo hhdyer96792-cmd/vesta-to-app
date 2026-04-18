@@ -313,6 +313,10 @@ input, select {
     gap: 12px;
     margin-bottom: 24px;
 }
+button.icon-btn.calendar-btn.calendar-btn-added {
+    color: #2ecc71 !important;
+    opacity: 0.9;
+}
 @media (min-width: 768px) {
     .stats-summary-grid {
         grid-template-columns: repeat(3, 1fr);
@@ -323,10 +327,7 @@ input, select {
         grid-template-columns: repeat(6, 1fr);
     }
 }
-.calendar-btn-added {
-    color: var(--success) !important;
-    opacity: 0.7;
-}
+
 /* Мобильная оптимизация */
 @media (max-width: 768px) {
     button {
