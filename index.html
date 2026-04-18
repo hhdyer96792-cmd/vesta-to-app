@@ -75,6 +75,20 @@
 
         <!-- Вкладка Статистика -->
         <div id="tab-stats" class="tab-content">
+          <!-- Селектор периода -->
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
+             <label style="display: flex; align-items: center; gap: 8px;">
+              <span>Период:</span>
+               <select id="stats-period-select" style="width: auto; margin: 0;">
+                 <option value="all">Весь период</option>
+                 <option value="year">Последний год</option>
+                 <option value="6months">Последние 6 месяцев</option>
+                 <option value="quarter">Последний квартал</option>
+                 <option value="month">Последний месяц</option>
+                 <option value="week">Последняя неделя</option>
+            </select>
+        </label>
+    </div>          
     <!-- Сводка по затратам и средним показателям -->
     <div class="stats-summary-grid">
         <div class="stat-card">
