@@ -1250,7 +1250,6 @@ function attachTireListeners() {
             }
         });
     });
-    // Удаление (оставим как было или добавим аналогично)
     document.querySelectorAll('.delete-tire-btn').forEach(b => {
         b.addEventListener('click', async e => {
             const index = b.dataset.index;
@@ -1261,6 +1260,7 @@ function attachTireListeners() {
         });
     });
 }
+
 
 function attachFuelListeners() {
     document.querySelectorAll('.delete-fuel-btn').forEach(b => {
