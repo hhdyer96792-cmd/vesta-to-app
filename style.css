@@ -429,3 +429,6 @@ input, select {
     margin: 16px;
     max-width: 500px;
 }
+.catalog-popup-menu div:hover {
+    background: var(--bg);
+}
