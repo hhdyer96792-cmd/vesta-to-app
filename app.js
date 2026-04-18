@@ -1484,11 +1484,13 @@ async function updateCalendarButtonsStatus() {
         const cacheKey = `${opName}|${planDate}`;
         if (calendarEventCache.has(cacheKey)) {
             const exists = calendarEventCache.get(cacheKey);
+            console.log(`Из кеша: ${cacheKey} -> ${exists}`);
             applyButtonStyle(btn, exists);
             return processNext();
         }
         try {
             const exists = await checkCalendarEventExists(opName, planDate);
+            console.log(`API ответ: ${cacheKey} -> ${exists}`);
             calendarEventCache.set(cacheKey, exists);
             applyButtonStyle(btn, exists);
         } catch (e) {
@@ -1497,6 +1499,7 @@ async function updateCalendarButtonsStatus() {
         processNext();
     };
     const applyButtonStyle = (btn, exists) => {
+        console.log(`Применяем стиль к кнопке: exists=${exists}, классы до: ${btn.className}`);
         if (exists) {
             btn.classList.add('calendar-btn-added');
             btn.title = 'Уже в календаре';
@@ -1504,6 +1507,7 @@ async function updateCalendarButtonsStatus() {
             btn.classList.remove('calendar-btn-added');
             btn.title = 'Добавить в календарь';
         }
+        console.log(`Классы после: ${btn.className}`);
     };
     for (let i = 0; i < limit && i < buttons.length; i++) processNext();
 }
