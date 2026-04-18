@@ -1558,23 +1558,58 @@ function generateShoppingList(opId) {
 }
 
 function openPartForm(part = null) {
-    const modal = createModal(part ? '✏️ Запчасть' : '➕ Запчасть', `
-        <form id="part-form"><input type="hidden" name="id" value="${part?.id||''}">
-            <label>Операция</label><input type="text" name="operation" value="${part?.operation||''}" required>
-            <label>OEM</label><input type="text" name="oem" value="${part?.oem||''}">
-            <label>Аналог</label><input type="text" name="analog" value="${part?.analog||''}">
-            <label>Цена</label><input type="number" name="price" step="0.01" value="${part?.price||''}">
-            <label>Поставщик</label><input type="text" name="supplier" value="${part?.supplier||''}">
-            <label>Ссылка</label><input type="url" name="link" value="${part?.link||''}">
-            <label>Комментарий</label><input type="text" name="comment" value="${part?.comment||''}">
-            <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
+    const isEdit = !!part;
+    // Формируем список операций для выпадающего списка
+    const operationOptions = operations.map(op => 
+        `<option value="${op.name}" ${part && part.operation === op.name ? 'selected' : ''}>${op.name} (${op.category})</option>`
+    ).join('');
+    
+    const modal = createModal(isEdit ? '✏️ Запчасть' : '➕ Запчасть', `
+        <form id="part-form">
+            <input type="hidden" name="id" value="${part?.id || ''}">
+            <label>Операция</label>
+            <select name="operation" required>
+                <option value="">-- Выберите операцию --</option>
+                ${operationOptions}
+            </select>
+            <label>OEM</label>
+            <input type="text" name="oem" value="${part?.oem || ''}">
+            <label>Аналог</label>
+            <input type="text" name="analog" value="${part?.analog || ''}">
+            <label>Цена</label>
+            <input type="number" name="price" step="0.01" value="${part?.price || ''}">
+            <label>Поставщик</label>
+            <input type="text" name="supplier" value="${part?.supplier || ''}">
+            <label>Ссылка</label>
+            <input type="url" name="link" value="${part?.link || ''}">
+            <label>Комментарий</label>
+            <input type="text" name="comment" value="${part?.comment || ''}">
+            <div class="modal-actions">
+                <button type="submit" class="primary-btn">Сохранить</button>
+                <button type="button" class="cancel-btn secondary-btn">Отмена</button>
+            </div>
         </form>
     `);
+
     const form = modal.querySelector('#part-form');
-    form.onsubmit = async (e) => { e.preventDefault(); const d = Object.fromEntries(new FormData(form)); const row = [d.operation, d.oem, d.analog, d.price, d.supplier, d.link, d.comment]; if (part) await writeSheet(`PartsCatalog!A${part.id}:G${part.id}`, [row]); else await appendSheet('PartsCatalog!A:G', [row]); modal.remove(); await loadSheet(); };
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        const d = Object.fromEntries(new FormData(form));
+        const row = [d.operation, d.oem, d.analog, d.price, d.supplier, d.link, d.comment];
+        modal.remove();
+        if (isEdit) {
+            writeSheet(`PartsCatalog!A${part.id}:G${part.id}`, [row])
+                .then(() => loadSheet())
+                .catch(e => console.warn('Ошибка обновления запчасти:', e));
+        } else {
+            appendSheet('PartsCatalog!A:G', [row])
+                .then(() => loadSheet())
+                .catch(e => console.warn('Ошибка сохранения запчасти:', e));
+        }
+    };
     modal.querySelector('.cancel-btn').onclick = () => modal.remove();
 }
-
+    
 async function saveSettings() {
     settings.currentMileage = +setMileage?.value || settings.currentMileage;
     settings.currentMotohours = +setMotohours?.value || settings.currentMotohours;
