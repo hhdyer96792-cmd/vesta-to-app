@@ -1205,6 +1205,29 @@ function attachPartsListeners() {
     document.querySelectorAll('.search-part-btn').forEach(b => b.addEventListener('click', e => { if (b.dataset.oem) window.open(`https://exist.ru/price/?pcode=${b.dataset.oem}`, '_blank'); }));
 }
 
+function attachTireListeners() {
+    document.querySelectorAll('.edit-tire-btn').forEach(b => {
+        b.addEventListener('click', e => {
+            const index = b.dataset.index;
+            const record = tireLog[index];
+            if (record) {
+                record.rowIndex = parseInt(index) + 2;
+                openTireModal(record);
+            }
+        });
+    });
+    // Удаление (оставим как было или добавим аналогично)
+    document.querySelectorAll('.delete-tire-btn').forEach(b => {
+        b.addEventListener('click', async e => {
+            const index = b.dataset.index;
+            if (!confirm('Удалить запись о шинах?')) return;
+            const rowIndex = parseInt(index) + 2;
+            await writeSheet(`Tires!A${rowIndex}:J${rowIndex}`, [['','','','','','','','','','']]);
+            await loadSheet();
+        });
+    });
+}
+
 function attachFuelListeners() {
     document.querySelectorAll('.delete-fuel-btn').forEach(b => {
         b.addEventListener('click', async e => {
