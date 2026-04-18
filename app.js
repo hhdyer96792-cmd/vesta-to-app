@@ -1399,20 +1399,19 @@ function showCatalogMenu(button, oem) {
     const menu = document.createElement('div');
     menu.className = 'catalog-popup-menu';
     menu.style.position = 'fixed';
-    menu.style.top = (rect.bottom + 5) + 'px';
-    menu.style.left = rect.left + 'px';
     menu.style.background = 'var(--card-bg)';
     menu.style.border = '1px solid var(--border)';
     menu.style.borderRadius = '8px';
     menu.style.padding = '8px 0';
     menu.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
     menu.style.zIndex = '10000';
+    menu.style.minWidth = '150px';
 
     const catalogs = [
         { name: 'Exist', value: 'exist' },
-        { name: 'Автодок', value: 'autodoc' },
-        { name: 'Emex', value: 'emex' },
-        { name: 'Drive2', value: 'drive2' }  // ← добавлен
+        { name: 'Drive2', value: 'drive2' },
+        { name: 'CrossData', value: 'crossdata' },
+        { name: 'ZZap', value: 'zzap' }
     ];
 
     catalogs.forEach(cat => {
@@ -1427,16 +1426,16 @@ function showCatalogMenu(button, oem) {
         item.addEventListener('click', () => {
             let url;
             switch (cat.value) {
-                case 'autodoc':
-                    url = `https://www.autodoc.ru/search?keyword=${encodeURIComponent(oem)}`;
-                    break;
-                case 'emex':
-                    url = `https://emex.ru/search?q=${encodeURIComponent(oem)}`;
-                    break;
                 case 'drive2':
-                    url = `https://www.drive2.ru/search/?q=${encodeURIComponent(oem)}`;
+                    url = `https://www.drive2.ru/search?text=${encodeURIComponent(oem)}`;
                     break;
-                default:
+                case 'crossdata':
+                    url = `http://crossdata.pro/search?q=${encodeURIComponent(oem)}`;
+                    break;
+                case 'zzap':
+                    url = `https://www.zzap.ru/search?text=${encodeURIComponent(oem)}`;
+                    break;
+                default: // exist
                     url = `https://exist.ru/price/?pcode=${encodeURIComponent(oem)}`;
             }
             window.open(url, '_blank');
@@ -1446,6 +1445,27 @@ function showCatalogMenu(button, oem) {
     });
 
     document.body.appendChild(menu);
+
+    // Адаптивное позиционирование
+    const menuRect = menu.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    let top = rect.bottom + 5;
+    let left = rect.left;
+
+    if (left + menuRect.width > viewportWidth - 10) {
+        left = viewportWidth - menuRect.width - 10;
+    }
+    if (left < 10) {
+        left = 10;
+    }
+    if (top + menuRect.height > viewportHeight - 10) {
+        top = rect.top - menuRect.height - 5;
+    }
+
+    menu.style.top = top + 'px';
+    menu.style.left = left + 'px';
 
     setTimeout(() => {
         const closeHandler = (e) => {
