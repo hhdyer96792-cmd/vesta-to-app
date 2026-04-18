@@ -1090,7 +1090,6 @@ function openTireModal(record = null) {
 }
 
 // ==================== 15-А. РАСЧЁТ СТАТИСТИКИ ====================
-
 function calculateStatistics(period = 'all') {
     const filteredService = filterByPeriod(serviceRecords, period, 'date');
     const filteredFuel = filterByPeriod(fuelLog, period, 'date');
@@ -1390,6 +1389,69 @@ function attachTOListeners() {
     document.querySelectorAll('.edit-op-btn').forEach(b => b.addEventListener('click', e => openOperationForm(operations.find(o => o.id == b.dataset.opId))));
     document.querySelectorAll('.calendar-btn').forEach(b => b.addEventListener('click', e => addToCalendar(b.dataset.opName, b.dataset.planDate, b.dataset.planMileage)));
     document.querySelectorAll('.shopping-list-btn').forEach(b => b.addEventListener('click', e => generateShoppingList(b.dataset.opId)));
+}
+
+function showCatalogMenu(button, oem) {
+    const existingMenu = document.querySelector('.catalog-popup-menu');
+    if (existingMenu) existingMenu.remove();
+
+    const rect = button.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.className = 'catalog-popup-menu';
+    menu.style.position = 'fixed';
+    menu.style.top = (rect.bottom + 5) + 'px';
+    menu.style.left = rect.left + 'px';
+    menu.style.background = 'var(--card-bg)';
+    menu.style.border = '1px solid var(--border)';
+    menu.style.borderRadius = '8px';
+    menu.style.padding = '8px 0';
+    menu.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+    menu.style.zIndex = '10000';
+
+    const catalogs = [
+        { name: 'Exist', value: 'exist' },
+        { name: 'Автодок', value: 'autodoc' },
+        { name: 'Emex', value: 'emex' }
+    ];
+
+    catalogs.forEach(cat => {
+        const item = document.createElement('div');
+        item.textContent = cat.name;
+        item.style.padding = '8px 16px';
+        item.style.cursor = 'pointer';
+        item.style.whiteSpace = 'nowrap';
+        item.style.color = 'var(--text)';
+        item.addEventListener('mouseenter', () => item.style.background = 'var(--bg)');
+        item.addEventListener('mouseleave', () => item.style.background = 'transparent');
+        item.addEventListener('click', () => {
+            let url;
+            switch (cat.value) {
+                case 'autodoc':
+                    url = `https://www.autodoc.ru/search?keyword=${encodeURIComponent(oem)}`;
+                    break;
+                case 'emex':
+                    url = `https://emex.ru/search?q=${encodeURIComponent(oem)}`;
+                    break;
+                default:
+                    url = `https://exist.ru/price/?pcode=${encodeURIComponent(oem)}`;
+            }
+            window.open(url, '_blank');
+            menu.remove();
+        });
+        menu.appendChild(item);
+    });
+
+    document.body.appendChild(menu);
+
+    setTimeout(() => {
+        const closeHandler = (e) => {
+            if (!menu.contains(e.target) && e.target !== button) {
+                menu.remove();
+                document.removeEventListener('click', closeHandler);
+            }
+        };
+        document.addEventListener('click', closeHandler);
+    }, 10);
 }
 
 function attachPartsListeners() {
