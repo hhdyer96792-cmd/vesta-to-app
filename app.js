@@ -1547,6 +1547,17 @@ function initEventListeners() {
     addTireBtn.onclick = () => openTireModal();
     const updateBtn = document.getElementById('update-mileage-btn');
     if (updateBtn) updateBtn.addEventListener('click', updateMileageAndAverages);
+const periodSelect = document.getElementById('stats-period-select');
+if (periodSelect) {
+    const savedPeriod = localStorage.getItem('stats_period') || 'all';
+    periodSelect.value = savedPeriod;
+    periodSelect.addEventListener('change', () => {
+        localStorage.setItem('stats_period', periodSelect.value);
+        if (document.getElementById('tab-stats').classList.contains('active')) {
+            renderStats();
+        }
+    });
+}
 }
 
 // ==================== 20. ОБНОВЛЕНИЕ ПРОБЕГА И ДНИ ВЛАДЕНИЯ ====================
