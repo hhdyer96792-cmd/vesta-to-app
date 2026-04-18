@@ -1411,7 +1411,8 @@ function showCatalogMenu(button, oem) {
     const catalogs = [
         { name: 'Exist', value: 'exist' },
         { name: 'Автодок', value: 'autodoc' },
-        { name: 'Emex', value: 'emex' }
+        { name: 'Emex', value: 'emex' },
+        { name: 'Drive2', value: 'drive2' }  // ← добавлен
     ];
 
     catalogs.forEach(cat => {
@@ -1431,6 +1432,9 @@ function showCatalogMenu(button, oem) {
                     break;
                 case 'emex':
                     url = `https://emex.ru/search?q=${encodeURIComponent(oem)}`;
+                    break;
+                case 'drive2':
+                    url = `https://www.drive2.ru/search/?q=${encodeURIComponent(oem)}`;
                     break;
                 default:
                     url = `https://exist.ru/price/?pcode=${encodeURIComponent(oem)}`;
@@ -1454,10 +1458,17 @@ function showCatalogMenu(button, oem) {
     }, 10);
 }
 
+
 function attachPartsListeners() {
     document.querySelectorAll('.edit-part-btn').forEach(b => b.addEventListener('click', e => { const part = parts.find(p => p.id == b.dataset.id); openPartForm(part); }));
     document.querySelectorAll('.delete-part-btn').forEach(b => b.addEventListener('click', async e => { if (confirm('Удалить запчасть?')) { await writeSheet(`PartsCatalog!A${b.dataset.id}:G${b.dataset.id}`, [['','','','','','','']]); await loadSheet(); } }));
-    document.querySelectorAll('.search-part-btn').forEach(b => b.addEventListener('click', e => { if (b.dataset.oem) window.open(`https://exist.ru/price/?pcode=${b.dataset.oem}`, '_blank'); }));
+    document.querySelectorAll('.search-part-btn').forEach(b => {
+    b.addEventListener('click', e => {
+        const oem = b.dataset.oem;
+        if (!oem) return;
+        showCatalogMenu(b, oem);
+    });
+});
 }
 
 function attachTireListeners() {
