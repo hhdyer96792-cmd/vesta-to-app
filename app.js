@@ -952,6 +952,108 @@ function openFuelModal(record = null) {
     };
     modal.querySelector('.cancel-btn').onclick = () => modal.remove();
 }
+function openTireModal(record = null) {
+    const isEdit = !!record;
+    // Значения по умолчанию
+    const defaultDate = record ? isoToDDMMYYYY(record.date) : new Date().toISOString().split('T')[0];
+    const typeValue = record ? record.type : 'Лето';
+    const isNewSet = record ? (record.mileage === 0) : false;
+    const mileageValue = record ? record.mileage : (isNewSet ? 0 : settings.currentMileage);
+    const modelValue = record ? (record.model || '') : '';
+    const sizeValue = record ? (record.size || '') : '';
+    const wearValue = record ? (record.wear || '') : '';
+    const purchaseCostValue = record ? (record.purchaseCost || '') : '';
+    const mountCostValue = record ? (record.mountCost || '') : '';
+    const isDIYChecked = record ? (record.isDIY ? 'checked' : '') : '';
+    const notesValue = record ? (record.notes || '') : '';
+
+    const modal = createModal(isEdit ? '✏️ Редактировать запись шин' : '🛞 Сменить резину', `
+        <form id="tire-form">
+            ${isEdit ? `<input type="hidden" name="rowIndex" value="${record.rowIndex}">` : ''}
+            <label>Дата (ДД-ММ-ГГГГ)</label>
+            <input type="text" name="date" placeholder="ДД-ММ-ГГГГ" pattern="\\d{2}-\\d{2}-\\d{4}" required oninput="applyDateMaskDDMMYYYY(event)" value="${defaultDate}">
+            <label>Тип</label>
+            <select name="type">
+                <option value="Лето" ${typeValue === 'Лето' ? 'selected' : ''}>Лето</option>
+                <option value="Зима" ${typeValue === 'Зима' ? 'selected' : ''}>Зима</option>
+            </select>
+            <label><input type="checkbox" name="isNewSet" id="isNewSetCheckbox" ${isNewSet ? 'checked' : ''}> Новый комплект</label>
+            <div id="newSetFields" style="display: ${isNewSet ? 'block' : 'none'};">
+                <label>Название модели</label>
+                <input type="text" name="model" value="${modelValue}">
+                <label>Размерность</label>
+                <input type="text" name="size" value="${sizeValue}">
+                <label>Стоимость покупки (₽)</label>
+                <input type="number" name="purchaseCost" step="0.01" value="${purchaseCostValue}">
+            </div>
+            <div id="mountFields" style="display: ${isNewSet ? 'none' : 'block'};">
+                <label>Пробег комплекта (км)</label>
+                <input type="number" name="mileage" value="${mileageValue}">
+                <label>Стоимость шиномонтажа (₽)</label>
+                <input type="number" name="mountCost" step="0.01" value="${mountCostValue}">
+                <label><input type="checkbox" name="isDIY" value="true" ${isDIYChecked}> Сделал сам</label>
+            </div>
+            <label>Износ / Остаток шипов (${typeValue === 'Зима' ? '%' : 'мм'})</label>
+            <input type="number" name="wear" step="0.1" value="${wearValue}">
+            <label>Примечание</label>
+            <input type="text" name="notes" value="${notesValue}">
+            <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
+        </form>
+    `);
+
+    // Логика переключения видимости полей при изменении чекбокса "Новый комплект"
+    const newSetCheckbox = modal.querySelector('#isNewSetCheckbox');
+    const newSetFields = modal.querySelector('#newSetFields');
+    const mountFields = modal.querySelector('#mountFields');
+    newSetCheckbox.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            newSetFields.style.display = 'block';
+            mountFields.style.display = 'none';
+        } else {
+            newSetFields.style.display = 'none';
+            mountFields.style.display = 'block';
+        }
+    });
+
+    const form = modal.querySelector('#tire-form');
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        const d = Object.fromEntries(new FormData(form));
+        const rowIndex = d.rowIndex;
+        const dateISO = ddmmYYYYtoISO(d.date);
+        const isNew = d.isNewSet === 'on';
+        const rowData = [
+            dateISO,
+            d.type,
+            isNew ? 0 : (d.mileage || settings.currentMileage),
+            d.model || '',
+            d.size || '',
+            d.wear || '',
+            d.notes || '',
+            isNew ? (d.purchaseCost || '') : '',
+            isNew ? '' : (d.mountCost || ''),
+            d.isDIY === 'true'
+        ];
+        modal.remove();
+        
+        const promise = isEdit 
+            ? writeSheet(`Tires!A${rowIndex}:J${rowIndex}`, [rowData])
+            : appendSheet('Tires!A:J', [rowData]);
+            
+        promise.then(() => {
+            loadSheet();
+            // Если был шиномонтаж и он не DIY, добавляем запись в историю
+            if (!isNew && (d.mountCost || d.isDIY)) {
+                const tireOp = operations.find(o => o.name === 'Шиномонтаж');
+                if (tireOp) {
+                    const workCost = d.isDIY ? 0 : (d.mountCost || 0);
+                    addServiceRecord(tireOp.id, dateISO, settings.currentMileage, settings.currentMotohours, 0, workCost, d.isDIY === 'true', `Смена резины: ${d.type} ${d.model || ''}`, '');
+                }
+            }
+        }).catch(e => console.warn('Ошибка сохранения шин:', e));
+    };
+    modal.querySelector('.cancel-btn').onclick = () => modal.remove();
+}
 
 // ==================== 16. СТАТИСТИКА ====================
 function renderStats() {
