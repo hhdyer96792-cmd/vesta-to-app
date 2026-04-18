@@ -1337,7 +1337,7 @@ function initEventListeners() {
     });
     window.addEventListener('online', () => { isOnline = true; syncPendingActions(); setSyncStatus('synced'); });
     window.addEventListener('offline', () => { isOnline = false; setSyncStatus('error'); });
-    addTireBtn.onclick = () => {
+    addTireBtn.onclick = () => openTireModal(); {
         const type = prompt('Введите тип резины (лето/зима):'); if (!type) return;
         const date = new Date().toISOString().split('T')[0];
         appendSheet('Tires!A:D', [[date, type, settings.currentMileage, '']]); loadSheet();
