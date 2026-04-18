@@ -1133,7 +1133,17 @@ function calculateStatistics() {
       
 
 // ==================== 16. СТАТИСТИКА ====================
-function renderStats() {
+ function renderStats() {
+    // Заполняем сводку
+    const stats = calculateStatistics();
+    if (totalMaintenanceCostEl) totalMaintenanceCostEl.textContent = stats.totalMaintenanceCost.toFixed(0);
+    if (totalFuelCostEl) totalFuelCostEl.textContent = stats.totalFuelCost.toFixed(0);
+    if (costPerKmEl) costPerKmEl.textContent = stats.costPerKm.toFixed(2);
+    if (avgFuelConsumptionEl) avgFuelConsumptionEl.textContent = stats.avgFuelConsumption.toFixed(1);
+    if (avgMileagePerDayEl) avgMileagePerDayEl.textContent = stats.avgMileagePerDay.toFixed(1);
+    if (avgMotohoursPerDayEl) avgMotohoursPerDayEl.textContent = stats.avgMotohoursPerDay.toFixed(2);
+
+    // Прогноз замены масла (существующий код)
     const oilOp = operations.find(op => op.name.includes('Масло') && op.category.includes('ДВС'));
     if (oilOp) {
         const plan = calculatePlan(oilOp);
@@ -1153,7 +1163,7 @@ function renderStats() {
             });
         }
     }
-}
+        }
 
 function excelDateToISO(serial) {
     if (!serial || typeof serial !== 'number') return '';
