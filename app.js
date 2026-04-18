@@ -1089,8 +1089,10 @@ function excelDateToISO(serial) {
 // ==================== 17. ИСТОРИЯ ====================
 async function loadHistory() {
     if (!spreadsheetId) return;
+    console.log('🔄 Загрузка истории...');
     try {
         const rawData = await readSheet('История!A2:J');
+        console.log('📋 Сырых строк из истории:', rawData.length);
         const validRows = [];
         const historyData = [];
         rawData.forEach((row, idx) => {
@@ -1099,6 +1101,8 @@ async function loadHistory() {
                 validRows.push(idx + 2);
             }
         });
+        console.log('✅ Отфильтрованных записей:', historyData.length);
+
         serviceRecords = historyData.map(row => ({
             operation_id: row[0],
             date: typeof row[1] === 'number' ? excelDateToISO(row[1]) : row[1],
@@ -1111,8 +1115,12 @@ async function loadHistory() {
             photo_url: row[8],
             timestamp: row[9]
         }));
+
         const tbody = historyBody;
-        if (!tbody) return;
+        if (!tbody) {
+            console.warn('tbody для истории не найден!');
+            return;
+        }
         tbody.innerHTML = '';
         historyData.reverse().forEach((row, displayIndex) => {
             const physicalRow = validRows[historyData.length - 1 - displayIndex];
@@ -1122,24 +1130,26 @@ async function loadHistory() {
             const formattedDate = typeof row[1] === 'number' ? excelDateToISO(row[1]) : row[1] || '';
             const diyFlag = row[6] === 'TRUE' || row[6] === true;
             tr.innerHTML = `
-    <td>${t.date ? isoToDDMMYYYY(t.date) : ''}</td>
-    <td>${t.type}</td>
-    <td>${t.mileage}</td>
-    <td>${t.model || ''}</td>
-    <td>${t.size || ''}</td>
-    <td>${t.wear || ''}</td>
-    <td>${t.notes || ''}</td>
-    <td>
-        <button class="icon-btn edit-tire-btn" data-index="${i}">✏️</button>
-        <button class="icon-btn delete-tire-btn" data-index="${i}">🗑️</button>
-    </td>
-`;
+                <td>${formattedDate}</td>
+                <td>${op.name}</td>
+                <td>${row[2] || ''}</td>
+                <td>${row[3] || ''}</td>
+                <td>${row[4] || ''}</td>
+                <td>${row[5] || ''}</td>
+                <td>${row[7] || ''}</td>
+                <td style="text-align:center;">${diyFlag ? '✅' : '—'}</td>
+                <td>
+                    <button class="icon-btn edit-history-btn" data-row="${physicalRow}" data-opid="${opId}" data-date="${formattedDate}" data-mileage="${row[2]}" data-motohours="${row[3]}" data-parts="${row[4]}" data-work="${row[5]}" data-diy="${row[6]}" data-notes="${row[7]}" data-photo="${row[8]}">✏️</button>
+                    <button class="icon-btn delete-history-btn" data-row="${physicalRow}">🗑️</button>
+                </td>
+            `;
             tbody.appendChild(tr);
         });
         document.querySelectorAll('.edit-history-btn').forEach(b => b.addEventListener('click', openHistoryEdit));
         document.querySelectorAll('.delete-history-btn').forEach(b => b.addEventListener('click', deleteHistoryEntry));
+        console.log('✅ История отрисована');
     } catch (e) {
-        console.warn('История не загружена:', e);
+        console.warn('❌ Ошибка загрузки истории:', e);
     }
 }
 
