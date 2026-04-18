@@ -1406,6 +1406,7 @@ function showCatalogMenu(button, oem) {
     menu.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
     menu.style.zIndex = '10000';
     menu.style.minWidth = '150px';
+    menu.style.visibility = 'hidden'; // сначала скрываем, чтобы измерить
 
     const catalogs = [
         { name: 'Exist', value: 'exist' },
@@ -1435,7 +1436,7 @@ function showCatalogMenu(button, oem) {
                 case 'zzap':
                     url = `https://www.zzap.ru/search?text=${encodeURIComponent(oem)}`;
                     break;
-                default: // exist
+                default:
                     url = `https://exist.ru/price/?pcode=${encodeURIComponent(oem)}`;
             }
             window.open(url, '_blank');
@@ -1446,26 +1447,35 @@ function showCatalogMenu(button, oem) {
 
     document.body.appendChild(menu);
 
-    // Адаптивное позиционирование
+    // Измеряем реальные размеры меню
     const menuRect = menu.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
+    // Предварительная позиция
     let top = rect.bottom + 5;
     let left = rect.left;
 
+    // Корректировка по горизонтали
     if (left + menuRect.width > viewportWidth - 10) {
         left = viewportWidth - menuRect.width - 10;
     }
     if (left < 10) {
         left = 10;
     }
+
+    // Корректировка по вертикали (если не влезает снизу — показываем сверху)
     if (top + menuRect.height > viewportHeight - 10) {
         top = rect.top - menuRect.height - 5;
+    }
+    // Если сверху тоже не влезает — ставим по центру экрана
+    if (top < 10) {
+        top = Math.max(10, (viewportHeight - menuRect.height) / 2);
     }
 
     menu.style.top = top + 'px';
     menu.style.left = left + 'px';
+    menu.style.visibility = 'visible';
 
     setTimeout(() => {
         const closeHandler = (e) => {
