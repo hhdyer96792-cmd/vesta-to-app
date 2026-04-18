@@ -480,6 +480,8 @@ function renderFuelTable() {
     const tbody = fuelBody;
     tbody.innerHTML = '';
     fuelLog.forEach((f, i) => {
+        // Пропускаем записи без даты (пустые строки)
+        if (!f.date) return;
         const tr = document.createElement('tr');
         let displayDate = f.date;
         if (f.date && f.date.includes('-')) {
@@ -489,9 +491,9 @@ function renderFuelTable() {
         const fullTankIcon = f.fullTank === 'TRUE' || f.fullTank === true ? '✅' : '';
         tr.innerHTML = `
             <td>${displayDate}</td>
-            <td>${f.mileage}</td>
-            <td>${f.liters}</td>
-            <td>${f.pricePerLiter}</td>
+            <td>${f.mileage || ''}</td>
+            <td>${f.liters || ''}</td>
+            <td>${f.pricePerLiter || ''}</td>
             <td style="text-align:center;">${fullTankIcon}</td>
             <td>${f.fuelType || ''}</td>
             <td>${f.notes || ''}</td>
@@ -509,12 +511,14 @@ function renderTiresTable() {
     const tbody = tiresBody;
     tbody.innerHTML = '';
     tireLog.forEach((t, i) => {
+        // Пропускаем записи без даты (пустые строки)
+        if (!t.date) return;
         const tr = document.createElement('tr');
         const displayDate = t.date ? isoToDDMMYYYY(t.date) : '';
         tr.innerHTML = `
             <td>${displayDate}</td>
-            <td>${t.type}</td>
-            <td>${t.mileage}</td>
+            <td>${t.type || ''}</td>
+            <td>${t.mileage || ''}</td>
             <td>${t.model || ''}</td>
             <td>${t.size || ''}</td>
             <td>${t.wear || ''}</td>
