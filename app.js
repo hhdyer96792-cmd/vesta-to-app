@@ -1543,6 +1543,37 @@ function attachFuelListeners() {
     });
 }
 
+async function updateCalendarButtonsStatus() {
+    if (!accessToken) return;
+    const buttons = document.querySelectorAll('.calendar-btn');
+    for (const btn of buttons) {
+        const opName = btn.dataset.opName;
+        const planDate = btn.dataset.planDate;
+        if (!opName || !planDate) continue;
+        const exists = await checkCalendarEventExists(opName, planDate);
+        if (exists) {
+            btn.classList.add('calendar-btn-added');
+            btn.title = 'Уже в календаре';
+        } else {
+            btn.classList.remove('calendar-btn-added');
+            btn.title = 'Добавить в календарь';
+        }
+    }
+}
+
+async function checkCalendarEventExists(opName, planDate) {
+    if (!accessToken) return false;
+    try {
+        const timeMin = new Date(planDate).toISOString();
+        const timeMax = new Date(new Date(planDate).setDate(new Date(planDate).getDate() + 1)).toISOString();
+        const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin}&timeMax=${timeMax}&q=${encodeURIComponent(opName)}`;
+        const res = await apiCall(url);
+        return res.items && res.items.length > 0;
+    } catch (e) {
+        return false;
+    }
+}
+
 async function checkCalendarEventExists(opName, planDate) {
     if (!accessToken) return false;
     try {
@@ -1558,14 +1589,11 @@ async function checkCalendarEventExists(opName, planDate) {
 
 async function addToCalendar(opName, planDate, planMileage) {
     if (!accessToken) { alert('Авторизуйтесь'); return; }
-    
-    // Проверяем, существует ли уже событие
     const exists = await checkCalendarEventExists(opName, planDate);
     if (exists) {
         alert(`Событие "${opName}" уже есть в календаре на ${planDate}`);
         return;
     }
-    
     const event = {
         summary: `🔧 ТО: ${opName}`,
         description: `Плановое ТО Lada Vesta.\nПробег: ${planMileage} км.`,
@@ -1574,24 +1602,27 @@ async function addToCalendar(opName, planDate, planMileage) {
         reminders: {
             useDefault: false,
             overrides: [
-                { method: 'popup', minutes: 15 * 24 * 60 }, // 15 дней
-                { method: 'popup', minutes: 2 * 24 * 60 }   // 2 дня
+                { method: 'popup', minutes: 15 * 24 * 60 },
+                { method: 'popup', minutes: 2 * 24 * 60 }
             ]
         }
     };
-    
     try {
         await apiCall('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
             method: 'POST',
             body: JSON.stringify(event)
         });
         alert(`✅ Событие "${opName}" добавлено с напоминаниями за 15 и 2 дня`);
-        renderTOTable(); // обновим таблицу, чтобы изменить цвет кнопки
+        const btn = document.querySelector(`.calendar-btn[data-op-name="${opName}"][data-plan-date="${planDate}"]`);
+        if (btn) {
+            btn.classList.add('calendar-btn-added');
+            btn.title = 'Уже в календаре';
+        }
     } catch (e) {
         alert(`❌ Ошибка: ${e.message}`);
     }
 }
-
+    
 function generateShoppingList(opId) {
     const op = operations.find(o => o.id == opId);
     const items = parts.filter(p => p.operation === op.name || p.operation === op.category);
