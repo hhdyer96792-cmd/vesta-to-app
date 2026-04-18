@@ -966,13 +966,13 @@ function openFuelModal(record = null) {
     };
     modal.querySelector('.cancel-btn').onclick = () => modal.remove();
 }
+
 function openTireModal(record = null) {
     const isEdit = !!record;
-    // Значения по умолчанию
     const defaultDate = record ? isoToDDMMYYYY(record.date) : new Date().toISOString().split('T')[0];
     const typeValue = record ? record.type : 'Лето';
-    const isNewSet = record ? (record.mileage === 0) : false;
-    const mileageValue = record ? record.mileage : (isNewSet ? 0 : settings.currentMileage);
+    const isNewSet = record ? (record.mileage === 0 && record.purchaseCost) : false;
+    const currentMileageValue = isNewSet ? 0 : settings.currentMileage;
     const modelValue = record ? (record.model || '') : '';
     const sizeValue = record ? (record.size || '') : '';
     const wearValue = record ? (record.wear || '') : '';
@@ -1001,8 +1001,8 @@ function openTireModal(record = null) {
                 <input type="number" name="purchaseCost" step="0.01" value="${purchaseCostValue}">
             </div>
             <div id="mountFields" style="display: ${isNewSet ? 'none' : 'block'};">
-                <label>Пробег комплекта (км)</label>
-                <input type="number" name="mileage" value="${mileageValue}">
+                <label>Текущий пробег (км)</label>
+                <input type="number" name="currentMileage" value="${currentMileageValue}" required>
                 <label>Стоимость шиномонтажа (₽)</label>
                 <input type="number" name="mountCost" step="0.01" value="${mountCostValue}">
                 <label><input type="checkbox" name="isDIY" value="true" ${isDIYChecked}> Сделал сам</label>
@@ -1015,7 +1015,6 @@ function openTireModal(record = null) {
         </form>
     `);
 
-    // Логика переключения видимости полей при изменении чекбокса "Новый комплект"
     const newSetCheckbox = modal.querySelector('#isNewSetCheckbox');
     const newSetFields = modal.querySelector('#newSetFields');
     const mountFields = modal.querySelector('#mountFields');
@@ -1036,10 +1035,21 @@ function openTireModal(record = null) {
         const rowIndex = d.rowIndex;
         const dateISO = ddmmYYYYtoISO(d.date);
         const isNew = d.isNewSet === 'on';
+        
+        let setMileage;
+        if (isNew) {
+            setMileage = 0;
+        } else {
+            const currentMileage = parseFloat(d.currentMileage) || settings.currentMileage;
+            const lastRecord = tireLog.find(r => r.type === d.type);
+            const lastMileage = lastRecord ? lastRecord.mileage : 0;
+            setMileage = lastMileage + (currentMileage - (lastRecord?.baseMileage || 0));
+        }
+
         const rowData = [
             dateISO,
             d.type,
-            isNew ? 0 : (d.mileage || settings.currentMileage),
+            setMileage,
             d.model || '',
             d.size || '',
             d.wear || '',
@@ -1056,7 +1066,6 @@ function openTireModal(record = null) {
             
         promise.then(() => {
             loadSheet();
-            // Если был шиномонтаж и он не DIY, добавляем запись в историю
             if (!isNew && (d.mountCost || d.isDIY)) {
                 const tireOp = operations.find(o => o.name === 'Шиномонтаж');
                 if (tireOp) {
@@ -1068,6 +1077,7 @@ function openTireModal(record = null) {
     };
     modal.querySelector('.cancel-btn').onclick = () => modal.remove();
 }
+      
 
 // ==================== 16. СТАТИСТИКА ====================
 function renderStats() {
