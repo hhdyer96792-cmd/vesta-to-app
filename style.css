@@ -432,3 +432,7 @@ input, select {
 .catalog-popup-menu div:hover {
     background: var(--bg);
 }
+.calendar-btn-added {
+    color: var(--success) !important;
+    opacity: 0.7;
+}
