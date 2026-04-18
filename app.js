@@ -417,7 +417,7 @@ function renderAll() {
     calculateOwnershipDays();
 }
 
-function renderTOTable() {
+async function renderTOTable() {
     const tbody = tableBody;
     if (!tbody) return;
     tbody.innerHTML = '';
@@ -461,7 +461,7 @@ function renderTOTable() {
                 <td>
                     <button class="icon-btn add-record-btn" data-op-id="${op.id}" data-op-name="${op.name}">➕</button>
                     <button class="icon-btn edit-op-btn" data-op-id="${op.id}">✏️</button>
-                    <button class="icon-btn calendar-btn" data-op-name="${op.name}" data-plan-date="${plan.planDate}" data-plan-mileage="${plan.planMileage}">📅</button>
+                    <button class="icon-btn calendar-btn" data-op-name="${op.name}" data-plan-date="${plan.planDate}" data-plan-mileage="${plan.planMileage}" title="Проверка...">📅</button>
                     <button class="icon-btn shopping-list-btn" data-op-id="${op.id}">🛒</button>
                 </td>
             `;
@@ -469,6 +469,7 @@ function renderTOTable() {
         });
     });
     attachTOListeners();
+    updateCalendarButtonsStatus();
 }
 
 function renderPartsTable() {
