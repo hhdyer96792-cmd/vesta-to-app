@@ -487,14 +487,10 @@ function renderFuelTable() {
     const tbody = fuelBody;
     tbody.innerHTML = '';
     fuelLog.forEach((f, i) => {
-        // Пропускаем записи без даты (пустые строки)
         if (!f.date) return;
         const tr = document.createElement('tr');
-        let displayDate = f.date;
-        if (f.date && f.date.includes('-')) {
-            const parts = f.date.split('-');
-            if (parts.length === 3) displayDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
-        }
+        // Оставляем дату в исходном формате ГГГГ-ММ-ДД
+        const displayDate = f.date;
         const fullTankIcon = f.fullTank === 'TRUE' || f.fullTank === true ? '✅' : '';
         tr.innerHTML = `
             <td>${displayDate}</td>
@@ -518,10 +514,10 @@ function renderTiresTable() {
     const tbody = tiresBody;
     tbody.innerHTML = '';
     tireLog.forEach((t, i) => {
-        // Пропускаем записи без даты (пустые строки)
         if (!t.date) return;
         const tr = document.createElement('tr');
-        const displayDate = t.date ? isoToDDMMYYYY(t.date) : '';
+        // Оставляем дату в исходном формате ГГГГ-ММ-ДД
+        const displayDate = t.date;
         tr.innerHTML = `
             <td>${displayDate}</td>
             <td>${t.type || ''}</td>
