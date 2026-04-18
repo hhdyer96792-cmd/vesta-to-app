@@ -288,17 +288,18 @@ async function loadSheet() {
         }));
 
         const fuelData = await readSheet('FuelLog!A2:G').catch(() => []);
-        fuelLog = fuelData.map(r => ({
-            date: typeof r[0] === 'number' ? excelDateToISO(r[0]) : r[0],
-            mileage: +r[1],
-            liters: +r[2],
-            pricePerLiter: +r[3],
-            fullTank: r[4],
-            fuelType: r[5] || 'Бензин',
-            notes: r[6]
-        }));
+       fuelLog = fuelData.map(r => ({
+    date: typeof r[0] === 'number' ? excelDateToISO(r[0]) : r[0],
+    mileage: +r[1],
+    liters: +r[2],
+    pricePerLiter: +r[3],
+    fullTank: r[4],
+    fuelType: r[5] || 'Бензин',
+    notes: r[6]
+})).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
-        tireLog = tiresData.map(r => ({ date: r[0], type: r[1], mileage: +r[2], notes: r[3] }));
+        tireLog = tiresData.map(r => ({ date: r[0], type: r[1], mileage: +r[2], notes: r[3] }))
+                   .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
         workCosts = workCostsData.map(r => ({ operationId: +r[0], cost: +r[1], isDIY: r[2] === 'TRUE', notes: r[3] }));
 
         const mileageData = await readSheet('MileageLog!A2:C').catch(() => []);
