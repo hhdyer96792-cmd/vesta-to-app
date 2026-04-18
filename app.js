@@ -508,9 +508,22 @@ function renderFuelTable() {
 function renderTiresTable() {
     const tbody = tiresBody;
     tbody.innerHTML = '';
-    tireLog.forEach(t => {
+    tireLog.forEach((t, i) => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${t.date}</td><td>${t.type}</td><td>${t.mileage}</td><td>${t.notes||''}</td>`;
+        const displayDate = t.date ? isoToDDMMYYYY(t.date) : '';
+        tr.innerHTML = `
+            <td>${displayDate}</td>
+            <td>${t.type}</td>
+            <td>${t.mileage}</td>
+            <td>${t.model || ''}</td>
+            <td>${t.size || ''}</td>
+            <td>${t.wear || ''}</td>
+            <td>${t.notes || ''}</td>
+            <td>
+                <button class="icon-btn edit-tire-btn" data-index="${i}">✏️</button>
+                <button class="icon-btn delete-tire-btn" data-index="${i}">🗑️</button>
+            </td>
+        `;
         tbody.appendChild(tr);
     });
     attachTireListeners();
