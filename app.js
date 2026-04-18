@@ -1542,12 +1542,53 @@ function attachFuelListeners() {
     });
 }
 
+async function checkCalendarEventExists(opName, planDate) {
+    if (!accessToken) return false;
+    try {
+        const timeMin = new Date(planDate).toISOString();
+        const timeMax = new Date(new Date(planDate).setDate(new Date(planDate).getDate() + 1)).toISOString();
+        const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin}&timeMax=${timeMax}&q=${encodeURIComponent(opName)}`;
+        const res = await apiCall(url);
+        return res.items && res.items.length > 0;
+    } catch (e) {
+        return false;
+    }
+}
+
 async function addToCalendar(opName, planDate, planMileage) {
     if (!accessToken) { alert('Авторизуйтесь'); return; }
-    let minutesBefore = 14 * 24 * 60;
-    if (opName.includes('ОСАГО')) minutesBefore = 1 * 24 * 60;
-    const event = { summary: `🔧 ТО: ${opName}`, description: `Пробег: ${planMileage} км`, start: { date: planDate }, end: { date: planDate }, reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: minutesBefore }] } };
-    try { await apiCall('https://www.googleapis.com/calendar/v3/calendars/primary/events', { method: 'POST', body: JSON.stringify(event) }); alert(`✅ Добавлено в календарь`); } catch (e) { alert(`❌ Ошибка`); }
+    
+    // Проверяем, существует ли уже событие
+    const exists = await checkCalendarEventExists(opName, planDate);
+    if (exists) {
+        alert(`Событие "${opName}" уже есть в календаре на ${planDate}`);
+        return;
+    }
+    
+    const event = {
+        summary: `🔧 ТО: ${opName}`,
+        description: `Плановое ТО Lada Vesta.\nПробег: ${planMileage} км.`,
+        start: { date: planDate },
+        end: { date: planDate },
+        reminders: {
+            useDefault: false,
+            overrides: [
+                { method: 'popup', minutes: 15 * 24 * 60 }, // 15 дней
+                { method: 'popup', minutes: 2 * 24 * 60 }   // 2 дня
+            ]
+        }
+    };
+    
+    try {
+        await apiCall('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+            method: 'POST',
+            body: JSON.stringify(event)
+        });
+        alert(`✅ Событие "${opName}" добавлено с напоминаниями за 15 и 2 дня`);
+        renderTOTable(); // обновим таблицу, чтобы изменить цвет кнопки
+    } catch (e) {
+        alert(`❌ Ошибка: ${e.message}`);
+    }
 }
 
 function generateShoppingList(opId) {
