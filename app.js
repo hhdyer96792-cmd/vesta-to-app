@@ -1090,50 +1090,59 @@ function openTireModal(record = null) {
 }
 
 // ==================== 15-А. РАСЧЁТ СТАТИСТИКИ ====================
-function calculateStatistics() {
-    console.log('calculateStatistics called');
-    
-    // Проверяем наличие массивов
-    if (!serviceRecords || !fuelLog || !mileageHistory) {
-        console.warn('Данные ещё не загружены');
-        return {
-            totalMaintenanceCost: 0,
-            totalFuelCost: 0,
-            costPerKm: 0,
-            avgFuelConsumption: 0,
-            avgMileagePerDay: 0,
-            avgMotohoursPerDay: 0
-        };
-    }
-    
-    const totalPartsCost = (serviceRecords || []).reduce((sum, r) => sum + (Number(r.parts_cost) || 0), 0);
-    const totalWorkCost = (serviceRecords || []).reduce((sum, r) => sum + (Number(r.work_cost) || 0), 0);
+
+function calculateStatistics(period = 'all') {
+    const filteredService = filterByPeriod(serviceRecords, period, 'date');
+    const filteredFuel = filterByPeriod(fuelLog, period, 'date');
+    const filteredMileage = filterByPeriod(mileageHistory, period, 'date');
+
+    const totalPartsCost = filteredService.reduce((s, r) => s + (Number(r.parts_cost) || 0), 0);
+    const totalWorkCost = filteredService.reduce((s, r) => s + (Number(r.work_cost) || 0), 0);
     const totalMaintenanceCost = totalPartsCost + totalWorkCost;
-    
-    const totalFuelCost = (fuelLog || []).reduce((sum, f) => sum + ((Number(f.liters) || 0) * (Number(f.pricePerLiter) || 0)), 0);
-    
-    const startMileage = baseMileage || (mileageHistory.length > 0 ? mileageHistory[0].mileage : 0);
-    const overallMileage = settings.currentMileage - startMileage;
-    
-    const totalCost = totalMaintenanceCost + totalFuelCost;
-    const costPerKm = overallMileage > 0 ? totalCost / overallMileage : 0;
-    
-    const totalLiters = (fuelLog || []).reduce((sum, f) => sum + (Number(f.liters) || 0), 0);
-    const avgFuelConsumption = overallMileage > 0 ? (totalLiters / overallMileage) * 100 : 0;
-    
-    let daysOwned = ownershipDays;
-    if (!daysOwned && mileageHistory.length >= 2) {
-        const firstDate = new Date(mileageHistory[0].date);
-        const lastDate = new Date(mileageHistory[mileageHistory.length - 1].date);
-        daysOwned = Math.ceil((lastDate - firstDate) / 86400000) || 1;
+
+    const totalFuelCost = filteredFuel.reduce((s, f) => s + ((Number(f.liters)||0) * (Number(f.pricePerLiter)||0)), 0);
+
+    let periodMileage = 0;
+    let periodDays = 1;
+    let periodMotohours = 0;
+
+    if (filteredMileage.length >= 2) {
+        const first = filteredMileage[0];
+        const last = filteredMileage[filteredMileage.length - 1];
+        periodMileage = last.mileage - first.mileage;
+        periodDays = Math.ceil((new Date(last.date) - new Date(first.date)) / 86400000) || 1;
+        periodMotohours = (last.motohours || 0) - (first.motohours || 0);
+    } else if (filteredMileage.length === 1) {
+        const rec = filteredMileage[0];
+        periodMileage = settings.currentMileage - (baseMileage || rec.mileage);
+        periodDays = ownershipDays || 1;
+        periodMotohours = settings.currentMotohours - (baseMotohours || rec.motohours);
+    } else {
+        periodMileage = settings.currentMileage - (baseMileage || 0);
+        periodDays = ownershipDays || 1;
+        periodMotohours = settings.currentMotohours - (baseMotohours || 0);
     }
-    if (!daysOwned) daysOwned = 1;
+
+    const totalCost = totalMaintenanceCost + totalFuelCost;
+    const costPerKm = periodMileage > 0 ? totalCost / periodMileage : 0;
+    const totalLiters = filteredFuel.reduce((s, f) => s + (Number(f.liters)||0), 0);
+    const avgFuelConsumption = periodMileage > 0 ? (totalLiters / periodMileage) * 100 : 0;
     
-    const avgMileagePerDay = overallMileage / daysOwned;
-    const startMotohours = baseMotohours || (mileageHistory.length > 0 ? mileageHistory[0].motohours : 0);
-    const avgMotohoursPerDay = (settings.currentMotohours - startMotohours) / daysOwned;
-    
-    const result = {
+    // Средние строго по отфильтрованным данным
+    let avgMileagePerDay = 0;
+    let avgMotohoursPerDay = 0;
+    if (filteredMileage.length >= 2) {
+        const first = filteredMileage[0];
+        const last = filteredMileage[filteredMileage.length - 1];
+        const days = Math.ceil((new Date(last.date) - new Date(first.date)) / 86400000) || 1;
+        avgMileagePerDay = (last.mileage - first.mileage) / days;
+        avgMotohoursPerDay = ((last.motohours || 0) - (first.motohours || 0)) / days;
+    } else {
+        avgMileagePerDay = periodMileage / periodDays;
+        avgMotohoursPerDay = periodMotohours / periodDays;
+    }
+
+    return {
         totalMaintenanceCost: Number(totalMaintenanceCost),
         totalFuelCost: Number(totalFuelCost),
         costPerKm: Number(costPerKm),
@@ -1141,8 +1150,6 @@ function calculateStatistics() {
         avgMileagePerDay: Number(avgMileagePerDay),
         avgMotohoursPerDay: Number(avgMotohoursPerDay)
     };
-    console.log('calculateStatistics result:', result);
-    return result;
 }
 
 // ==================== 15-Б. ФИЛЬТРЫ ПО ПЕРИОДУ ====================
