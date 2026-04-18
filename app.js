@@ -1499,15 +1499,17 @@ async function updateCalendarButtonsStatus() {
         processNext();
     };
     const applyButtonStyle = (btn, exists) => {
-        console.log(`Применяем стиль к кнопке: exists=${exists}, классы до: ${btn.className}`);
+        console.log(`Применяем стиль: exists=${exists}, текст до="${btn.innerHTML}"`);
         if (exists) {
+            btn.innerHTML = '✅';
             btn.classList.add('calendar-btn-added');
             btn.title = 'Уже в календаре';
         } else {
+            btn.innerHTML = '📅';
             btn.classList.remove('calendar-btn-added');
             btn.title = 'Добавить в календарь';
         }
-        console.log(`Классы после: ${btn.className}`);
+        console.log(`Текст после="${btn.innerHTML}", классы="${btn.className}"`);
     };
     for (let i = 0; i < limit && i < buttons.length; i++) processNext();
 }
