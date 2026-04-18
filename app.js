@@ -969,7 +969,7 @@ function openFuelModal(record = null) {
 
 function openTireModal(record = null) {
     const isEdit = !!record;
-    const defaultDate = record ? isoToDDMMYYYY(record.date) : new Date().toISOString().split('T')[0];
+    const defaultDate = record ? isoToDDMMYYYY(record.date) : isoToDDMMYYYY(new Date().toISOString().split('T')[0]);
     const typeValue = record ? record.type : 'Лето';
     const isNewSet = record ? (record.mileage === 0 && record.purchaseCost) : false;
     const currentMileageValue = isNewSet ? 0 : settings.currentMileage;
