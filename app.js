@@ -1431,10 +1431,10 @@ function showCatalogMenu(button, oem) {
                     url = `https://www.drive2.ru/search?text=${encodeURIComponent(oem)}`;
                     break;
                 case 'crossdata':
-                    url = `http://crossdata.pro/search?q=${encodeURIComponent(oem)}`;
+                    url = `http://crossdata.pro`;
                     break;
                 case 'zzap':
-                    url = `https://www.zzap.ru/search?text=${encodeURIComponent(oem)}`;
+                    url = `https://www.zzap.ru`;
                     break;
                 default:
                     url = `https://exist.ru/price/?pcode=${encodeURIComponent(oem)}`;
