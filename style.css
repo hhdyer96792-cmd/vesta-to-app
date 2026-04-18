@@ -323,7 +323,10 @@ input, select {
         grid-template-columns: repeat(6, 1fr);
     }
 }
-
+.calendar-btn-added {
+    color: var(--success) !important;
+    opacity: 0.7;
+}
 /* Мобильная оптимизация */
 @media (max-width: 768px) {
     button {
@@ -431,8 +434,4 @@ input, select {
 }
 .catalog-popup-menu div:hover {
     background: var(--bg);
-}
-.calendar-btn-added {
-    color: var(--success) !important;
-    opacity: 0.7;
 }
