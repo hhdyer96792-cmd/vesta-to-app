@@ -1133,15 +1133,17 @@ function calculateStatistics() {
       
 
 // ==================== 16. СТАТИСТИКА ====================
- function renderStats() {
-    // Заполняем сводку
+function renderStats() {
+    // Заполняем сводку с проверками
     const stats = calculateStatistics();
-    if (totalMaintenanceCostEl) totalMaintenanceCostEl.textContent = stats.totalMaintenanceCost.toFixed(0);
-    if (totalFuelCostEl) totalFuelCostEl.textContent = stats.totalFuelCost.toFixed(0);
-    if (costPerKmEl) costPerKmEl.textContent = stats.costPerKm.toFixed(2);
-    if (avgFuelConsumptionEl) avgFuelConsumptionEl.textContent = stats.avgFuelConsumption.toFixed(1);
-    if (avgMileagePerDayEl) avgMileagePerDayEl.textContent = stats.avgMileagePerDay.toFixed(1);
-    if (avgMotohoursPerDayEl) avgMotohoursPerDayEl.textContent = stats.avgMotohoursPerDay.toFixed(2);
+    if (stats) {
+        if (totalMaintenanceCostEl) totalMaintenanceCostEl.textContent = (stats.totalMaintenanceCost ?? 0).toFixed(0);
+        if (totalFuelCostEl) totalFuelCostEl.textContent = (stats.totalFuelCost ?? 0).toFixed(0);
+        if (costPerKmEl) costPerKmEl.textContent = (stats.costPerKm ?? 0).toFixed(2);
+        if (avgFuelConsumptionEl) avgFuelConsumptionEl.textContent = (stats.avgFuelConsumption ?? 0).toFixed(1);
+        if (avgMileagePerDayEl) avgMileagePerDayEl.textContent = (stats.avgMileagePerDay ?? 0).toFixed(1);
+        if (avgMotohoursPerDayEl) avgMotohoursPerDayEl.textContent = (stats.avgMotohoursPerDay ?? 0).toFixed(2);
+    }
 
     // Прогноз замены масла (существующий код)
     const oilOp = operations.find(op => op.name.includes('Масло') && op.category.includes('ДВС'));
@@ -1163,7 +1165,7 @@ function calculateStatistics() {
             });
         }
     }
-        }
+}
 
 function excelDateToISO(serial) {
     if (!serial || typeof serial !== 'number') return '';
