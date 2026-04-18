@@ -1541,12 +1541,14 @@ async function addToCalendar(opName, planDate, planMileage) {
         });
         alert(`✅ Событие "${opName}" добавлено с напоминаниями за 15 и 2 дня`);
         const btn = document.querySelector(`.calendar-btn[data-op-name="${opName}"][data-plan-date="${planDate}"]`);
-        if (btn) {
-            btn.classList.add('calendar-btn-added');
-            btn.title = 'Уже в календаре';
-            const cacheKey = `${opName}|${planDate}`;
-            calendarEventCache.set(cacheKey, true);
-        }
+if (btn) {
+    btn.innerHTML = '✅';
+    btn.classList.add('calendar-btn-added');
+    btn.title = 'Уже в календаре';
+    const cacheKey = `${opName}|${planDate}`;
+    calendarEventCache.set(cacheKey, true);
+}
+
     } catch (e) {
         alert(`❌ Ошибка: ${e.message}`);
     }
