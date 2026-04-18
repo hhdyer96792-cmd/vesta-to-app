@@ -470,7 +470,6 @@ async function renderTOTable() {
     });
     attachTOListeners();
     console.log('renderTOTable finished, calling updateCalendarButtonsStatus');
-updateCalendarButtonsStatus();
     updateCalendarButtonsStatus();
 }
 
