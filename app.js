@@ -513,6 +513,7 @@ function renderTiresTable() {
         tr.innerHTML = `<td>${t.date}</td><td>${t.type}</td><td>${t.mileage}</td><td>${t.notes||''}</td>`;
         tbody.appendChild(tr);
     });
+    attachTireListeners();
 }
 
 // ==================== 10. МОДАЛЬНЫЕ ОКНА ====================
