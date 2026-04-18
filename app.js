@@ -1297,8 +1297,8 @@ async function loadHistory() {
             return;
         }
         tbody.innerHTML = '';
-        historyData.reverse().forEach((row, displayIndex) => {
-            const physicalRow = validRows[historyData.length - 1 - displayIndex];
+          historyData.sort((a, b) => (a[1] || '').localeCompare(b[1] || '')).reverse().forEach((row, displayIndex) => {
+           const physicalRow = validRows[historyData.length - 1 - displayIndex];
             const tr = document.createElement('tr');
             const opId = row[0];
             const op = operations.find(o => o.id == opId) || { name: 'Неизвестно' };
