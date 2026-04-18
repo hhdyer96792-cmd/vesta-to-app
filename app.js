@@ -1544,13 +1544,45 @@ function attachFuelListeners() {
 }
 
 async function updateCalendarButtonsStatus() {
+    console.log('updateCalendarButtonsStatus called, accessToken:', !!accessToken);
     if (!accessToken) return;
     const buttons = document.querySelectorAll('.calendar-btn');
-    for (const btn of buttons) {
+    console.log('Найдено кнопок:', buttons.length);
+    if (buttons.length === 0) {
+        // Возможно, таблица ещё не отрисована
+        return;
+    }
+    const limit = 5;
+    let index = 0;
+    const processNext = async () => {
+        if (index >= buttons.length) return;
+        const btn = buttons[index++];
         const opName = btn.dataset.opName;
         const planDate = btn.dataset.planDate;
-        if (!opName || !planDate) continue;
-        const exists = await checkCalendarEventExists(opName, planDate);
+        console.log(`Проверка кнопки: opName="${opName}", planDate="${planDate}"`);
+        if (!opName || !planDate) {
+            console.warn('Пропущена кнопка без opName или planDate');
+            return processNext();
+        }
+        const cacheKey = `${opName}|${planDate}`;
+        if (calendarEventCache.has(cacheKey)) {
+            const exists = calendarEventCache.get(cacheKey);
+            console.log(`Взято из кеша: ${cacheKey} -> ${exists}`);
+            applyButtonStyle(btn, exists);
+            return processNext();
+        }
+        try {
+            const exists = await checkCalendarEventExists(opName, planDate);
+            console.log(`Результат API для ${cacheKey}: ${exists}`);
+            calendarEventCache.set(cacheKey, exists);
+            applyButtonStyle(btn, exists);
+        } catch (e) {
+            console.error(`Ошибка проверки ${cacheKey}:`, e);
+        }
+        processNext();
+    };
+    const applyButtonStyle = (btn, exists) => {
+        console.log(`Применение стиля: exists=${exists}, класс до: ${btn.className}`);
         if (exists) {
             btn.classList.add('calendar-btn-added');
             btn.title = 'Уже в календаре';
@@ -1558,7 +1590,9 @@ async function updateCalendarButtonsStatus() {
             btn.classList.remove('calendar-btn-added');
             btn.title = 'Добавить в календарь';
         }
-    }
+        console.log(`Класс после: ${btn.className}`);
+    };
+    for (let i = 0; i < limit && i < buttons.length; i++) processNext();
 }
 
 async function checkCalendarEventExists(opName, planDate) {
