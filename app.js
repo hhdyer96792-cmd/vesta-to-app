@@ -1144,12 +1144,84 @@ function calculateStatistics() {
     return result;
 }
 
-      
+// ==================== 15-Б. ФИЛЬТРЫ ПО ПЕРИОДУ ====================
+function getStartDateForPeriod(period) {
+    const now = new Date();
+    switch (period) {
+        case 'week': return new Date(now.setDate(now.getDate() - 7));
+        case 'month': return new Date(now.setMonth(now.getMonth() - 1));
+        case 'quarter': return new Date(now.setMonth(now.getMonth() - 3));
+        case '6months': return new Date(now.setMonth(now.getMonth() - 6));
+        case 'year': return new Date(now.setFullYear(now.getFullYear() - 1));
+        default: return null;
+    }
+}
+
+function filterByPeriod(records, period, dateField = 'date') {
+    if (period === 'all') return records;
+    const startDate = getStartDateForPeriod(period);
+    if (!startDate) return records;
+    return records.filter(r => {
+        const d = r[dateField] ? new Date(r[dateField]) : null;
+        return d && d >= startDate;
+    });
+}
+
+function calculateStatistics(period = 'all') {
+    const filteredService = filterByPeriod(serviceRecords, period, 'date');
+    const filteredFuel = filterByPeriod(fuelLog, period, 'date');
+    const filteredMileage = filterByPeriod(mileageHistory, period, 'date');
+
+    const totalPartsCost = filteredService.reduce((s, r) => s + (Number(r.parts_cost) || 0), 0);
+    const totalWorkCost = filteredService.reduce((s, r) => s + (Number(r.work_cost) || 0), 0);
+    const totalMaintenanceCost = totalPartsCost + totalWorkCost;
+
+    const totalFuelCost = filteredFuel.reduce((s, f) => s + ((Number(f.liters)||0) * (Number(f.pricePerLiter)||0)), 0);
+
+    let periodMileage = 0;
+    let periodDays = 1;
+    let periodMotohours = 0;
+
+    if (filteredMileage.length >= 2) {
+        const first = filteredMileage[0];
+        const last = filteredMileage[filteredMileage.length - 1];
+        periodMileage = last.mileage - first.mileage;
+        periodDays = Math.ceil((new Date(last.date) - new Date(first.date)) / 86400000) || 1;
+        periodMotohours = (last.motohours || 0) - (first.motohours || 0);
+    } else if (filteredMileage.length === 1) {
+        const rec = filteredMileage[0];
+        periodMileage = settings.currentMileage - (baseMileage || rec.mileage);
+        periodDays = ownershipDays || 1;
+        periodMotohours = settings.currentMotohours - (baseMotohours || rec.motohours);
+    } else {
+        periodMileage = settings.currentMileage - (baseMileage || 0);
+        periodDays = ownershipDays || 1;
+        periodMotohours = settings.currentMotohours - (baseMotohours || 0);
+    }
+
+    const totalCost = totalMaintenanceCost + totalFuelCost;
+    const costPerKm = periodMileage > 0 ? totalCost / periodMileage : 0;
+    const totalLiters = filteredFuel.reduce((s, f) => s + (Number(f.liters)||0), 0);
+    const avgFuelConsumption = periodMileage > 0 ? (totalLiters / periodMileage) * 100 : 0;
+    const avgMileagePerDay = periodMileage / periodDays;
+    const avgMotohoursPerDay = periodMotohours / periodDays;
+
+    return {
+        totalMaintenanceCost: Number(totalMaintenanceCost),
+        totalFuelCost: Number(totalFuelCost),
+        costPerKm: Number(costPerKm),
+        avgFuelConsumption: Number(avgFuelConsumption),
+        avgMileagePerDay: Number(avgMileagePerDay),
+        avgMotohoursPerDay: Number(avgMotohoursPerDay)
+    };
+}      
 
 // ==================== 16. СТАТИСТИКА ====================
 function renderStats() {
-    // Заполняем сводку с проверками
-    const stats = calculateStatistics();
+    const periodSelect = document.getElementById('stats-period-select');
+    const period = periodSelect ? periodSelect.value : 'all';
+    const stats = calculateStatistics(period);
+    
     if (stats) {
         if (totalMaintenanceCostEl) totalMaintenanceCostEl.textContent = (stats.totalMaintenanceCost ?? 0).toFixed(0);
         if (totalFuelCostEl) totalFuelCostEl.textContent = (stats.totalFuelCost ?? 0).toFixed(0);
@@ -1159,7 +1231,6 @@ function renderStats() {
         if (avgMotohoursPerDayEl) avgMotohoursPerDayEl.textContent = (stats.avgMotohoursPerDay ?? 0).toFixed(2);
     }
 
-    // Прогноз замены масла (существующий код)
     const oilOp = operations.find(op => op.name.includes('Масло') && op.category.includes('ДВС'));
     if (oilOp) {
         const plan = calculatePlan(oilOp);
@@ -1180,6 +1251,7 @@ function renderStats() {
         }
     }
 }
+
 
 function excelDateToISO(serial) {
     if (!serial || typeof serial !== 'number') return '';
