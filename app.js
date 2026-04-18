@@ -417,7 +417,7 @@ function renderAll() {
     calculateOwnershipDays();
 }
 
-async function renderTOTable() {
+function renderTOTable() {
     const tbody = tableBody;
     if (!tbody) return;
     tbody.innerHTML = '';
@@ -451,6 +451,14 @@ async function renderTOTable() {
             tr.className = cls;
             tr.dataset.rowIndex = op.rowIndex;
             tr.dataset.operationId = op.id;
+
+            // Проверяем кеш событий для этой операции
+            const cacheKey = `${op.name}|${plan.planDate}`;
+            const isAdded = calendarEventCache.get(cacheKey) || false;
+            const calendarIcon = isAdded ? '✅' : '📅';
+            const calendarTitle = isAdded ? 'Уже в календаре' : 'Добавить в календарь';
+            const calendarClass = isAdded ? 'calendar-btn calendar-btn-added' : 'calendar-btn';
+
             tr.innerHTML = `
                 <td><strong>${op.name}</strong></td>
                 <td>${op.lastDate ? op.lastDate.split('-').reverse().join('-') : '—'}</td>
@@ -461,7 +469,7 @@ async function renderTOTable() {
                 <td>
                     <button class="icon-btn add-record-btn" data-op-id="${op.id}" data-op-name="${op.name}">➕</button>
                     <button class="icon-btn edit-op-btn" data-op-id="${op.id}">✏️</button>
-                    <button class="icon-btn calendar-btn" data-op-name="${op.name}" data-plan-date="${plan.planDate}" data-plan-mileage="${plan.planMileage}" title="Проверка...">📅</button>
+                    <button class="icon-btn ${calendarClass}" data-op-name="${op.name}" data-plan-date="${plan.planDate}" data-plan-mileage="${plan.planMileage}" title="${calendarTitle}">${calendarIcon}</button>
                     <button class="icon-btn shopping-list-btn" data-op-id="${op.id}">🛒</button>
                 </td>
             `;
@@ -469,7 +477,6 @@ async function renderTOTable() {
         });
     });
     attachTOListeners();
-    console.log('renderTOTable finished, calling updateCalendarButtonsStatus');
     updateCalendarButtonsStatus();
 }
 
