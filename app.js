@@ -1389,114 +1389,38 @@ function attachTOListeners() {
     document.querySelectorAll('.shopping-list-btn').forEach(b => b.addEventListener('click', e => generateShoppingList(b.dataset.opId)));
 }
 
-function showCatalogMenu(button, oem) {
-    const existingMenu = document.querySelector('.catalog-popup-menu');
-    if (existingMenu) existingMenu.remove();
-
-    const rect = button.getBoundingClientRect();
-    const menu = document.createElement('div');
-    menu.className = 'catalog-popup-menu';
-    menu.style.position = 'fixed';
-    menu.style.background = 'var(--card-bg)';
-    menu.style.border = '1px solid var(--border)';
-    menu.style.borderRadius = '8px';
-    menu.style.padding = '8px 0';
-    menu.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-    menu.style.zIndex = '10000';
-    menu.style.minWidth = '150px';
-    menu.style.visibility = 'hidden'; // сначала скрываем, чтобы измерить
-
-    const catalogs = [
-        { name: 'Exist', value: 'exist' },
-        { name: 'Drive2', value: 'drive2' },
-        { name: 'CrossData', value: 'crossdata' },
-        { name: 'ZZap', value: 'zzap' }
-    ];
-
-    catalogs.forEach(cat => {
-        const item = document.createElement('div');
-        item.textContent = cat.name;
-        item.style.padding = '8px 16px';
-        item.style.cursor = 'pointer';
-        item.style.whiteSpace = 'nowrap';
-        item.style.color = 'var(--text)';
-        item.addEventListener('mouseenter', () => item.style.background = 'var(--bg)');
-        item.addEventListener('mouseleave', () => item.style.background = 'transparent');
-        item.addEventListener('click', () => {
-            let url;
-            switch (cat.value) {
-                case 'drive2':
-                    url = `https://www.drive2.ru/search?text=${encodeURIComponent(oem)}`;
-                    break;
-                case 'crossdata':
-                    url = `http://crossdata.pro`;
-                    break;
-                case 'zzap':
-                    url = `https://www.zzap.ru`;
-                    break;
-                default:
-                    url = `https://exist.ru/price/?pcode=${encodeURIComponent(oem)}`;
-            }
-            window.open(url, '_blank');
-            menu.remove();
-        });
-        menu.appendChild(item);
-    });
-
-    document.body.appendChild(menu);
-
-    // Измеряем реальные размеры меню
-    const menuRect = menu.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    // Предварительная позиция
-    let top = rect.bottom + 5;
-    let left = rect.left;
-
-    // Корректировка по горизонтали
-    if (left + menuRect.width > viewportWidth - 10) {
-        left = viewportWidth - menuRect.width - 10;
-    }
-    if (left < 10) {
-        left = 10;
-    }
-
-    // Корректировка по вертикали (если не влезает снизу — показываем сверху)
-    if (top + menuRect.height > viewportHeight - 10) {
-        top = rect.top - menuRect.height - 5;
-    }
-    // Если сверху тоже не влезает — ставим по центру экрана
-    if (top < 10) {
-        top = Math.max(10, (viewportHeight - menuRect.height) / 2);
-    }
-
-    menu.style.top = top + 'px';
-    menu.style.left = left + 'px';
-    menu.style.visibility = 'visible';
-
-    setTimeout(() => {
-        const closeHandler = (e) => {
-            if (!menu.contains(e.target) && e.target !== button) {
-                menu.remove();
-                document.removeEventListener('click', closeHandler);
-            }
-        };
-        document.addEventListener('click', closeHandler);
-    }, 10);
-}
-
-
 function attachPartsListeners() {
     document.querySelectorAll('.edit-part-btn').forEach(b => b.addEventListener('click', e => { const part = parts.find(p => p.id == b.dataset.id); openPartForm(part); }));
     document.querySelectorAll('.delete-part-btn').forEach(b => b.addEventListener('click', async e => { if (confirm('Удалить запчасть?')) { await writeSheet(`PartsCatalog!A${b.dataset.id}:G${b.dataset.id}`, [['','','','','','','']]); await loadSheet(); } }));
     document.querySelectorAll('.search-part-btn').forEach(b => {
-    b.addEventListener('click', e => {
-        const oem = b.dataset.oem;
-        if (!oem) return;
-        showCatalogMenu(b, oem);
+        b.addEventListener('click', e => {
+            const oem = b.dataset.oem;
+            if (!oem) return;
+            showCatalogMenu(b, oem);
+        });
     });
-});
+}
+
+function attachFuelListeners() {
+    document.querySelectorAll('.delete-fuel-btn').forEach(b => {
+        b.addEventListener('click', async e => {
+            const index = b.dataset.index;
+            if (!confirm('Удалить заправку?')) return;
+            const rowIndex = parseInt(index) + 2;
+            await writeSheet(`FuelLog!A${rowIndex}:G${rowIndex}`, [['','','','','','','']]);
+            await loadSheet();
+        });
+    });
+    document.querySelectorAll('.edit-fuel-btn').forEach(b => {
+        b.addEventListener('click', e => {
+            const index = b.dataset.index;
+            const record = fuelLog[index];
+            if (record) {
+                record.rowIndex = parseInt(index) + 2;
+                openFuelModal(record);
+            }
+        });
+    });
 }
 
 function attachTireListeners() {
@@ -1521,39 +1445,32 @@ function attachTireListeners() {
     });
 }
 
+// ------------------ НОВЫЕ ФУНКЦИИ ДЛЯ КАЛЕНДАРЯ ------------------
+const calendarEventCache = new Map();
 
-function attachFuelListeners() {
-    document.querySelectorAll('.delete-fuel-btn').forEach(b => {
-        b.addEventListener('click', async e => {
-            const index = b.dataset.index;
-            if (!confirm('Удалить заправку?')) return;
-            const rowIndex = parseInt(index) + 2;
-            await writeSheet(`FuelLog!A${rowIndex}:G${rowIndex}`, [['','','','','','','']]);
-            await loadSheet();
-        });
-    });
-    document.querySelectorAll('.edit-fuel-btn').forEach(b => {
-        b.addEventListener('click', e => {
-            const index = b.dataset.index;
-            const record = fuelLog[index];
-            if (record) {
-                record.rowIndex = parseInt(index) + 2;
-                openFuelModal(record);
-            }
-        });
-    });
+async function checkCalendarEventExists(opName, planDate) {
+    if (!accessToken) return false;
+    try {
+        const timeMin = new Date(planDate).toISOString();
+        const timeMax = new Date(new Date(planDate).setDate(new Date(planDate).getDate() + 1)).toISOString();
+        const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin}&timeMax=${timeMax}&q=${encodeURIComponent(opName)}`;
+        const res = await apiCall(url);
+        return res.items && res.items.length > 0;
+    } catch (e) {
+        return false;
+    }
 }
 
 async function updateCalendarButtonsStatus() {
-    console.log('updateCalendarButtonsStatus called, accessToken:', !!accessToken);
-    console.log('updateCalendarButtonsStatus started');
-    if (!accessToken) return;
-    const buttons = document.querySelectorAll('.calendar-btn');
-    console.log('Найдено кнопок:', buttons.length);
-    if (buttons.length === 0) {
-        // Возможно, таблица ещё не отрисована
+    console.log('=== updateCalendarButtonsStatus START ===');
+    if (!accessToken) {
+        console.log('Нет accessToken');
         return;
     }
+    const buttons = document.querySelectorAll('.calendar-btn');
+    console.log('Найдено кнопок:', buttons.length);
+    if (buttons.length === 0) return;
+
     const limit = 5;
     let index = 0;
     const processNext = async () => {
@@ -1561,30 +1478,25 @@ async function updateCalendarButtonsStatus() {
         const btn = buttons[index++];
         const opName = btn.dataset.opName;
         const planDate = btn.dataset.planDate;
-        console.log(`Проверка кнопки: opName="${opName}", planDate="${planDate}"`);
         if (!opName || !planDate) {
-            console.warn('Пропущена кнопка без opName или planDate');
             return processNext();
         }
         const cacheKey = `${opName}|${planDate}`;
         if (calendarEventCache.has(cacheKey)) {
             const exists = calendarEventCache.get(cacheKey);
-            console.log(`Взято из кеша: ${cacheKey} -> ${exists}`);
             applyButtonStyle(btn, exists);
             return processNext();
         }
         try {
             const exists = await checkCalendarEventExists(opName, planDate);
-            console.log(`Результат API для ${cacheKey}: ${exists}`);
             calendarEventCache.set(cacheKey, exists);
             applyButtonStyle(btn, exists);
         } catch (e) {
-            console.error(`Ошибка проверки ${cacheKey}:`, e);
+            console.warn('Ошибка проверки события:', e);
         }
         processNext();
     };
     const applyButtonStyle = (btn, exists) => {
-        console.log(`Применение стиля: exists=${exists}, класс до: ${btn.className}`);
         if (exists) {
             btn.classList.add('calendar-btn-added');
             btn.title = 'Уже в календаре';
@@ -1592,75 +1504,8 @@ async function updateCalendarButtonsStatus() {
             btn.classList.remove('calendar-btn-added');
             btn.title = 'Добавить в календарь';
         }
-        console.log(`Класс после: ${btn.className}`);
     };
     for (let i = 0; i < limit && i < buttons.length; i++) processNext();
-}
-
-async function checkCalendarEventExists(opName, planDate) {
-    if (!accessToken) return false;
-    try {
-        const timeMin = new Date(planDate).toISOString();
-        const timeMax = new Date(new Date(planDate).setDate(new Date(planDate).getDate() + 1)).toISOString();
-        const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin}&timeMax=${timeMax}&q=${encodeURIComponent(opName)}`;
-        const res = await apiCall(url);
-        return res.items && res.items.length > 0;
-    } catch (e) {
-        return false;
-    }
-}
-
-async function checkCalendarEventExists(opName, planDate) {
-    if (!accessToken) return false;
-    try {
-        const timeMin = new Date(planDate).toISOString();
-        const timeMax = new Date(new Date(planDate).setDate(new Date(planDate).getDate() + 1)).toISOString();
-        const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin}&timeMax=${timeMax}&q=${encodeURIComponent(opName)}`;
-        const res = await apiCall(url);
-        return res.items && res.items.length > 0;
-    } catch (e) {
-        return false;
-    }
-}
-
-const calendarEventCache = new Map();
-
-async function updateCalendarButtonsStatus() {
- if (!accessToken) return;
- const buttons = document.querySelectorAll('.calendar-btn');
- const limit = 5;
- let index = 0;
- const processNext = async () => {
- if (index >= buttons.length) return;
- const btn = buttons[index++];
- const opName = btn.dataset.opName;
- const planDate = btn.dataset.planDate;
- if (!opName || !planDate) {
- return processNext();
- }
- const cacheKey = `${opName}|${planDate}`;
- if (calendarEventCache.has(cacheKey)) {
- const exists = calendarEventCache.get(cacheKey);
- applyButtonStyle(btn, exists);
- return processNext();
- }
- try {
- const exists = await checkCalendarEventExists(opName, planDate);
- calendarEventCache.set(cacheKey, exists);
- applyButtonStyle(btn, exists);
- } catch (e) {}
- processNext();
- };
- const applyButtonStyle = (btn, exists) => {
- if (exists) {
- btn.classList.add('calendar-btn-added');
- btn.title = 'Уже в календаре';
- } else {
- btn.classList.remove('calendar-btn-added');
- btn.title = 'Добавить в календарь';
- }
- };
- for (let i = 0; i < limit && i < buttons.length; i++) processNext();
 }
 
 async function addToCalendar(opName, planDate, planMileage) {
@@ -1693,12 +1538,15 @@ async function addToCalendar(opName, planDate, planMileage) {
         if (btn) {
             btn.classList.add('calendar-btn-added');
             btn.title = 'Уже в календаре';
+            const cacheKey = `${opName}|${planDate}`;
+            calendarEventCache.set(cacheKey, true);
         }
     } catch (e) {
         alert(`❌ Ошибка: ${e.message}`);
     }
 }
-    
+// -------------------------------------------------------------
+
 function generateShoppingList(opId) {
     const op = operations.find(o => o.id == opId);
     const items = parts.filter(p => p.operation === op.name || p.operation === op.category);
@@ -1708,7 +1556,6 @@ function generateShoppingList(opId) {
 
 function openPartForm(part = null) {
     const isEdit = !!part;
-    // Формируем список операций для выпадающего списка
     const operationOptions = operations.map(op => 
         `<option value="${op.name}" ${part && part.operation === op.name ? 'selected' : ''}>${op.name} (${op.category})</option>`
     ).join('');
@@ -1721,25 +1568,15 @@ function openPartForm(part = null) {
                 <option value="">-- Выберите операцию --</option>
                 ${operationOptions}
             </select>
-            <label>OEM</label>
-            <input type="text" name="oem" value="${part?.oem || ''}">
-            <label>Аналог</label>
-            <input type="text" name="analog" value="${part?.analog || ''}">
-            <label>Цена</label>
-            <input type="number" name="price" step="0.01" value="${part?.price || ''}">
-            <label>Поставщик</label>
-            <input type="text" name="supplier" value="${part?.supplier || ''}">
-            <label>Ссылка</label>
-            <input type="url" name="link" value="${part?.link || ''}">
-            <label>Комментарий</label>
-            <input type="text" name="comment" value="${part?.comment || ''}">
-            <div class="modal-actions">
-                <button type="submit" class="primary-btn">Сохранить</button>
-                <button type="button" class="cancel-btn secondary-btn">Отмена</button>
-            </div>
+            <label>OEM</label><input type="text" name="oem" value="${part?.oem || ''}">
+            <label>Аналог</label><input type="text" name="analog" value="${part?.analog || ''}">
+            <label>Цена</label><input type="number" name="price" step="0.01" value="${part?.price || ''}">
+            <label>Поставщик</label><input type="text" name="supplier" value="${part?.supplier || ''}">
+            <label>Ссылка</label><input type="url" name="link" value="${part?.link || ''}">
+            <label>Комментарий</label><input type="text" name="comment" value="${part?.comment || ''}">
+            <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
         </form>
     `);
-
     const form = modal.querySelector('#part-form');
     form.onsubmit = (e) => {
         e.preventDefault();
@@ -1747,57 +1584,79 @@ function openPartForm(part = null) {
         const row = [d.operation, d.oem, d.analog, d.price, d.supplier, d.link, d.comment];
         modal.remove();
         if (isEdit) {
-            writeSheet(`PartsCatalog!A${part.id}:G${part.id}`, [row])
-                .then(() => loadSheet())
-                .catch(e => console.warn('Ошибка обновления запчасти:', e));
+            writeSheet(`PartsCatalog!A${part.id}:G${part.id}`, [row]).then(() => loadSheet()).catch(e => console.warn(e));
         } else {
-            appendSheet('PartsCatalog!A:G', [row])
-                .then(() => loadSheet())
-                .catch(e => console.warn('Ошибка сохранения запчасти:', e));
+            appendSheet('PartsCatalog!A:G', [row]).then(() => loadSheet()).catch(e => console.warn(e));
         }
     };
     modal.querySelector('.cancel-btn').onclick = () => modal.remove();
 }
-    
-async function saveSettings() {
-    settings.currentMileage = +setMileage?.value || settings.currentMileage;
-    settings.currentMotohours = +setMotohours?.value || settings.currentMotohours;
-    settings.telegramToken = telegramTokenInput.value;
-    settings.telegramChatId = telegramChatIdInput.value;
-    settings.notificationMethod = notificationMethodSelect.value;
-    localStorage.setItem('notificationMethod', settings.notificationMethod);
-    baseMileage = +document.getElementById('set-base-mileage').value || 0;
-    baseMotohours = +document.getElementById('set-base-motohours').value || 0;
-    purchaseDate = document.getElementById('purchase-date').value;
-    calculateOwnershipDays();
-    await writeSheet('Журнал ТО!Q1:Q12', [
-        [settings.currentMileage],
-        [settings.currentMotohours],
-        [settings.avgDailyMileage],
-        [settings.avgDailyMotohours],
-        [], [], [settings.telegramToken], [settings.telegramChatId],
-        [baseMileage], [baseMotohours], [purchaseDate], []
-    ]);
-    document.getElementById('settings-result').textContent = '✅ Сохранено';
-}
 
-function exportData() {
-    const data = { operations, settings, parts, fuelLog, tireLog, workCosts };
-    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `vesta_${new Date().toISOString().split('T')[0]}.json`; a.click();
-}
-
-function importData(e) {
-    const file = e.target.files[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (ev) => { try { const d = JSON.parse(ev.target.result); operations = d.operations; settings = d.settings; parts = d.parts || []; fuelLog = d.fuelLog || []; tireLog = d.tireLog || []; workCosts = d.workCosts || []; renderAll(); if (isOnline) await syncAllToSheet(); } catch (err) { alert('Ошибка импорта'); } };
-    reader.readAsText(file); e.target.value = '';
-}
-
-async function syncAllToSheet() {
-    const opsRows = operations.map(o => [o.category, o.name, o.lastDate||'', o.lastMileage||'', o.lastMotohours||'', o.intervalKm, o.intervalMonths, o.intervalMotohours||'']);
-    await writeSheet('Журнал ТО!A2:H', opsRows);
-    await writeSheet('Журнал ТО!Q1:Q12', [[settings.currentMileage],[settings.currentMotohours],[settings.avgDailyMileage],[settings.avgDailyMotohours],[],[],[settings.telegramToken],[settings.telegramChatId],[baseMileage],[baseMotohours],[purchaseDate],[]]);
+function showCatalogMenu(button, oem) {
+    const existingMenu = document.querySelector('.catalog-popup-menu');
+    if (existingMenu) existingMenu.remove();
+    const rect = button.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.className = 'catalog-popup-menu';
+    menu.style.position = 'fixed';
+    menu.style.background = 'var(--card-bg)';
+    menu.style.border = '1px solid var(--border)';
+    menu.style.borderRadius = '8px';
+    menu.style.padding = '8px 0';
+    menu.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+    menu.style.zIndex = '10000';
+    menu.style.minWidth = '150px';
+    menu.style.visibility = 'hidden';
+    const catalogs = [
+        { name: 'Exist', value: 'exist' },
+        { name: 'Drive2', value: 'drive2' },
+        { name: 'CrossData', value: 'crossdata' },
+        { name: 'ZZap', value: 'zzap' }
+    ];
+    catalogs.forEach(cat => {
+        const item = document.createElement('div');
+        item.textContent = cat.name;
+        item.style.padding = '8px 16px';
+        item.style.cursor = 'pointer';
+        item.style.whiteSpace = 'nowrap';
+        item.style.color = 'var(--text)';
+        item.addEventListener('mouseenter', () => item.style.background = 'var(--bg)');
+        item.addEventListener('mouseleave', () => item.style.background = 'transparent');
+        item.addEventListener('click', () => {
+            let url;
+            switch (cat.value) {
+                case 'drive2': url = `https://www.drive2.ru/search?text=${encodeURIComponent(oem)}`; break;
+                case 'crossdata': url = `http://crossdata.pro`; break;
+                case 'zzap': url = `https://www.zzap.ru`; break;
+                default: url = `https://exist.ru/price/?pcode=${encodeURIComponent(oem)}`;
+            }
+            window.open(url, '_blank');
+            menu.remove();
+        });
+        menu.appendChild(item);
+    });
+    document.body.appendChild(menu);
+    const menuRect = menu.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    let top = rect.bottom + 5;
+    let left = rect.left;
+    if (left + menuRect.width > viewportWidth - 10) left = viewportWidth - menuRect.width - 10;
+    if (left < 10) left = 10;
+    if (top + menuRect.height > viewportHeight - 10) top = rect.top - menuRect.height - 5;
+    if (top < 10) top = Math.max(10, (viewportHeight - menuRect.height) / 2);
+    menu.style.top = top + 'px';
+    menu.style.left = left + 'px';
+    menu.style.visibility = 'visible';
+    setTimeout(() => {
+        const closeHandler = (e) => {
+            if (!menu.contains(e.target) && e.target !== button) {
+                menu.remove();
+                document.removeEventListener('click', closeHandler);
+            }
+        };
+        document.addEventListener('click', closeHandler);
+    }, 10);
 }
 
 // ==================== 19. ИНИЦИАЛИЗАЦИЯ СОБЫТИЙ ====================
