@@ -1587,6 +1587,46 @@ async function checkCalendarEventExists(opName, planDate) {
     }
 }
 
+const calendarEventCache = new Map();
+
+async function updateCalendarButtonsStatus() {
+ if (!accessToken) return;
+ const buttons = document.querySelectorAll('.calendar-btn');
+ const limit = 5;
+ let index = 0;
+ const processNext = async () => {
+ if (index >= buttons.length) return;
+ const btn = buttons[index++];
+ const opName = btn.dataset.opName;
+ const planDate = btn.dataset.planDate;
+ if (!opName || !planDate) {
+ return processNext();
+ }
+ const cacheKey = `${opName}|${planDate}`;
+ if (calendarEventCache.has(cacheKey)) {
+ const exists = calendarEventCache.get(cacheKey);
+ applyButtonStyle(btn, exists);
+ return processNext();
+ }
+ try {
+ const exists = await checkCalendarEventExists(opName, planDate);
+ calendarEventCache.set(cacheKey, exists);
+ applyButtonStyle(btn, exists);
+ } catch (e) {}
+ processNext();
+ };
+ const applyButtonStyle = (btn, exists) => {
+ if (exists) {
+ btn.classList.add('calendar-btn-added');
+ btn.title = 'Уже в календаре';
+ } else {
+ btn.classList.remove('calendar-btn-added');
+ btn.title = 'Добавить в календарь';
+ }
+ };
+ for (let i = 0; i < limit && i < buttons.length; i++) processNext();
+}
+
 async function addToCalendar(opName, planDate, planMileage) {
     if (!accessToken) { alert('Авторизуйтесь'); return; }
     const exists = await checkCalendarEventExists(opName, planDate);
