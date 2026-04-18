@@ -469,6 +469,8 @@ async function renderTOTable() {
         });
     });
     attachTOListeners();
+    console.log('renderTOTable finished, calling updateCalendarButtonsStatus');
+updateCalendarButtonsStatus();
     updateCalendarButtonsStatus();
 }
 
@@ -1545,6 +1547,7 @@ function attachFuelListeners() {
 
 async function updateCalendarButtonsStatus() {
     console.log('updateCalendarButtonsStatus called, accessToken:', !!accessToken);
+    console.log('updateCalendarButtonsStatus started');
     if (!accessToken) return;
     const buttons = document.querySelectorAll('.calendar-btn');
     console.log('Найдено кнопок:', buttons.length);
