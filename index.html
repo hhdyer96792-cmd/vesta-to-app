@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>🚗 Vesta Control v5.2</title>
+    <title>🚗 Vesta Control v5.2e</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2c3e50">
@@ -92,6 +92,117 @@
                 <div class="stat-card"><span class="stat-label">⛽ Всего на топливо</span><span class="stat-value" id="total-fuel-cost">0</span><span class="stat-unit">₽</span></div>
                 <div class="stat-card"><span class="stat-label">📏 Стоимость 1 км</span><span class="stat-value" id="cost-per-km">0</span><span class="stat-unit">₽/км</span></div>
                 <div class="stat-card"><span class="stat-label">📊 Средний расход</span><span class="stat-value" id="avg-fuel-consumption">0</span><span class="stat-unit">л/100 км</span></div>
+                <div class="stat-card"><span class="stat-label">🚗 Ср. пробег/день</span><span class="stat-value" id="avg-mileage-per-day">0</span><span class="stat-unit">км</span></div>
+                <div class="stat-card"><span class="stat-label">⏱️ Ср. моточасы/день</span><span class="stat-value" id="avg-motohours-per-day">0</span><span class="stat-unit">ч</span></div>
+                <div class="stat-card ownership-card">
+                    <span class="stat-label">📅 Владение</span>
+                    <span class="stat-value" id="ownership-display">0</span>
+                    <span class="stat-unit" id="ownership-unit">дней</span>
+                    <button id="toggle-ownership-unit" class="icon-btn" title="Переключить дни/годы">🔄</button>
+                </div>
+            </div>
+            <div class="stats-container">
+                <div class="chart-card"><h3>Прогноз замены масла</h3><canvas id="oilChart"></canvas></div>
+                <div class="chart-card"><h3>Затраты на ТО и топливо</h3><canvas id="costsChart"></canvas></div>
+                <div class="chart-card"><h3>Расход топлива (л/100 км)</h3><canvas id="fuelChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Вкладка История -->
+        <div id="tab-history" class="tab-content">
+            <div class="table-wrapper">
+                <table id="history-table">
+                    <thead><tr><th>Дата</th><th>Операция</th><th>Пробег</th><th>М/ч</th><th>Запчасти</th><th>Работа</th><th>Прим.</th><th>DIY</th><th></th></tr></thead>
+                    <tbody id="history-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Вкладка Топливо -->
+        <div id="tab-fuel" class="tab-content">
+            <div class="action-bar">
+                <button id="add-fuel-btn" class="primary-btn">➕ Добавить заправку</button>
+                <button id="voice-fuel-btn" class="secondary-btn" title="Голосовой ввод">🎤</button>
+            </div>
+            <div class="table-wrapper">
+                <table id="fuel-table">
+                    <thead><tr><th>Дата</th><th>Пробег</th><th>Литры</th><th>Цена/л</th><th>Полный бак</th><th>Тип</th><th>Прим.</th><th></th></tr></thead>
+                    <tbody id="fuel-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Вкладка Шины -->
+        <div id="tab-tires" class="tab-content">
+            <div id="tire-recommendation" class="info-card"></div>
+            <div class="action-bar"><button id="add-tire-btn" class="primary-btn">➕ Сменить резину</button></div>
+            <div class="table-wrapper">
+                <table id="tires-table">
+                    <thead><tr><th>Дата</th><th>Тип</th><th>Пробег</th><th>Модель</th><th>Размер</th><th>Износ</th><th>Прим.</th><th></th></tr></thead>
+                    <tbody id="tires-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Вкладка Запчасти -->
+        <div id="tab-parts" class="tab-content">
+            <div class="action-bar"><button id="add-part-btn" class="primary-btn">➕ Добавить запчасть</button></div>
+            <div class="table-wrapper">
+                <table id="parts-table">
+                    <thead><tr><th>Операция</th><th>OEM</th><th>Аналог</th><th>Цена</th><th>Поставщик</th><th>Ссылка</th><th>Комм.</th><th></th></tr></thead>
+                    <tbody id="parts-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Вкладка Настройки -->
+        <div id="tab-settings" class="tab-content">
+            <div class="card">
+                <h3>🔧 Показатели точки отсчёта</h3>
+                <label>Пробег точки отсчёта (км): <input type="number" id="set-base-mileage" step="1" value="0"></label>
+                <label>Моточасы точки отсчёта: <input type="number" id="set-base-motohours" step="1" value="0"></label>
+                <p class="hint">Используются, если история пробега ещё не накоплена.</p>
+            </div>
+
+            <div class="card">
+                <h3>📅 Владение автомобилем</h3>
+                <label>Дата приобретения: <input type="date" id="purchase-date"></label>
+                <label>Дней владения: <input type="text" id="ownership-days" readonly></label>
+            </div>
+
+            <div class="card">
+                <h3>🔔 Уведомления</h3>
+                <label>Способ уведомлений:
+                    <select id="notification-method">
+                        <option value="telegram">Только Telegram</option>
+                        <option value="push">Только браузер (Push)</option>
+                        <option value="both">Telegram + браузер</option>
+                    </select>
+                </label>
+                <div id="telegram-settings">
+                    <label>Bot Token: <input type="text" id="telegram-token" placeholder="123456:ABCdef..."></label>
+                    <label>Chat ID: <input type="text" id="telegram-chatid" placeholder="123456789"></label>
+                </div>
+                <div id="push-settings">
+                    <p id="push-status">Push-уведомления не настроены.</p>
+                    <button id="subscribe-push-btn" class="secondary-btn">🔔 Подписаться на уведомления</button>
+                </div>
+                <button id="save-settings-btn" class="primary-btn">💾 Сохранить настройки</button>
+                <div id="settings-result"></div>
+            </div>
+
+            <div class="card">
+                <h3>📸 Фотоотчёты</h3>
+                <p>Папка для фото создаётся автоматически на Google Диске.</p>
+                <button id="open-photo-folder-btn" class="secondary-btn">📁 Открыть папку с фото</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>                <div class="stat-card"><span class="stat-label">📊 Средний расход</span><span class="stat-value" id="avg-fuel-consumption">0</span><span class="stat-unit">л/100 км</span></div>
                 <div class="stat-card"><span class="stat-label">🚗 Ср. пробег/день</span><span class="stat-value" id="avg-mileage-per-day">0</span><span class="stat-unit">км</span></div>
                 <div class="stat-card"><span class="stat-label">⏱️ Ср. моточасы/день</span><span class="stat-value" id="avg-motohours-per-day">0</span><span class="stat-unit">ч</span></div>
                 <div class="stat-card ownership-card">
