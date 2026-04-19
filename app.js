@@ -36,6 +36,7 @@ let baseMileage = 0;
 let baseMotohours = 0;
 let purchaseDate = '';
 let ownershipDays = 0;
+let ownershipDisplayMode = 'days'; // 'days' или 'years'
 
 // ==================== 2-Б. ПРОФИЛИ АВТОМОБИЛЕЙ ====================
 let carProfiles = [];
@@ -1232,6 +1233,7 @@ function calculateStatistics(period = 'all') {
 }      
 
 // ==================== 16. СТАТИСТИКА ====================
+
 function renderStats() {
     const periodSelect = document.getElementById('stats-period-select');
     const period = periodSelect ? periodSelect.value : 'all';
@@ -1244,6 +1246,7 @@ function renderStats() {
         if (avgFuelConsumptionEl) avgFuelConsumptionEl.textContent = (stats.avgFuelConsumption ?? 0).toFixed(1);
         if (avgMileagePerDayEl) avgMileagePerDayEl.textContent = (stats.avgMileagePerDay ?? 0).toFixed(1);
         if (avgMotohoursPerDayEl) avgMotohoursPerDayEl.textContent = (stats.avgMotohoursPerDay ?? 0).toFixed(2);
+        updateOwnershipDisplay(); 
     }
 
     const oilOp = operations.find(op => op.name.includes('Масло') && op.category.includes('ДВС'));
@@ -1794,8 +1797,13 @@ if (periodSelect) {
         }
     });
 }
+if (toggleOwnershipUnitBtn) {
+    toggleOwnershipUnitBtn.addEventListener('click', () => {
+        ownershipDisplayMode = ownershipDisplayMode === 'days' ? 'years' : 'days';
+        updateOwnershipDisplay();
+    });
 }
-
+}
 // ==================== 20. ОБНОВЛЕНИЕ ПРОБЕГА И ДНИ ВЛАДЕНИЯ ====================
 async function updateMileageAndAverages() {
     const newMileageInput = document.getElementById('new-mileage');
@@ -1839,19 +1847,32 @@ async function updateMileageAndAverages() {
     alert('Показатели обновлены');
 }
 
+function updateOwnershipDisplay() {
+    if (!ownershipDisplay || !ownershipUnit) return;
+    if (ownershipDisplayMode === 'days') {
+        ownershipDisplay.textContent = ownershipDays;
+        ownershipUnit.textContent = 'дней';
+    } else {
+        const years = (ownershipDays / 365.25).toFixed(1);
+        ownershipDisplay.textContent = years;
+        ownershipUnit.textContent = 'лет';
+    }
+}
+
 function calculateOwnershipDays() {
     const daysInput = document.getElementById('ownership-days');
-    if (!daysInput) return;
     if (!purchaseDate) {
         ownershipDays = 0;
-        daysInput.value = '';
+        if (daysInput) daysInput.value = '';
+        updateOwnershipDisplay();
         return;
     }
     const today = new Date();
     const purchase = new Date(purchaseDate);
     const diffTime = Math.abs(today - purchase);
     ownershipDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    daysInput.value = ownershipDays;
+    if (daysInput) daysInput.value = ownershipDays;
+    updateOwnershipDisplay();
 }
 
 // ==================== 20-А. ВИДЖЕТ ТОП-5 ====================
