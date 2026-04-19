@@ -883,6 +883,191 @@ function calculateStatistics(period='all') {
     return { totalMaintenanceCost:Number(totalMaint), totalFuelCost:Number(totalFuel), costPerKm:Number(costPerKm), avgFuelConsumption:Number(avgCons), avgMileagePerDay:Number(avgMileageDay), avgMotohoursPerDay:Number(avgMotoDay) };
 }
 
+/**
+ * Группирует заправки по месяцам и возвращает массив объектов:
+ * { yearMonth: "2025-03", avgConsumption: л/100км, avgPrice: ₽/л, totalLiters, totalMileage }
+ */
+function groupFuelByMonth() {
+    const monthly = {};
+    fuelLog.forEach(record => {
+        if (!record.date || !record.mileage || !record.liters || !record.pricePerLiter) return;
+        const date = new Date(record.date);
+        if (isNaN(date)) return;
+        const yearMonth = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+        if (!monthly[yearMonth]) {
+            monthly[yearMonth] = { totalLiters: 0, totalPrice: 0, totalMileage: 0, count: 0 };
+        }
+        monthly[yearMonth].totalLiters += record.liters;
+        monthly[yearMonth].totalPrice += record.liters * record.pricePerLiter;
+        // Для расхода нужен пробег между заправками, упрощённо: берём разницу пробега между соседними записями.
+        // Но для группировки по месяцам лучше использовать накопленный пробег за месяц.
+        // Упростим: будем считать, что расход = литры / (пробег с прошлой заправки). Требуется сортировка.
+    });
+    // Более точный расчёт расхода по месяцам: нужно знать пробег за месяц.
+    // Реализуем: сортируем все заправки по дате, вычисляем разницу пробега между последовательными.
+    const sorted = [...fuelLog].filter(r => r.date && r.mileage).sort((a,b) => new Date(a.date) - new Date(b.date));
+    const monthlyConsumption = {};
+    for (let i = 1; i < sorted.length; i++) {
+        const prev = sorted[i-1];
+        const curr = sorted[i];
+        const mileageDiff = curr.mileage - prev.mileage;
+        if (mileageDiff <= 0) continue;
+        const consumption = (curr.liters / mileageDiff) * 100;
+        const date = new Date(curr.date);
+        const yearMonth = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+        if (!monthlyConsumption[yearMonth]) monthlyConsumption[yearMonth] = { values: [], totalPrice: 0, count: 0 };
+        monthlyConsumption[yearMonth].values.push(consumption);
+        monthlyConsumption[yearMonth].totalPrice += curr.liters * curr.pricePerLiter;
+        monthlyConsumption[yearMonth].count++;
+    }
+    // Цена за месяц: средняя цена за литр (общая стоимость / общие литры)
+    const monthlyPrice = {};
+    sorted.forEach(r => {
+        if (!r.liters || !r.pricePerLiter) return;
+        const date = new Date(r.date);
+        const yearMonth = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+        if (!monthlyPrice[yearMonth]) monthlyPrice[yearMonth] = { totalCost: 0, totalLiters: 0 };
+        monthlyPrice[yearMonth].totalCost += r.liters * r.pricePerLiter;
+        monthlyPrice[yearMonth].totalLiters += r.liters;
+    });
+    // Объединяем
+    const allMonths = new Set([...Object.keys(monthlyConsumption), ...Object.keys(monthlyPrice)]);
+    const result = [];
+    for (const month of allMonths) {
+        const consVals = monthlyConsumption[month]?.values || [];
+        const avgCons = consVals.length ? consVals.reduce((a,b)=>a+b,0)/consVals.length : null;
+        const priceData = monthlyPrice[month];
+        const avgPrice = priceData && priceData.totalLiters ? priceData.totalCost / priceData.totalLiters : null;
+        result.push({ yearMonth: month, avgConsumption: avgCons, avgPrice: avgPrice });
+    }
+    return result.sort((a,b) => a.yearMonth.localeCompare(b.yearMonth));
+}
+
+function renderFuelConsumptionChart() {
+    const canvas = document.getElementById('fuelConsumptionChart');
+    if (!canvas) return;
+    const monthly = groupFuelByMonth();
+    const labels = monthly.map(m => m.yearMonth);
+    const data = monthly.map(m => m.avgConsumption !== null ? m.avgConsumption.toFixed(1) : null);
+    const ctx = canvas.getContext('2d');
+    const existing = Chart.getChart(canvas);
+    if (existing) existing.destroy();
+    if (data.filter(v => v !== null).length === 0) {
+        // пустой график
+        new Chart(ctx, { type: 'line', data: { labels, datasets: [] }, options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: 'л/100 км' } } } } });
+        return;
+    }
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Расход (л/100 км)',
+                data: data,
+                borderColor: '#e67e22',
+                backgroundColor: 'rgba(230,126,34,0.1)',
+                tension: 0.2,
+                fill: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                tooltip: { callbacks: { label: (ctx) => `${ctx.raw} л/100 км` } },
+                legend: { position: 'top' }
+            },
+            scales: { y: { title: { display: true, text: 'л/100 км' }, beginAtZero: true } }
+        }
+    });
+}
+
+function renderFuelPriceChart() {
+    const canvas = document.getElementById('fuelPriceChart');
+    if (!canvas) return;
+    const monthly = groupFuelByMonth();
+    const labels = monthly.map(m => m.yearMonth);
+    const data = monthly.map(m => m.avgPrice !== null ? m.avgPrice.toFixed(2) : null);
+    const ctx = canvas.getContext('2d');
+    const existing = Chart.getChart(canvas);
+    if (existing) existing.destroy();
+    if (data.filter(v => v !== null).length === 0) {
+        new Chart(ctx, { type: 'line', data: { labels, datasets: [] }, options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: '₽/л' } } } } });
+        return;
+    }
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Средняя цена (₽/л)',
+                data: data,
+                borderColor: '#3498db',
+                backgroundColor: 'rgba(52,152,219,0.1)',
+                tension: 0.2,
+                fill: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                tooltip: { callbacks: { label: (ctx) => `${ctx.raw} ₽/л` } },
+                legend: { position: 'top' }
+            },
+            scales: { y: { title: { display: true, text: '₽/л' }, beginAtZero: true } }
+        }
+    });
+}
+
+function updateDrivingModeIndicator() {
+    const modeSpan = document.getElementById('driving-mode');
+    const hintSpan = document.getElementById('driving-mode-hint');
+    if (!modeSpan) return;
+    // Средняя скорость = пробег / моточасы (за весь период)
+    let avgSpeed = null;
+    if (settings.currentMotohours > 0 && settings.currentMileage > 0) {
+        avgSpeed = settings.currentMileage / settings.currentMotohours;
+    } else if (mileageHistory.length >= 2) {
+        const first = mileageHistory[0];
+        const last = mileageHistory[mileageHistory.length-1];
+        const mileageDiff = last.mileage - first.mileage;
+        const motoDiff = (last.motohours || 0) - (first.motohours || 0);
+        if (motoDiff > 0) avgSpeed = mileageDiff / motoDiff;
+    }
+    let mode = '—', hint = '', modeClass = '';
+    if (avgSpeed !== null) {
+        if (avgSpeed < 25) {
+            mode = '🚦 Городской';
+            hint = 'Интервал масла: 200 м/ч';
+            modeClass = 'city';
+        } else if (avgSpeed >= 25 && avgSpeed <= 45) {
+            mode = '🚙 Смешанный';
+            hint = 'Интервал масла: 225 м/ч';
+            modeClass = 'mixed';
+        } else {
+            mode = '🛣️ Трассовый';
+            hint = 'Интервал масла: 250 м/ч';
+            modeClass = 'highway';
+        }
+        modeSpan.textContent = `${mode} (${avgSpeed.toFixed(1)} км/ч)`;
+        hintSpan.textContent = hint;
+    } else {
+        modeSpan.textContent = 'Нет данных';
+        hintSpan.textContent = 'Добавьте моточасы';
+        modeClass = '';
+    }
+    const container = document.getElementById('driving-mode-indicator');
+    if (container) {
+        container.classList.remove('city', 'highway', 'mixed');
+        if (modeClass) container.classList.add(modeClass);
+    }
+}
+
 function renderStats() {
     const periodSelect = document.getElementById('stats-period-select'), period = periodSelect ? periodSelect.value : 'all';
     const stats = calculateStatistics(period);
@@ -917,6 +1102,9 @@ function renderStats() {
         }
     }
 }
+renderFuelConsumptionChart();
+renderFuelPriceChart();
+updateDrivingModeIndicator();
 
 function excelDateToISO(serial) { if (!serial || typeof serial!=='number') return ''; const d = new Date((serial-25569)*86400000); return d.toISOString().split('T')[0]; }
 
