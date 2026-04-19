@@ -379,6 +379,22 @@ input, select {
     background: var(--primary);
     color: white;
 }
+
+#fuelConsumptionChart,
+#fuelPriceChart,
+#costsChart {
+    height: 300px;
+    width: 100%;
+}
+
+@media (max-width: 768px) {
+    #fuelConsumptionChart,
+    #fuelPriceChart,
+    #costsChart {
+        height: 250px;   /* чуть меньше на мобильных */
+    }
+}
+
 /* Фикс для круговой диаграммы масла – сохраняем квадратную форму */
 /* Круговая диаграмма масла – фиксированный размер, центрирование */
 #oilChart {
