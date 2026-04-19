@@ -975,79 +975,43 @@ function groupCostsByMonth(period) {
  * Отрисовывает столбчатую диаграмму затрат на топливо и ТО по месяцам.
  * Использует canvas с id="costsChart".
  */
+
 function renderCostsChart() {
     const canvas = document.getElementById('costsChart');
     if (!canvas) return;
-    
     const periodSelect = document.getElementById('stats-period-select');
     const period = periodSelect ? periodSelect.value : 'all';
     const { months, fuelCosts, toCosts } = groupCostsByMonth(period);
-    
     const ctx = canvas.getContext('2d');
-    const existingChart = Chart.getChart(canvas);
-    if (existingChart) existingChart.destroy();
-    
+    const existing = Chart.getChart(canvas);
+    if (existing) existing.destroy();
     if (months.length === 0) {
-        // Показываем пустой график с сообщением
-        new Chart(ctx, {
-            type: 'bar',
-            data: { labels: [], datasets: [] },
-            options: {
-                plugins: { legend: { display: true }, tooltip: { callbacks: { title: () => 'Нет данных' } } },
-                scales: { y: { title: { display: true, text: '₽' } } }
-            }
-        });
+        new Chart(ctx, { type: 'bar', data: { labels: [], datasets: [] }, options: { plugins: { legend: { display: true }, tooltip: { callbacks: { title: () => 'Нет данных' } } }, scales: { y: { title: { display: true, text: '₽' } } } } });
         return;
     }
-    
     new Chart(ctx, {
         type: 'bar',
         data: {
             labels: months,
             datasets: [
-                {
-                    label: 'Топливо (₽)',
-                    data: fuelCosts,
-                    backgroundColor: 'rgba(52, 152, 219, 0.7)', // синий
-                    borderColor: '#2980b9',
-                    borderWidth: 1,
-                    borderRadius: 4,
-                    barPercentage: 0.7,
-                    categoryPercentage: 0.8
-                },
-                {
-                    label: 'ТО (запчасти + работы) (₽)',
-                    data: toCosts,
-                    backgroundColor: 'rgba(231, 76, 60, 0.7)', // красный
-                    borderColor: '#c0392b',
-                    borderWidth: 1,
-                    borderRadius: 4,
-                    barPercentage: 0.7,
-                    categoryPercentage: 0.8
-                }
+                { label: 'Топливо (₽)', data: fuelCosts, backgroundColor: 'rgba(52, 152, 219, 0.7)', borderColor: '#2980b9', borderWidth: 1, borderRadius: 4, barPercentage: 0.7, categoryPercentage: 0.8 },
+                { label: 'ТО (запчасти + работы) (₽)', data: toCosts, backgroundColor: 'rgba(231, 76, 60, 0.7)', borderColor: '#c0392b', borderWidth: 1, borderRadius: 4, barPercentage: 0.7, categoryPercentage: 0.8 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: (context) => `${context.dataset.label}: ${context.raw.toFixed(2)} ₽`
-                    }
-                },
-                legend: { position: 'top' }
+                tooltip: { callbacks: { label: (context) => `${context.dataset.label}: ${context.raw.toFixed(2)} ₽` } },
+                legend: { position: 'top' },
+                zoom: {
+                    pan: { enabled: true, mode: 'x', speed: 10 },
+                    zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x', speed: 0.1, limits: { x: { min: 0.5, max: 5 } } }
+                }
             },
             scales: {
-                y: {
-                    beginAtZero: true,
-                    title: { display: true, text: 'Затраты (₽)' },
-                    ticks: { callback: (value) => value.toLocaleString() }
-                },
-                x: {
-                    title: { display: true, text: 'Месяц' },
-                    ticks: { maxRotation: 45, minRotation: 45 }
-                }
+                y: { beginAtZero: true, title: { display: true, text: 'Затраты (₽)' }, ticks: { callback: (value) => value.toLocaleString() } },
+                x: { title: { display: true, text: 'Месяц' }, ticks: { maxRotation: 45, minRotation: 45 } }
             }
         }
     });
