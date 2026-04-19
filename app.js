@@ -230,7 +230,7 @@ async function writeSheet(range, values) {
     });
 }
 
-async function appendSheet(range, values) {
+async function appendSheet(range, vэalues) {
     await apiCall(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
         method: 'POST',
         body: JSON.stringify({ values }),
@@ -253,7 +253,7 @@ async function loadSheet() {
             readSheet('Журнал ТО!A2:H'),
             readSheet('Журнал ТО!Q1:Q8'),
             readSheet('PartsCatalog!A2:G').catch(() => []),
-            readSheet('Tires!A2:D').catch(() => []),
+            readSheet('Tires!A2:J').catch(() => []),   // ← расширенный диапазон
             readSheet('WorkCosts!A2:D').catch(() => [])
         ]);
 
@@ -292,18 +292,29 @@ async function loadSheet() {
         }));
 
         const fuelData = await readSheet('FuelLog!A2:G').catch(() => []);
-       fuelLog = fuelData.map(r => ({
-    date: typeof r[0] === 'number' ? excelDateToISO(r[0]) : r[0],
-    mileage: +r[1],
-    liters: +r[2],
-    pricePerLiter: +r[3],
-    fullTank: r[4],
-    fuelType: r[5] || 'Бензин',
-    notes: r[6]
-})).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        fuelLog = fuelData.map(r => ({
+            date: typeof r[0] === 'number' ? excelDateToISO(r[0]) : r[0],
+            mileage: +r[1],
+            liters: +r[2],
+            pricePerLiter: +r[3],
+            fullTank: r[4],
+            fuelType: r[5] || 'Бензин',
+            notes: r[6]
+        })).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
-        tireLog = tiresData.map(r => ({ date: r[0], type: r[1], mileage: +r[2], notes: r[3] }))
-                   .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        tireLog = tiresData.map(r => ({
+            date: typeof r[0] === 'number' ? excelDateToISO(r[0]) : r[0],
+            type: r[1] || '',
+            mileage: +r[2] || 0,
+            model: r[3] || '',
+            size: r[4] || '',
+            wear: r[5] || '',
+            notes: r[6] || '',
+            purchaseCost: +r[7] || 0,
+            mountCost: +r[8] || 0,
+            isDIY: r[9] === 'TRUE' || r[9] === true
+        })).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
         workCosts = workCostsData.map(r => ({ operationId: +r[0], cost: +r[1], isDIY: r[2] === 'TRUE', notes: r[3] }));
 
         const mileageData = await readSheet('MileageLog!A2:C').catch(() => []);
@@ -340,6 +351,7 @@ async function loadSheet() {
         }
     }
 }
+
 
 // ==================== 8. РАСЧЁТ ПЛАНОВ ====================
 function getOilMotohoursInterval(op, avgSpeed) {
