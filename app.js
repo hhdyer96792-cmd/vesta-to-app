@@ -1571,6 +1571,31 @@ async function addToCalendar(opName, planDate, planMileage) {
 }
 // -------------------------------------------------------------
 
+async function saveSettings() {
+    settings.currentMileage = +setMileage?.value || settings.currentMileage;
+    settings.currentMotohours = +setMotohours?.value || settings.currentMotohours;
+    settings.telegramToken = telegramTokenInput.value;
+    settings.telegramChatId = telegramChatIdInput.value;
+    settings.notificationMethod = notificationMethodSelect.value;
+    localStorage.setItem('notificationMethod', settings.notificationMethod);
+    
+    baseMileage = +document.getElementById('set-base-mileage').value || 0;
+    baseMotohours = +document.getElementById('set-base-motohours').value || 0;
+    purchaseDate = document.getElementById('purchase-date').value;
+    calculateOwnershipDays();
+    
+    await writeSheet('Журнал ТО!Q1:Q12', [
+        [settings.currentMileage],
+        [settings.currentMotohours],
+        [settings.avgDailyMileage],
+        [settings.avgDailyMotohours],
+        [], [], [settings.telegramToken], [settings.telegramChatId],
+        [baseMileage], [baseMotohours], [purchaseDate], []
+    ]);
+    
+    document.getElementById('settings-result').textContent = '✅ Сохранено';
+}
+
 // ==================== ФУНКЦИИ ЭКСПОРТА / ИМПОРТА ====================
 function exportData() {
     const data = { operations, settings, parts, fuelLog, tireLog, workCosts };
