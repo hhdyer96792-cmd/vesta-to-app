@@ -301,6 +301,7 @@ async function loadSheet() {
 
         localStorage.setItem(CACHE_KEY, JSON.stringify({ operations, settings, parts, fuelLog, tireLog, workCosts }));
         renderAll();
+        renderFuelAnalytics(); 
         dataPanel.style.display = 'block';
         setSyncStatus('synced');
         syncPendingActions();
@@ -314,7 +315,9 @@ async function loadSheet() {
             const d = JSON.parse(cached);
             operations=d.operations; settings=d.settings; parts=d.parts||[];
             fuelLog=d.fuelLog||[]; tireLog=d.tireLog||[]; workCosts=d.workCosts||[];
-            renderAll(); dataPanel.style.display = 'block';
+            renderAll();
+            renderFuelAnalytics();  
+            dataPanel.style.display = 'block';
         }
     }
 }
