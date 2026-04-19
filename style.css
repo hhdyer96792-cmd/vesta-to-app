@@ -316,6 +316,42 @@ input, select {
 button.icon-btn.calendar-btn.calendar-btn-added {
     color: #2ecc71 !important;
     opacity: 0.9;
+/* Карточка владения с кнопкой переключения */
+.ownership-card {
+    position: relative;
+}
+#toggle-ownership-unit {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    padding: 2px 4px;
+    font-size: 0.8rem;
+    background: transparent;
+    color: var(--text-muted);
+    border: none;
+    cursor: pointer;
+}
+#toggle-ownership-unit:hover {
+    color: var(--primary);
+}
+
+/* Адаптивная сетка для 7+ карточек */
+.stats-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+}
+@media (min-width: 768px) {
+    .stats-summary-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+@media (min-width: 1024px) {
+    .stats-summary-grid {
+        grid-template-columns: repeat(7, 1fr); /* 7 карточек в ряд */
+    }
+    
 }
 @media (min-width: 768px) {
     .stats-summary-grid {
