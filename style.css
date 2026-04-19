@@ -263,10 +263,10 @@ tr.attention { background: rgba(241, 196, 15, 0.08) !important; }
     gap: 20px;
 }
 .chart-card {
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 16px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    resize: both;           /* разрешить растягивание */
+    overflow: auto;         /* чтобы содержимое не вылезало */
+    min-width: 200px;
+    min-height: 200px;
 }
 canvas {
     max-height: 300px;
