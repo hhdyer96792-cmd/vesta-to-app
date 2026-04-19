@@ -383,7 +383,7 @@ input, select {
 #fuelConsumptionChart,
 #fuelPriceChart,
 #costsChart {
-    height: 350px;
+    height: 400px;
     width: 100%;
 }
 
@@ -391,7 +391,7 @@ input, select {
     #fuelConsumptionChart,
     #fuelPriceChart,
     #costsChart {
-        height: 300px;   /* чуть меньше на мобильных */
+        height: 350px;   /* чуть меньше на мобильных */
     }
 }
 
@@ -407,8 +407,8 @@ input, select {
 /* На мобильных устройствах чуть меньше */
 @media (max-width: 768px) {
     #oilChart {
-        width: 100px;
-        height: 100px;
+        width: 30px;
+        height: 30px;
     }
 }
 @media (min-width: 1024px) {
