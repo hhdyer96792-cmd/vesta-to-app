@@ -1571,6 +1571,41 @@ async function addToCalendar(opName, planDate, planMileage) {
 }
 // -------------------------------------------------------------
 
+// ==================== ФУНКЦИИ ЭКСПОРТА / ИМПОРТА ====================
+function exportData() {
+    const data = { operations, settings, parts, fuelLog, tireLog, workCosts };
+    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `vesta_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+}
+
+function importData(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+        try {
+            const d = JSON.parse(ev.target.result);
+            operations = d.operations; settings = d.settings; parts = d.parts || [];
+            fuelLog = d.fuelLog || []; tireLog = d.tireLog || []; workCosts = d.workCosts || [];
+            renderAll();
+            if (isOnline) await syncAllToSheet();
+        } catch (err) {
+            alert('Ошибка импорта');
+        }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+}
+
+async function syncAllToSheet() {
+    const opsRows = operations.map(o => [o.category, o.name, o.lastDate||'', o.lastMileage||'', o.lastMotohours||'', o.intervalKm, o.intervalMonths, o.intervalMotohours||'']);
+    await writeSheet('Журнал ТО!A2:H', opsRows);
+    await writeSheet('Журнал ТО!Q1:Q12', [[settings.currentMileage],[settings.currentMotohours],[settings.avgDailyMileage],[settings.avgDailyMotohours],[],[],[settings.telegramToken],[settings.telegramChatId],[baseMileage],[baseMotohours],[purchaseDate],[]]);
+}
+
 function generateShoppingList(opId) {
     const op = operations.find(o => o.id == opId);
     const items = parts.filter(p => p.operation === op.name || p.operation === op.category);
