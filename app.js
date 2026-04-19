@@ -89,6 +89,9 @@ const costPerKmEl = document.getElementById('cost-per-km');
 const avgFuelConsumptionEl = document.getElementById('avg-fuel-consumption');
 const avgMileagePerDayEl = document.getElementById('avg-mileage-per-day');
 const avgMotohoursPerDayEl = document.getElementById('avg-motohours-per-day');
+const ownershipDisplay = document.getElementById('ownership-display');
+const ownershipUnit = document.getElementById('ownership-unit');
+const toggleOwnershipUnitBtn = document.getElementById('toggle-ownership-unit');
 
 // ==================== 4. АВТОРИЗАЦИЯ ====================
 function startAuth() {
