@@ -402,12 +402,17 @@ canvas {
 /* Фикс для круговой диаграммы масла – сохраняем квадратную форму */
 /* Круговая диаграмма масла – фиксированный размер, центрирование */
 #oilChart {
-    width: 10vw;
-    height: 10vw;
-    max-width: 50px;
-    max-height: 50px;
+    width: 80px;
+    height: 80px;
     margin: 0 auto;
     display: block;
+    min-width: 0 !important;   /* отменяет глобальный min-width */
+}
+@media (max-width: 768px) {
+    #oilChart {
+        width: 30px;
+        height: 30px;
+    }
 }
 @media (min-width: 1024px) {
     .stats-summary-grid {
