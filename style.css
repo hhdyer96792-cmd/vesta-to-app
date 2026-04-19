@@ -1,4 +1,4 @@
-8:root {
+:root {
     --bg: #f5f7fa;
     --card-bg: #ffffff;
     --text: #2c3e50;
@@ -262,16 +262,25 @@ tr.attention { background: rgba(241, 196, 15, 0.08) !important; }
     flex-direction: column;
     gap: 20px;
 }
-/*.chart-card {
-    resize: both;           /* разрешить растягивание */
-    overflow: auto;         /* чтобы содержимое не вылезало */
+.chart-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    resize: both;
+    overflow: auto;
     min-width: 150px;
     min-height: 150px;
+}
+.chart-card canvas {
+    min-width: 600px;
+    width: 100%;
+    height: auto;
 }
 canvas {
     max-height: 300px;
     width: 100% !important;
-}*/
+}
 label {
     display: block;
     margin-bottom: 8px;
@@ -355,16 +364,10 @@ input, select {
     opacity: 0.7;
     margin-left: 8px;
 }
-.chart-card {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-.chart-card canvas {
-    min-width: 600px;  /* фиксированная ширина, чтобы при большом количестве месяцев был скролл */
-}
 .driving-mode-card.city .mode-value { color: #e67e22; }
 .driving-mode-card.highway .mode-value { color: #2ecc71; }
 .driving-mode-card.mixed .mode-value { color: #3498db; }
+
 #reset-all-zoom {
     padding: 10px 20px;
     font-size: 1rem;
@@ -383,32 +386,33 @@ input, select {
 #fuelConsumptionChart,
 #fuelPriceChart,
 #costsChart {
-    height: 400px;
+    height: 350px;
     width: 100%;
 }
-
 @media (max-width: 768px) {
     #fuelConsumptionChart,
     #fuelPriceChart,
     #costsChart {
-        height: 350px;   /* чуть меньше на мобильных */
+        height: 300px;
     }
 }
 
-/* Фикс для круговой диаграммы масла – сохраняем квадратную форму */
-/* Круговая диаграмма масла – фиксированный размер, центрирование */
 #oilChart {
-    width: 100px;
-    height: 100px;
+    width: 150px;
+    height: 150px;
     margin: 0 auto;
     display: block;
 }
-
-/* На мобильных устройствах чуть меньше */
 @media (max-width: 768px) {
     #oilChart {
-        width: 30px;
-        height: 30px;
+        width: 100px;
+        height: 100px;
+    }
+}
+
+@media (min-width: 768px) {
+    .stats-summary-grid {
+        grid-template-columns: repeat(3, 1fr);
     }
 }
 @media (min-width: 1024px) {
@@ -515,4 +519,4 @@ input, select {
     .tab-btn {
         width: 100%;
     }
-}
+    }
