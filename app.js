@@ -1124,6 +1124,7 @@ function renderFuelAnalytics() {
     renderFuelConsumptionChart();
     renderFuelPriceChart();
     updateDrivingModeIndicator();
+    renderCostsChart();
 }
 
 function renderStats() {
@@ -1151,7 +1152,11 @@ function renderStats() {
                 const percent = Math.min(100, Math.max(0, Math.round((current - last) / (next - last) * 100)));
                 const existingChart = Chart.getChart(canvas);
                 if (existingChart) existingChart.destroy();
-                new Chart(ctx, { type: 'doughnut', data: { labels: ['Пройдено', 'Осталось'], datasets: [{ data: [percent, 100 - percent], backgroundColor: ['#2ecc71', '#e0e0e0'] }] }, options: { cutout: '70%', plugins: { legend: { display: false } } } });
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: { labels: ['Пройдено', 'Осталось'], datasets: [{ data: [percent, 100 - percent], backgroundColor: ['#2ecc71', '#e0e0e0'] }] },
+                    options: { cutout: '70%', plugins: { legend: { display: false } } }
+                });
             } catch(e) { console.warn('Ошибка графика масла:', e); }
         }
     }
