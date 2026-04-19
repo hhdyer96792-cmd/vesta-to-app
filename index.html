@@ -91,38 +91,42 @@
     </div>          
     <!-- Сводка по затратам и средним показателям -->
     <div class="stats-summary-grid">
-        <div class="stat-card">
-            <span class="stat-label">💰 Всего на ТО</span>
-            <span class="stat-value" id="total-maintenance-cost">0</span>
-            <span class="stat-unit">₽</span>
-        </div>
-        <div class="stat-card">
-            <span class="stat-label">⛽ Всего на топливо</span>
-            <span class="stat-value" id="total-fuel-cost">0</span>
-            <span class="stat-unit">₽</span>
-        </div>
-        <div class="stat-card">
-            <span class="stat-label">📏 Стоимость 1 км</span>
-            <span class="stat-value" id="cost-per-km">0</span>
-            <span class="stat-unit">₽/км</span>
-        </div>
-        <div class="stat-card">
-            <span class="stat-label">📊 Средний расход</span>
-            <span class="stat-value" id="avg-fuel-consumption">0</span>
-            <span class="stat-unit">л/100 км</span>
-        </div>
-        <div class="stat-card">
-            <span class="stat-label">🚗 Ср. пробег/день</span>
-            <span class="stat-value" id="avg-mileage-per-day">0</span>
-            <span class="stat-unit">км</span>
-        </div>
-        <div class="stat-card">
-            <span class="stat-label">⏱️ Ср. моточасы/день</span>
-            <span class="stat-value" id="avg-motohours-per-day">0</span>
-            <span class="stat-unit">ч</span>
-        </div>
+    <div class="stat-card">
+        <span class="stat-label">💰 Всего на ТО</span>
+        <span class="stat-value" id="total-maintenance-cost">0</span>
+        <span class="stat-unit">₽</span>
     </div>
-
+    <div class="stat-card">
+        <span class="stat-label">⛽ Всего на топливо</span>
+        <span class="stat-value" id="total-fuel-cost">0</span>
+        <span class="stat-unit">₽</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">📏 Стоимость 1 км</span>
+        <span class="stat-value" id="cost-per-km">0</span>
+        <span class="stat-unit">₽/км</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">📊 Средний расход</span>
+        <span class="stat-value" id="avg-fuel-consumption">0</span>
+        <span class="stat-unit">л/100 км</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">🚗 Ср. пробег/день</span>
+        <span class="stat-value" id="avg-mileage-per-day">0</span>
+        <span class="stat-unit">км</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">⏱️ Ср. моточасы/день</span>
+        <span class="stat-value" id="avg-motohours-per-day">0</span>
+        <span class="stat-unit">ч</span>
+    </div>
+    <div class="stat-card ownership-card">
+        <span class="stat-label">📅 Владение</span>
+        <span class="stat-value" id="ownership-display">0</span>
+        <span class="stat-unit" id="ownership-unit">дней</span>
+        <button id="toggle-ownership-unit" class="icon-btn" title="Переключить дни/годы">🔄</button>
+    </div>
     <!-- Существующие графики -->
     <div class="stats-container">
         <div class="chart-card"><h3>Прогноз замены масла</h3><canvas id="oilChart"></canvas></div>
