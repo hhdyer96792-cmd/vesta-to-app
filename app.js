@@ -1430,6 +1430,21 @@ function initEventListeners() {
     const periodSelect = document.getElementById('stats-period-select');
     if(periodSelect) { periodSelect.value = localStorage.getItem('stats_period')||'all'; periodSelect.addEventListener('change', ()=>{ localStorage.setItem('stats_period', periodSelect.value); if(document.getElementById('tab-stats').classList.contains('active')) { renderStats(); renderFuelAnalytics(); } }); }
     if(toggleOwnershipUnitBtn) toggleOwnershipUnitBtn.addEventListener('click', ()=>{ ownershipDisplayMode = ownershipDisplayMode==='days'?'years':'days'; updateOwnershipDisplay(); });
+// Сброс масштаба для всех графиков (кроме масла)
+const resetZoomBtn = document.getElementById('reset-all-zoom');
+if (resetZoomBtn) {
+    resetZoomBtn.addEventListener('click', () => {
+        const chartIds = ['fuelConsumptionChart', 'fuelPriceChart', 'costsChart'];
+        chartIds.forEach(id => {
+            const chart = Chart.getChart(id);
+            if (chart && typeof chart.resetZoom === 'function') {
+                chart.resetZoom();
+            }
+        });
+        // Необязательно: показать уведомление
+        console.log('Масштаб графиков сброшен');
+    });
+}
 }
 
 // ==================== 20. ОБНОВЛЕНИЕ ПРОБЕГА И ВЛАДЕНИЕ ====================
