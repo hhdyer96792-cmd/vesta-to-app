@@ -383,7 +383,7 @@ input, select {
 #fuelConsumptionChart,
 #fuelPriceChart,
 #costsChart {
-    height: 320px;
+    height: 350px;
     width: 100%;
 }
 
@@ -391,15 +391,15 @@ input, select {
     #fuelConsumptionChart,
     #fuelPriceChart,
     #costsChart {
-        height: 270px;   /* чуть меньше на мобильных */
+        height: 300px;   /* чуть меньше на мобильных */
     }
 }
 
 /* Фикс для круговой диаграммы масла – сохраняем квадратную форму */
 /* Круговая диаграмма масла – фиксированный размер, центрирование */
 #oilChart {
-    width: 200px;
-    height: 200px;
+    width: 150px;
+    height: 150px;
     margin: 0 auto;
     display: block;
 }
@@ -407,8 +407,8 @@ input, select {
 /* На мобильных устройствах чуть меньше */
 @media (max-width: 768px) {
     #oilChart {
-        width: 150px;
-        height: 150px;
+        width: 100px;
+        height: 100px;
     }
 }
 @media (min-width: 1024px) {
