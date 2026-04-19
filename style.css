@@ -316,6 +316,7 @@ input, select {
 button.icon-btn.calendar-btn.calendar-btn-added {
     color: #2ecc71 !important;
     opacity: 0.9;
+}
 /* Карточка владения с кнопкой переключения */
 .ownership-card {
     position: relative;
