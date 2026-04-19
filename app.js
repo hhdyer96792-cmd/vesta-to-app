@@ -1452,8 +1452,25 @@ function attachTireListeners() {
     });
 }
 
-// ------------------ НОВЫЕ ФУНКЦИИ ДЛЯ КАЛЕНДАРЯ ------------------
+// ------------------ КАЛЕНДАРЬ (с персистентным кешем) ------------------
+const CALENDAR_CACHE_KEY = 'vesta_calendar_events';
 const calendarEventCache = new Map();
+
+// Загружаем кеш из localStorage при старте
+(function loadCalendarCache() {
+    try {
+        const stored = localStorage.getItem(CALENDAR_CACHE_KEY);
+        if (stored) {
+            const entries = JSON.parse(stored);
+            entries.forEach(([key, value]) => calendarEventCache.set(key, value));
+        }
+    } catch (e) {}
+})();
+
+function saveCalendarCache() {
+    const entries = Array.from(calendarEventCache.entries());
+    localStorage.setItem(CALENDAR_CACHE_KEY, JSON.stringify(entries));
+}
 
 async function checkCalendarEventExists(opName, planDate) {
     if (!accessToken) return false;
@@ -1469,13 +1486,8 @@ async function checkCalendarEventExists(opName, planDate) {
 }
 
 async function updateCalendarButtonsStatus() {
-    console.log('=== updateCalendarButtonsStatus START ===');
-    if (!accessToken) {
-        console.log('Нет accessToken');
-        return;
-    }
+    if (!accessToken) return;
     const buttons = document.querySelectorAll('.calendar-btn');
-    console.log('Найдено кнопок:', buttons.length);
     if (buttons.length === 0) return;
 
     const limit = 5;
@@ -1485,28 +1497,25 @@ async function updateCalendarButtonsStatus() {
         const btn = buttons[index++];
         const opName = btn.dataset.opName;
         const planDate = btn.dataset.planDate;
-        if (!opName || !planDate) {
-            return processNext();
-        }
+        if (!opName || !planDate) return processNext();
+
         const cacheKey = `${opName}|${planDate}`;
         if (calendarEventCache.has(cacheKey)) {
-            const exists = calendarEventCache.get(cacheKey);
-            console.log(`Из кеша: ${cacheKey} -> ${exists}`);
-            applyButtonStyle(btn, exists);
+            applyButtonStyle(btn, calendarEventCache.get(cacheKey));
             return processNext();
         }
         try {
             const exists = await checkCalendarEventExists(opName, planDate);
-            console.log(`API ответ: ${cacheKey} -> ${exists}`);
             calendarEventCache.set(cacheKey, exists);
+            saveCalendarCache();
             applyButtonStyle(btn, exists);
         } catch (e) {
             console.warn('Ошибка проверки события:', e);
         }
         processNext();
     };
+
     const applyButtonStyle = (btn, exists) => {
-        console.log(`Применяем стиль: exists=${exists}, текст до="${btn.innerHTML}"`);
         if (exists) {
             btn.innerHTML = '✅';
             btn.classList.add('calendar-btn-added');
@@ -1516,8 +1525,8 @@ async function updateCalendarButtonsStatus() {
             btn.classList.remove('calendar-btn-added');
             btn.title = 'Добавить в календарь';
         }
-        console.log(`Текст после="${btn.innerHTML}", классы="${btn.className}"`);
     };
+
     for (let i = 0; i < limit && i < buttons.length; i++) processNext();
 }
 
@@ -1547,15 +1556,15 @@ async function addToCalendar(opName, planDate, planMileage) {
             body: JSON.stringify(event)
         });
         alert(`✅ Событие "${opName}" добавлено с напоминаниями за 15 и 2 дня`);
+        const cacheKey = `${opName}|${planDate}`;
+        calendarEventCache.set(cacheKey, true);
+        saveCalendarCache();
         const btn = document.querySelector(`.calendar-btn[data-op-name="${opName}"][data-plan-date="${planDate}"]`);
-if (btn) {
-    btn.innerHTML = '✅';
-    btn.classList.add('calendar-btn-added');
-    btn.title = 'Уже в календаре';
-    const cacheKey = `${opName}|${planDate}`;
-    calendarEventCache.set(cacheKey, true);
-}
-
+        if (btn) {
+            btn.innerHTML = '✅';
+            btn.classList.add('calendar-btn-added');
+            btn.title = 'Уже в календаре';
+        }
     } catch (e) {
         alert(`❌ Ошибка: ${e.message}`);
     }
@@ -1574,7 +1583,6 @@ function openPartForm(part = null) {
     const operationOptions = operations.map(op => 
         `<option value="${op.name}" ${part && part.operation === op.name ? 'selected' : ''}>${op.name} (${op.category})</option>`
     ).join('');
-    
     const modal = createModal(isEdit ? '✏️ Запчасть' : '➕ Запчасть', `
         <form id="part-form">
             <input type="hidden" name="id" value="${part?.id || ''}">
@@ -1641,8 +1649,8 @@ function showCatalogMenu(button, oem) {
             let url;
             switch (cat.value) {
                 case 'drive2': url = `https://www.drive2.ru/search?text=${encodeURIComponent(oem)}`; break;
-                case 'crossdata': url = `http://crossdata.pro`; break;
-                case 'zzap': url = `https://www.zzap.ru`; break;
+                case 'crossdata': url = `http://crossdata.pro/search?q=${encodeURIComponent(oem)}`; break;
+                case 'zzap': url = `https://www.zzap.ru/search?text=${encodeURIComponent(oem)}`; break;
                 default: url = `https://exist.ru/price/?pcode=${encodeURIComponent(oem)}`;
             }
             window.open(url, '_blank');
