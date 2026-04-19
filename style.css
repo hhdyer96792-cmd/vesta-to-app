@@ -355,6 +355,13 @@ input, select {
     opacity: 0.7;
     margin-left: 8px;
 }
+.chart-card {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.chart-card canvas {
+    min-width: 600px;  /* фиксированная ширина, чтобы при большом количестве месяцев был скролл */
+}
 .driving-mode-card.city .mode-value { color: #e67e22; }
 .driving-mode-card.highway .mode-value { color: #2ecc71; }
 .driving-mode-card.mixed .mode-value { color: #3498db; }
