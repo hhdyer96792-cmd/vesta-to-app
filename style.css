@@ -365,7 +365,7 @@ input, select {
 .driving-mode-card.city .mode-value { color: #e67e22; }
 .driving-mode-card.highway .mode-value { color: #2ecc71; }
 .driving-mode-card.mixed .mode-value { color: #3498db; }
-/* #reset-all-zoom {
+#reset-all-zoom {
     padding: 10px 20px;
     font-size: 1rem;
     background: var(--card-bg);
@@ -378,7 +378,14 @@ input, select {
 #reset-all-zoom:active {
     background: var(--primary);
     color: white;
-} */
+}
+/* Фикс для круговой диаграммы масла – сохраняем квадратную форму */
+#oilChart {
+    aspect-ratio: 1 / 1;   /* ширина равна высоте */
+    max-height: 300px;      /* ограничиваем максимальную высоту */
+    width: 100% !important; /* занимает всю ширину родителя */
+    height: auto !important; /* высота подстраивается под aspect-ratio */
+}
 @media (min-width: 768px) {
     .stats-summary-grid {
         grid-template-columns: repeat(3, 1fr);
