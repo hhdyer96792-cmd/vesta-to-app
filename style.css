@@ -391,8 +391,8 @@ input, select {
 /* На мобильных устройствах чуть меньше */
 @media (max-width: 768px) {
     #oilChart {
-        width: 150px;
-        height: 150px;
+        width: 110px;
+        height: 110px;
     }
 }
 @media (min-width: 1024px) {
