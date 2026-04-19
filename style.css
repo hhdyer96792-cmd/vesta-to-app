@@ -365,6 +365,9 @@ input, select {
 .driving-mode-card.city .mode-value { color: #e67e22; }
 .driving-mode-card.highway .mode-value { color: #2ecc71; }
 .driving-mode-card.mixed .mode-value { color: #3498db; }
+<div style="text-align: center; margin-top: 16px;">
+    <button id="reset-all-zoom" class="secondary-btn">⟳ Сбросить масштаб всех графиков</button>
+</div>
 @media (min-width: 768px) {
     .stats-summary-grid {
         grid-template-columns: repeat(3, 1fr);
