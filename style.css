@@ -262,7 +262,7 @@ tr.attention { background: rgba(241, 196, 15, 0.08) !important; }
     flex-direction: column;
     gap: 20px;
 }
-/*.chart-card {
+.chart-card {
     resize: both;           /* разрешить растягивание */
     overflow: auto;         /* чтобы содержимое не вылезало */
     min-width: 150px;
@@ -271,7 +271,7 @@ tr.attention { background: rgba(241, 196, 15, 0.08) !important; }
 canvas {
     max-height: 300px;
     width: 100% !important;
-}*/
+}
 label {
     display: block;
     margin-bottom: 8px;
@@ -355,13 +355,13 @@ input, select {
     opacity: 0.7;
     margin-left: 8px;
 }
-.chart-card {
+/*.chart-card {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
 }
 .chart-card canvas {
-    min-width: 600px;  /* фиксированная ширина, чтобы при большом количестве месяцев был скролл */
-}
+    min-width: 600px;
+}*/
 .driving-mode-card.city .mode-value { color: #e67e22; }
 .driving-mode-card.highway .mode-value { color: #2ecc71; }
 .driving-mode-card.mixed .mode-value { color: #3498db; }
