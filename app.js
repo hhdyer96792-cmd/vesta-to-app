@@ -230,7 +230,7 @@ async function writeSheet(range, values) {
     });
 }
 
-async function appendSheet(range, vэalues) {
+async function appendSheet(range, values) {
     await apiCall(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
         method: 'POST',
         body: JSON.stringify({ values }),
