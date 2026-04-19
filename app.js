@@ -920,6 +920,136 @@ function groupFuelByMonth() {
     return result.sort((a,b) => a.yearMonth.localeCompare(b.yearMonth));
 }
 
+// ==================== 16-Б. ГРУППИРОВКА ЗАТРАТ ПО МЕСЯЦАМ ====================
+/**
+ * Группирует затраты на топливо и ТО по месяцам с учётом выбранного периода.
+ * @param {string} period - 'all', 'year', '6months', 'quarter', 'month', 'week'
+ * @returns {object} { months, fuelCosts, toCosts }
+ */
+function groupCostsByMonth(period) {
+    // Фильтруем данные по периоду
+    const filteredFuel = filterByPeriod(fuelLog, period, 'date');
+    const filteredService = filterByPeriod(serviceRecords, period, 'date');
+    
+    // Объекты для накопления затрат по месяцам
+    const fuelByMonth = {};
+    const toByMonth = {};
+    
+    // Группируем топливо: сумма (литры * цена)
+    filteredFuel.forEach(record => {
+        if (!record.date || !record.liters || !record.pricePerLiter) return;
+        const date = new Date(record.date);
+        if (isNaN(date)) return;
+        const yearMonth = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+        const cost = record.liters * record.pricePerLiter;
+        fuelByMonth[yearMonth] = (fuelByMonth[yearMonth] || 0) + cost;
+    });
+    
+    // Группируем ТО: запчасти + работы
+    filteredService.forEach(record => {
+        if (!record.date) return;
+        const date = new Date(record.date);
+        if (isNaN(date)) return;
+        const yearMonth = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+        const parts = Number(record.parts_cost) || 0;
+        const work = Number(record.work_cost) || 0;
+        toByMonth[yearMonth] = (toByMonth[yearMonth] || 0) + parts + work;
+    });
+    
+    // Собираем все уникальные месяцы
+    const allMonths = new Set([...Object.keys(fuelByMonth), ...Object.keys(toByMonth)]);
+    const sortedMonths = Array.from(allMonths).sort();
+    
+    // Формируем массивы для графика
+    const months = sortedMonths;
+    const fuelCosts = months.map(m => fuelByMonth[m] || 0);
+    const toCosts = months.map(m => toByMonth[m] || 0);
+    
+    return { months, fuelCosts, toCosts };
+}
+
+/**
+ * Отрисовывает столбчатую диаграмму затрат на топливо и ТО по месяцам.
+ * Использует canvas с id="costsChart".
+ */
+function renderCostsChart() {
+    const canvas = document.getElementById('costsChart');
+    if (!canvas) return;
+    
+    const periodSelect = document.getElementById('stats-period-select');
+    const period = periodSelect ? periodSelect.value : 'all';
+    const { months, fuelCosts, toCosts } = groupCostsByMonth(period);
+    
+    const ctx = canvas.getContext('2d');
+    const existingChart = Chart.getChart(canvas);
+    if (existingChart) existingChart.destroy();
+    
+    if (months.length === 0) {
+        // Показываем пустой график с сообщением
+        new Chart(ctx, {
+            type: 'bar',
+            data: { labels: [], datasets: [] },
+            options: {
+                plugins: { legend: { display: true }, tooltip: { callbacks: { title: () => 'Нет данных' } } },
+                scales: { y: { title: { display: true, text: '₽' } } }
+            }
+        });
+        return;
+    }
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: months,
+            datasets: [
+                {
+                    label: 'Топливо (₽)',
+                    data: fuelCosts,
+                    backgroundColor: 'rgba(52, 152, 219, 0.7)', // синий
+                    borderColor: '#2980b9',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    barPercentage: 0.7,
+                    categoryPercentage: 0.8
+                },
+                {
+                    label: 'ТО (запчасти + работы) (₽)',
+                    data: toCosts,
+                    backgroundColor: 'rgba(231, 76, 60, 0.7)', // красный
+                    borderColor: '#c0392b',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    barPercentage: 0.7,
+                    categoryPercentage: 0.8
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: (context) => `${context.dataset.label}: ${context.raw.toFixed(2)} ₽`
+                    }
+                },
+                legend: { position: 'top' }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Затраты (₽)' },
+                    ticks: { callback: (value) => value.toLocaleString() }
+                },
+                x: {
+                    title: { display: true, text: 'Месяц' },
+                    ticks: { maxRotation: 45, minRotation: 45 }
+                }
+            }
+        }
+    });
+}
+
 function renderFuelConsumptionChart() {
     const canvas = document.getElementById('fuelConsumptionChart');
     if (!canvas) return;
