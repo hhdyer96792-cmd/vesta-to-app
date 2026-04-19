@@ -398,17 +398,17 @@ input, select {
 /* Фикс для круговой диаграммы масла – сохраняем квадратную форму */
 /* Круговая диаграмма масла – фиксированный размер, центрирование */
 #oilChart {
-    width: 200px;
-    height: 200px;
+    width: 150px;
+    height: 150px;
     margin: 0 auto;
     display: block;
 }
 
 /* На мобильных устройствах чуть меньше */
-@media (max-width: 768px) {
+@media (max-width: 384px) {
     #oilChart {
-        width: 60px;
-        height: 60px;
+        width: 50px;
+        height: 50px;
     }
 }
 @media (min-width: 1024px) {
