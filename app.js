@@ -646,6 +646,229 @@ function openCarSelectModal() {
     modal.querySelector('.cancel-btn').onclick = () => modal.remove();
 }
 
+// ==================== 10. МОДАЛЬНЫЕ ОКНА (ЧАСТЬ 2) ====================
+
+function openFuelModal(record = null) {
+    const isEdit = !!(record && record.rowIndex);
+    let defaultDate = record?.date ? isoToDDMMYYYY(record.date) : isoToDDMMYYYY(new Date().toISOString().split('T')[0]);
+    const modal = createModal(isEdit ? '✏️ Редактировать заправку' : '⛽ Добавить заправку', `
+        <form id="fuel-form">
+            ${isEdit ? `<input type="hidden" name="rowIndex" value="${record.rowIndex}">` : ''}
+            <label>Дата (ДД-ММ-ГГГГ)</label>
+            <input type="text" name="date" placeholder="ДД-ММ-ГГГГ" pattern="\\d{2}-\\d{2}-\\d{4}" required oninput="applyDateMaskDDMMYYYY(event)" value="${defaultDate}">
+            <label>Пробег</label><input type="number" name="mileage" value="${record?.mileage || settings.currentMileage}" required>
+            <label>Литры</label><input type="number" name="liters" step="0.01" value="${record?.liters || ''}" required>
+            <label>Цена/л</label><input type="number" name="pricePerLiter" step="0.01" value="${record?.pricePerLiter || ''}">
+            <label>Полный бак? <input type="checkbox" name="fullTank" value="true" ${record?.fullTank ? 'checked' : ''}></label>
+            <label>Тип топлива</label>
+            <select name="fuelType">
+                <option value="Бензин" ${record?.fuelType === 'Бензин' ? 'selected' : ''}>Бензин</option>
+                <option value="Дизель" ${record?.fuelType === 'Дизель' ? 'selected' : ''}>Дизель</option>
+                <option value="Газ (ГБО)" ${record?.fuelType === 'Газ (ГБО)' ? 'selected' : ''}>Газ (ГБО)</option>
+                <option value="Электричество" ${record?.fuelType === 'Электричество' ? 'selected' : ''}>Электричество</option>
+            </select>
+            <label>Примечание</label><input type="text" name="notes" value="${record?.notes || ''}">
+            <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
+        </form>
+    `);
+    const form = modal.querySelector('#fuel-form');
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        const d = Object.fromEntries(new FormData(form));
+        modal.remove();
+        const rowData = [ddmmYYYYtoISO(d.date), d.mileage, d.liters, d.pricePerLiter, d.fullTank || '', d.fuelType, d.notes || ''];
+        (isEdit ? writeSheet(`FuelLog!A${d.rowIndex}:G${d.rowIndex}`, [rowData]) : appendSheet('FuelLog!A:G', [rowData]))
+            .then(() => loadSheet())
+            .catch(e => console.warn(e));
+    };
+    modal.querySelector('.cancel-btn').onclick = () => modal.remove();
+}
+
+function openTireModal(record = null) {
+    const isEdit = !!record;
+    const defaultDate = record ? isoToDDMMYYYY(record.date) : isoToDDMMYYYY(new Date().toISOString().split('T')[0]);
+    const typeValue = record?.type || 'Лето';
+    const isNewSet = record ? (record.mileage === 0 && record.purchaseCost) : false;
+    const modal = createModal(isEdit ? '✏️ Редактировать запись шин' : '🛞 Сменить резину', `
+        <form id="tire-form">
+            ${isEdit ? `<input type="hidden" name="rowIndex" value="${record.rowIndex}">` : ''}
+            <label>Дата (ДД-ММ-ГГГГ)</label>
+            <input type="text" name="date" placeholder="ДД-ММ-ГГГГ" pattern="\\d{2}-\\d{2}-\\d{4}" required oninput="applyDateMaskDDMMYYYY(event)" value="${defaultDate}">
+            <label>Тип</label>
+            <select name="type">
+                <option value="Лето" ${typeValue === 'Лето' ? 'selected' : ''}>Лето</option>
+                <option value="Зима" ${typeValue === 'Зима' ? 'selected' : ''}>Зима</option>
+            </select>
+            <label><input type="checkbox" name="isNewSet" id="isNewSetCheckbox" ${isNewSet ? 'checked' : ''}> Новый комплект</label>
+            <div id="newSetFields" style="display: ${isNewSet ? 'block' : 'none'};">
+                <label>Название модели</label><input type="text" name="model" value="${record?.model || ''}">
+                <label>Размерность</label><input type="text" name="size" value="${record?.size || ''}">
+                <label>Стоимость покупки (₽)</label><input type="number" name="purchaseCost" step="0.01" value="${record?.purchaseCost || ''}">
+            </div>
+            <div id="mountFields" style="display: ${isNewSet ? 'none' : 'block'};">
+                <label>Текущий пробег (км)</label><input type="number" name="currentMileage" value="${isNewSet ? 0 : settings.currentMileage}" required>
+                <label>Стоимость шиномонтажа (₽)</label><input type="number" name="mountCost" step="0.01" value="${record?.mountCost || ''}">
+                <label><input type="checkbox" name="isDIY" value="true" ${record?.isDIY ? 'checked' : ''}> Сделал сам</label>
+            </div>
+            <label>Износ / Остаток шипов (${typeValue === 'Зима' ? '%' : 'мм'})</label>
+            <input type="number" name="wear" step="0.1" value="${record?.wear || ''}">
+            <label>Примечание</label><input type="text" name="notes" value="${record?.notes || ''}">
+            <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
+        </form>
+    `);
+    const newSetCheckbox = modal.querySelector('#isNewSetCheckbox');
+    newSetCheckbox.addEventListener('change', (e) => {
+        modal.querySelector('#newSetFields').style.display = e.target.checked ? 'block' : 'none';
+        modal.querySelector('#mountFields').style.display = e.target.checked ? 'none' : 'block';
+    });
+    const form = modal.querySelector('#tire-form');
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        const d = Object.fromEntries(new FormData(form));
+        modal.remove();
+        const isNew = d.isNewSet === 'on';
+        let setMileage = isNew ? 0 : (parseFloat(d.currentMileage) || settings.currentMileage);
+        if (!isNew) {
+            const last = tireLog.find(r => r.type === d.type);
+            setMileage = (last?.mileage || 0) + (setMileage - (last?.baseMileage || 0));
+        }
+        const rowData = [
+            ddmmYYYYtoISO(d.date), d.type, setMileage, d.model || '', d.size || '',
+            d.wear || '', d.notes || '', isNew ? (d.purchaseCost || '') : '',
+            isNew ? '' : (d.mountCost || ''), d.isDIY === 'true'
+        ];
+        (isEdit ? writeSheet(`Tires!A${d.rowIndex}:J${d.rowIndex}`, [rowData]) : appendSheet('Tires!A:J', [rowData]))
+            .then(() => {
+                loadSheet();
+                if (!isNew && (d.mountCost || d.isDIY)) {
+                    const tireOp = operations.find(o => o.name === 'Шиномонтаж');
+                    if (tireOp) {
+                        addServiceRecord(tireOp.id, ddmmYYYYtoISO(d.date), settings.currentMileage, settings.currentMotohours,
+                            0, d.isDIY === 'true' ? 0 : (d.mountCost || 0), d.isDIY === 'true',
+                            `Смена резины: ${d.type} ${d.model || ''}`, '');
+                    }
+                }
+            })
+            .catch(e => console.warn(e));
+    };
+    modal.querySelector('.cancel-btn').onclick = () => modal.remove();
+}
+
+function openPartForm(part = null) {
+    const isEdit = !!part;
+    const operationOptions = operations.map(op =>
+        `<option value="${op.name}" ${part && part.operation === op.name ? 'selected' : ''}>${op.name} (${op.category})</option>`
+    ).join('');
+    const modal = createModal(isEdit ? '✏️ Запчасть' : '➕ Запчасть', `
+        <form id="part-form">
+            <input type="hidden" name="id" value="${part?.id || ''}">
+            <label>Операция</label>
+            <select name="operation" required>
+                <option value="">-- Выберите операцию --</option>
+                ${operationOptions}
+            </select>
+            <label>OEM</label><input type="text" name="oem" value="${part?.oem || ''}">
+            <label>Аналог</label><input type="text" name="analog" value="${part?.analog || ''}">
+            <label>Цена</label><input type="number" name="price" step="0.01" value="${part?.price || ''}">
+            <label>Поставщик</label><input type="text" name="supplier" value="${part?.supplier || ''}">
+            <label>Ссылка</label><input type="url" name="link" value="${part?.link || ''}">
+            <label>Комментарий</label><input type="text" name="comment" value="${part?.comment || ''}">
+            <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
+        </form>
+    `);
+    const form = modal.querySelector('#part-form');
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        const d = Object.fromEntries(new FormData(form));
+        const row = [d.operation, d.oem, d.analog, d.price, d.supplier, d.link, d.comment];
+        modal.remove();
+        if (isEdit) {
+            writeSheet(`PartsCatalog!A${part.id}:G${part.id}`, [row])
+                .then(() => loadSheet())
+                .catch(e => console.warn(e));
+        } else {
+            appendSheet('PartsCatalog!A:G', [row])
+                .then(() => loadSheet())
+                .catch(e => console.warn(e));
+        }
+    };
+    modal.querySelector('.cancel-btn').onclick = () => modal.remove();
+}
+
+function showCatalogMenu(button, oem) {
+    const existingMenu = document.querySelector('.catalog-popup-menu');
+    if (existingMenu) existingMenu.remove();
+    const rect = button.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.className = 'catalog-popup-menu';
+    menu.style.position = 'fixed';
+    menu.style.background = 'var(--card-bg)';
+    menu.style.border = '1px solid var(--border)';
+    menu.style.borderRadius = '8px';
+    menu.style.padding = '8px 0';
+    menu.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+    menu.style.zIndex = '10000';
+    menu.style.minWidth = '150px';
+    menu.style.visibility = 'hidden';
+    const catalogs = [
+        { name: 'Exist', value: 'exist' },
+        { name: 'Drive2', value: 'drive2' },
+        { name: 'CrossData', value: 'crossdata' },
+        { name: 'ZZap', value: 'zzap' }
+    ];
+    catalogs.forEach(cat => {
+        const item = document.createElement('div');
+        item.textContent = cat.name;
+        item.style.padding = '8px 16px';
+        item.style.cursor = 'pointer';
+        item.style.whiteSpace = 'nowrap';
+        item.style.color = 'var(--text)';
+        item.addEventListener('mouseenter', () => item.style.background = 'var(--bg)');
+        item.addEventListener('mouseleave', () => item.style.background = 'transparent');
+        item.addEventListener('click', () => {
+            let url;
+            switch (cat.value) {
+                case 'drive2':
+                    url = `https://www.drive2.ru/search?text=${encodeURIComponent(oem)}`;
+                    break;
+                case 'crossdata':
+                    url = `https://crossdata.pro/search?q=${encodeURIComponent(oem)}`;
+                    break;
+                case 'zzap':
+                    url = `https://www.zzap.ru/search?text=${encodeURIComponent(oem)}`;
+                    break;
+                default:
+                    url = `https://exist.ru/price/?pcode=${encodeURIComponent(oem)}`;
+            }
+            window.open(url, '_blank');
+            menu.remove();
+        });
+        menu.appendChild(item);
+    });
+    document.body.appendChild(menu);
+    const menuRect = menu.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    let top = rect.bottom + 5;
+    let left = rect.left;
+    if (left + menuRect.width > viewportWidth - 10) left = viewportWidth - menuRect.width - 10;
+    if (left < 10) left = 10;
+    if (top + menuRect.height > viewportHeight - 10) top = rect.top - menuRect.height - 5;
+    if (top < 10) top = Math.max(10, (viewportHeight - menuRect.height) / 2);
+    menu.style.top = top + 'px';
+    menu.style.left = left + 'px';
+    menu.style.visibility = 'visible';
+    setTimeout(() => {
+        const closeHandler = (e) => {
+            if (!menu.contains(e.target) && e.target !== button) {
+                menu.remove();
+                document.removeEventListener('click', closeHandler);
+            }
+        };
+        document.addEventListener('click', closeHandler);
+    }, 10);
+}
+
 // ==================== 11. СОХРАНЕНИЕ ====================
 async function addServiceRecord(opId, date, mileage, motohours, partsCost, workCost, isDIY, notes, photoUrl) {
     const op = operations.find(o => o.id == opId); if (!op) return;
@@ -855,7 +1078,7 @@ function calculateStatistics(period='all') {
     return { totalMaintenanceCost:Number(totalMaint), totalFuelCost:Number(totalFuel), costPerKm:Number(costPerKm), avgFuelConsumption:Number(avgCons), avgMileagePerDay:Number(avgMileageDay), avgMotohoursPerDay:Number(avgMotoDay) };
 }
 
-// ==================== 16. СТАТИСТИКА ====================
+// ==================== 16. СТАТИСТИКА (исправлено) ====================
 function renderStats() {
     const periodSelect = document.getElementById('stats-period-select'), period = periodSelect ? periodSelect.value : 'all';
     const stats = calculateStatistics(period);
@@ -866,10 +1089,28 @@ function renderStats() {
         if (avgFuelConsumptionEl) avgFuelConsumptionEl.textContent = (stats.avgFuelConsumption??0).toFixed(1);
         if (avgMileagePerDayEl) avgMileagePerDayEl.textContent = (stats.avgMileagePerDay??0).toFixed(1);
         if (avgMotohoursPerDayEl) avgMotohoursPerDayEl.textContent = (stats.avgMotohoursPerDay??0).toFixed(2);
-        updateOwnershipDisplay();
     }
     const oilOp = operations.find(op => op.name.includes('Масло') && op.category.includes('ДВС'));
-    if (oilOp) { const plan = calculatePlan(oilOp); const canvas = oilChart; if (canvas) { const ctx = canvas.getContext('2d'); const current=settings.currentMileage, last=oilOp.lastMileage||0, next=plan.planMileage; const percent = Math.min(100,Math.max(0,Math.round((current-last)/(next-last)*100))); const old = Chart.getChart(canvas); if(old) old.destroy(); new Chart(ctx,{ type:'doughnut', data:{labels:['Пройдено','Осталось'],datasets:[{data:[percent,100-percent],backgroundColor:['#2ecc71','#e0e0e0']}]}, options:{cutout:'70%', plugins:{legend:{display:false}}} }); } }
+    if (oilOp) {
+        const plan = calculatePlan(oilOp);
+        const canvas = oilChart;
+        if (canvas && typeof Chart !== 'undefined') {
+            try {
+                const ctx = canvas.getContext('2d');
+                const current = settings.currentMileage;
+                const last = oilOp.lastMileage || 0;
+                const next = plan.planMileage;
+                const percent = Math.min(100, Math.max(0, Math.round((current - last) / (next - last) * 100)));
+                const existingChart = Chart.getChart(canvas);
+                if (existingChart) existingChart.destroy();
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: { labels: ['Пройдено', 'Осталось'], datasets: [{ data: [percent, 100 - percent], backgroundColor: ['#2ecc71', '#e0e0e0'] }] },
+                    options: { cutout: '70%', plugins: { legend: { display: false } } }
+                });
+            } catch(e) { console.warn('Ошибка графика масла:', e); }
+        }
+    }
 }
 
 function excelDateToISO(serial) { if (!serial || typeof serial!=='number') return ''; const d = new Date((serial-25569)*86400000); return d.toISOString().split('T')[0]; }
@@ -944,7 +1185,7 @@ async function deleteHistoryEntry(e) {
     loadHistory();
 }
 
-// ==================== 18. ОБРАБОТЧИКИ (ЧАСТЬ 1) ====================
+// ==================== 18. ОБРАБОТЧИКИ ====================
 function attachTOListeners() {
     document.querySelectorAll('.add-record-btn').forEach(b=>b.addEventListener('click',e=>openServiceModal(b.dataset.opId,b.dataset.opName)));
     document.querySelectorAll('.edit-op-btn').forEach(b=>b.addEventListener('click',e=>openOperationForm(operations.find(o=>o.id==b.dataset.opId))));
@@ -993,7 +1234,6 @@ async function addToCalendar(opName, planDate, planMileage) {
 }
 
 // -------------------------------------------------------------
-
 async function saveSettings() {
     settings.currentMileage = +setMileage?.value || settings.currentMileage;
     settings.currentMotohours = +setMotohours?.value || settings.currentMotohours;
@@ -1019,7 +1259,6 @@ async function saveSettings() {
     document.getElementById('settings-result').textContent = '✅ Сохранено';
 }
 
-// ==================== ФУНКЦИИ ЭКСПОРТА / ИМПОРТА ====================
 function exportData() {
     const data = { operations, settings, parts, fuelLog, tireLog, workCosts };
     const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
@@ -1331,3 +1570,4 @@ settings.notificationMethod = localStorage.getItem('notificationMethod') || 'tel
 initGoogleApi();
 initEventListeners();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js');
+
