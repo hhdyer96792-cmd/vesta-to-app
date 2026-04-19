@@ -278,7 +278,7 @@ tr.attention { background: rgba(241, 196, 15, 0.08) !important; }
     height: auto;
 }
 canvas {
-    max-height: 300px;
+    max-height: 350px;
     width: 100% !important;
 }
 label {
@@ -386,14 +386,14 @@ input, select {
 #fuelConsumptionChart,
 #fuelPriceChart,
 #costsChart {
-    height: 350px;
+    height: 400px;
     width: 100%;
 }
 @media (max-width: 768px) {
     #fuelConsumptionChart,
     #fuelPriceChart,
     #costsChart {
-        height: 300px;
+        height: 350px;
     }
 }
 
