@@ -1791,6 +1791,9 @@ function initEventListeners() {
             if (btn.dataset.tab === 'history') loadHistory();
             if (btn.dataset.tab === 'stats') renderStats();
             if (btn.dataset.tab === 'to') renderTop5Widget();
+                if (btn.dataset.tab === 'fuel') renderFuelTable();
+        if (btn.dataset.tab === 'tires') renderTiresTable();
+        if (btn.dataset.tab === 'parts') renderPartsTable();
         });
     });
     window.addEventListener('online', () => { isOnline = true; syncPendingActions(); setSyncStatus('synced'); });
