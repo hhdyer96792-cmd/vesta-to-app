@@ -265,11 +265,11 @@ tr.attention { background: rgba(241, 196, 15, 0.08) !important; }
 .chart-card {
     resize: both;           /* разрешить растягивание */
     overflow: auto;         /* чтобы содержимое не вылезало */
-    min-width: 150px;
-    min-height: 150px;
+    min-width: 120px;
+    min-height: 120px;
 }
 canvas {
-    max-height: 300px;
+    max-height: 350px;
     width: 100% !important;
 }
 label {
@@ -398,8 +398,8 @@ input, select {
 /* Фикс для круговой диаграммы масла – сохраняем квадратную форму */
 /* Круговая диаграмма масла – фиксированный размер, центрирование */
 #oilChart {
-    width: 150px;
-    height: 150px;
+    width: 100px;
+    height: 100px;
     margin: 0 auto;
     display: block;
 }
@@ -407,8 +407,8 @@ input, select {
 /* На мобильных устройствах чуть меньше */
 @media (max-width: 768px) {
     #oilChart {
-        width: 100px;
-        height: 100px;
+        width: 60px;
+        height: 60px;
     }
 }
 @media (min-width: 1024px) {
