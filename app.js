@@ -1101,11 +1101,10 @@ function renderStats() {
             } catch(e) { console.warn('Ошибка графика масла:', e); }
         }
     }
-}
 renderFuelConsumptionChart();
 renderFuelPriceChart();
 updateDrivingModeIndicator();
-
+}
 function excelDateToISO(serial) { if (!serial || typeof serial!=='number') return ''; const d = new Date((serial-25569)*86400000); return d.toISOString().split('T')[0]; }
 
 // ==================== 17. ИСТОРИЯ ====================
