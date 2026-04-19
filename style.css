@@ -398,15 +398,15 @@ input, select {
 }
 
 #oilChart {
-    width: 150px;
-    height: 150px;
+    width: 120px;
+    height: 120px;
     margin: 0 auto;
     display: block;
 }
 @media (max-width: 768px) {
     #oilChart {
-        width: 100px;
-        height: 100px;
+        width: 60px;
+        height: 60px;
     }
 }
 
