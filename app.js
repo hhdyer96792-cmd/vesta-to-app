@@ -1182,8 +1182,8 @@ function showCatalogMenu(button, oem) {
             let url;
             switch (cat.value) {
                 case 'drive2': url = `https://www.drive2.ru/search?text=${encodeURIComponent(oem)}`; break;
-                case 'crossdata': url = `https://crossdata.pro/search?q=${encodeURIComponent(oem)}`; break;
-                case 'zzap': url = `https://www.zzap.ru/search?text=${encodeURIComponent(oem)}`; break;
+                case 'crossdata': url = `https://crossdata.pro`; break;
+                case 'zzap': url = `https://www.zzap.ru/`; break;
                 default: url = `https://exist.ru/price/?pcode=${encodeURIComponent(oem)}`;
             }
             window.open(url, '_blank');
