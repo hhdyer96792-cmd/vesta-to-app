@@ -354,7 +354,7 @@ input, select {
     overflow: auto;                  /* важно для resize, но скролл появится только при необходимости */
     overflow-x: auto;                /* горизонтальный скролл, если контент шире */
     -webkit-overflow-scrolling: touch; /* плавный скролл на iOS */
-    min-width: 150px;
+    min-width: 200px;
     min-height: 150px;
 }
 .chart-card canvas {
@@ -363,7 +363,7 @@ input, select {
     height: auto;
 }
 canvas {
-    max-height: 350px;
+    max-height: 400px;
     width: 100% !important;          /* для других canvas (например, круговой диаграммы) */
 }
 .driving-mode-card.city .mode-value { color: #e67e22; }
