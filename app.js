@@ -1063,13 +1063,25 @@ function renderFuelConsumptionChart() {
     const existing = Chart.getChart(canvas);
     if (existing) existing.destroy();
     if (data.filter(v => v !== null).length === 0) {
-        new Chart(ctx, { type: 'line', data: { labels, datasets: [] }, options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: 'л/100 км' } } } } });
+        new Chart(ctx, { type: 'line', data: { labels, datasets: [] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: 'л/100 км' } } } } });
         return;
     }
     new Chart(ctx, {
         type: 'line',
         data: { labels, datasets: [{ label: 'Расход (л/100 км)', data, borderColor: '#e67e22', backgroundColor: 'rgba(230,126,34,0.1)', tension: 0.2, fill: true, pointRadius: 4, pointHoverRadius: 6 }] },
-        options: { responsive: true, maintainAspectRatio: true, plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.raw} л/100 км` } }, legend: { position: 'top' } }, scales: { y: { title: { display: true, text: 'л/100 км' }, beginAtZero: true } } }
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                tooltip: { callbacks: { label: (ctx) => `${ctx.raw} л/100 км` } },
+                legend: { position: 'top' },
+                zoom: {
+                    pan: { enabled: true, mode: 'x', speed: 10 },
+                    zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x', speed: 0.1, limits: { x: { min: 0.5, max: 5 } } }
+                }
+            },
+            scales: { y: { title: { display: true, text: 'л/100 км' }, beginAtZero: true } }
+        }
     });
 }
 
@@ -1083,13 +1095,25 @@ function renderFuelPriceChart() {
     const existing = Chart.getChart(canvas);
     if (existing) existing.destroy();
     if (data.filter(v => v !== null).length === 0) {
-        new Chart(ctx, { type: 'line', data: { labels, datasets: [] }, options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: '₽/л' } } } } });
+        new Chart(ctx, { type: 'line', data: { labels, datasets: [] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: '₽/л' } } } } });
         return;
     }
     new Chart(ctx, {
         type: 'line',
         data: { labels, datasets: [{ label: 'Средняя цена (₽/л)', data, borderColor: '#3498db', backgroundColor: 'rgba(52,152,219,0.1)', tension: 0.2, fill: true, pointRadius: 4, pointHoverRadius: 6 }] },
-        options: { responsive: true, maintainAspectRatio: true, plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.raw} ₽/л` } }, legend: { position: 'top' } }, scales: { y: { title: { display: true, text: '₽/л' }, beginAtZero: true } } }
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                tooltip: { callbacks: { label: (ctx) => `${ctx.raw} ₽/л` } },
+                legend: { position: 'top' },
+                zoom: {
+                    pan: { enabled: true, mode: 'x', speed: 10 },
+                    zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x', speed: 0.1, limits: { x: { min: 0.5, max: 5 } } }
+                }
+            },
+            scales: { y: { title: { display: true, text: '₽/л' }, beginAtZero: true } }
+        }
     });
 }
 
