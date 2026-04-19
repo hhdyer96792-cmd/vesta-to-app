@@ -365,7 +365,20 @@ input, select {
 .driving-mode-card.city .mode-value { color: #e67e22; }
 .driving-mode-card.highway .mode-value { color: #2ecc71; }
 .driving-mode-card.mixed .mode-value { color: #3498db; }
-
+#reset-all-zoom {
+    padding: 10px 20px;
+    font-size: 1rem;
+    background: var(--card-bg);
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    border-radius: 30px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+#reset-all-zoom:active {
+    background: var(--primary);
+    color: white;
+}
 @media (min-width: 768px) {
     .stats-summary-grid {
         grid-template-columns: repeat(3, 1fr);
