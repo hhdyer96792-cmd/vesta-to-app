@@ -363,7 +363,7 @@ input, select {
     height: auto;
 }
 canvas {
-    max-height: 400px;
+    /*max-height: 400px;*/
     width: 100% !important;          /* для других canvas (например, круговой диаграммы) */
 }
 .driving-mode-card.city .mode-value { color: #e67e22; }
@@ -387,7 +387,7 @@ canvas {
 #fuelConsumptionChart,
 #fuelPriceChart,
 #costsChart {
-    height: 350px;
+    height: 500px;
     width: 100%;
 }
 
@@ -395,25 +395,19 @@ canvas {
     #fuelConsumptionChart,
     #fuelPriceChart,
     #costsChart {
-        height: 300px;   /* чуть меньше на мобильных */
+        height: 400px;   /* чуть меньше на мобильных */
     }
 }
 
 /* Фикс для круговой диаграммы масла – сохраняем квадратную форму */
 /* Круговая диаграмма масла – фиксированный размер, центрирование */
 #oilChart {
-    width: 80px;
-    height: 80px;
+    width: 10vw;
+    height: 10vw;
+    max-width: 50px;
+    max-height: 50px;
     margin: 0 auto;
     display: block;
-}
-
-/* На мобильных устройствах чуть меньше */
-@media (max-width: 768px) {
-    #oilChart {
-        width: 30px;
-        height: 30px;
-    }
 }
 @media (min-width: 1024px) {
     .stats-summary-grid {
