@@ -1113,6 +1113,112 @@ function renderCostsChart() {
     });
 }
 
+// ==================== КРУГОВАЯ ДИАГРАММА РАСПРЕДЕЛЕНИЯ ЗАТРАТ ====================
+function renderExpensePieChart() {
+    const canvas = document.getElementById('expensePieChart');
+    if (!canvas) return;
+    
+    const periodSelect = document.getElementById('stats-period-select');
+    const period = periodSelect ? periodSelect.value : 'all';
+    
+    // 1. Топливо
+    const filteredFuel = filterByPeriod(fuelLog, period, 'date');
+    const fuelCost = filteredFuel.reduce((sum, rec) => sum + (rec.liters * rec.pricePerLiter), 0);
+    
+    // 2. ТО (запчасти + работы)
+    const filteredService = filterByPeriod(serviceRecords, period, 'date');
+    const toCost = filteredService.reduce((sum, rec) => sum + (Number(rec.parts_cost) || 0) + (Number(rec.work_cost) || 0), 0);
+    
+    // 3. Шины (покупка + монтаж)
+    const filteredTires = filterByPeriod(tireLog, period, 'date');
+    let tiresCost = 0;
+    filteredTires.forEach(t => {
+        tiresCost += (t.purchaseCost || 0);
+        // Если это не новый комплект (mileage != 0) – добавляем стоимость монтажа
+        if (t.mileage !== 0 && t.mountCost) tiresCost += t.mountCost;
+    });
+    
+    // 4. Страховка (ОСАГО)
+    const insuranceCost = filteredService
+        .filter(rec => {
+            const op = operations.find(o => o.id == rec.operation_id);
+            return op && op.category === 'Документы' && op.name.includes('ОСАГО');
+        })
+        .reduce((sum, rec) => sum + (Number(rec.parts_cost) || 0), 0);
+    
+    // Подготовка данных для графика
+    const categories = [];
+    const values = [];
+    const colors = [];
+    
+    if (fuelCost > 0) {
+        categories.push('⛽ Топливо');
+        values.push(fuelCost);
+        colors.push('#3498db'); // синий
+    }
+    if (toCost > 0) {
+        categories.push('🔧 ТО (запчасти+работа)');
+        values.push(toCost);
+        colors.push('#e74c3c'); // красный
+    }
+    if (tiresCost > 0) {
+        categories.push('🛞 Шины');
+        values.push(tiresCost);
+        colors.push('#2ecc71'); // зелёный
+    }
+    if (insuranceCost > 0) {
+        categories.push('📄 Страховка');
+        values.push(insuranceCost);
+        colors.push('#f39c12'); // оранжевый
+    }
+    
+    // Если нет данных – показываем пустой график
+    const ctx = canvas.getContext('2d');
+    const existingChart = Chart.getChart(canvas);
+    if (existingChart) existingChart.destroy();
+    
+    if (values.length === 0) {
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: { labels: ['Нет данных'], datasets: [{ data: [1], backgroundColor: ['#ccc'] }] },
+            options: { plugins: { legend: { position: 'top' }, tooltip: { callbacks: { title: () => 'Нет данных за период' } } } }
+        });
+        return;
+    }
+    
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: categories,
+            datasets: [{
+                data: values,
+                backgroundColor: colors,
+                borderWidth: 0,
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => {
+                            const label = context.label || '';
+                            const value = context.raw;
+                            const total = context.dataset.data.reduce((a,b) => a + b, 0);
+                            const percent = ((value / total) * 100).toFixed(1);
+                            return `${label}: ${value.toFixed(2)} ₽ (${percent}%)`;
+                        }
+                    }
+                }
+            },
+            cutout: '50%' // полу-пончик, как у масла
+        }
+    });
+}
+
 function renderFuelConsumptionChart() {
     const canvas = document.getElementById('fuelConsumptionChart');
     if (!canvas) return;
@@ -1210,8 +1316,9 @@ function updateDrivingModeIndicator() {
 function renderFuelAnalytics() {
     renderFuelConsumptionChart();
     renderFuelPriceChart();
-    updateDrivingModeIndicator();
     renderCostsChart();
+    renderExpensePieChart();
+    updateDrivingModeIndicator();
 }
 
 function renderStats() {
