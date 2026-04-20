@@ -431,6 +431,16 @@ canvas {
     flex: 1;
     min-width: 200px;
 }
+@media (max-width: 768px) {
+    .pie-row {
+        flex-direction: column;
+        gap: 16px;
+    }
+    .pie-row .chart-card {
+        min-width: auto;
+    }
+}
+
 @media (min-width: 1024px) {
     .stats-summary-grid {
         grid-template-columns: repeat(7, 1fr);
