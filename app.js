@@ -739,7 +739,8 @@ function openFuelModal(record=null) {
     const modal = createModal(isEdit?'✏️ Редактировать заправку':'⛽ Добавить заправку', `
         <form id="fuel-form">
             ${isEdit?`<input type="hidden" name="rowIndex" value="${record.rowIndex}">`:''}
-            <label>Дата (ДД-ММ-ГГГГ)</label><input type="text" name="date" placeholder="ДД-ММ-ГГГГ" pattern="\\d{2}-\\d{2}-\\d{4}" required oninput="applyDateMaskDDMMYYYY(event)" value="${defaultDate}">
+            <label>Дата (ДД-ММ-ГГГГ)</label>
+            <input type="text" name="date" placeholder="ДД-ММ-ГГГГ" pattern="\\d{2}-\\d{2}-\\d{4}" required oninput="applyDateMaskDDMMYYYY(event)" value="${defaultDate}">
             <label>Пробег</label><input type="number" name="mileage" value="${record?.mileage || settings.currentMileage}" required>
             <label>Литры</label><input type="number" name="liters" step="0.01" value="${record?.liters || ''}" required>
             <label>Цена/л</label><input type="number" name="pricePerLiter" step="0.01" value="${record?.pricePerLiter || ''}">
@@ -756,9 +757,25 @@ function openFuelModal(record=null) {
         </form>
     `);
     const form = modal.querySelector('#fuel-form');
-    form.onsubmit = (e) => { e.preventDefault(); const d = Object.fromEntries(new FormData(form)); modal.remove();
-        const rowData = [ddmmYYYYtoISO(d.date), d.mileage, d.liters, d.pricePerLiter, d.fullTank||'', d.fuelType, d.notes||''];
-        (isEdit ? writeSheet(`FuelLog!A${d.rowIndex}:G${d.rowIndex}`, [rowData]) : appendSheet('FuelLog!A:G', [rowData])).then(()=>loadSheet()).catch(e=>console.warn(e));
+    form.onsubmit = (e) => { 
+        e.preventDefault(); 
+        const d = Object.fromEntries(new FormData(form));
+        const dateISO = ddmmYYYYtoISO(d.date);
+        const mileage = parseFloat(d.mileage);
+        const rowIndex = isEdit ? d.rowIndex : null;
+        
+        const conflict = checkFuelOrderConflicts(dateISO, mileage, rowIndex);
+        if (conflict.hasConflict) {
+            if (!confirm(conflict.message + '\n\nСохранить, несмотря на нарушение порядка?')) {
+                return;
+            }
+        }
+        
+        modal.remove();
+        const rowData = [dateISO, d.mileage, d.liters, d.pricePerLiter, d.fullTank||'', d.fuelType, d.notes||''];
+        (isEdit ? writeSheet(`FuelLog!A${d.rowIndex}:G${d.rowIndex}`, [rowData]) : appendSheet('FuelLog!A:G', [rowData]))
+            .then(() => loadSheet())
+            .catch(e => console.warn('Ошибка сохранения заправки:', e));
     };
     modal.querySelector('.cancel-btn').onclick = () => modal.remove();
 }
