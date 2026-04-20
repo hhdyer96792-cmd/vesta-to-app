@@ -414,6 +414,11 @@ canvas {
         height: 20px;
     }
 }
+#expensePieChart {
+    max-height: 300px;
+    width: 100%;
+    margin: 0 auto;
+}
 @media (min-width: 1024px) {
     .stats-summary-grid {
         grid-template-columns: repeat(7, 1fr);
