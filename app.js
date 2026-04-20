@@ -235,6 +235,28 @@ function setSyncStatus(status) {
     syncIndicator.title = status === 'synced' ? 'Синхронизировано' : status === 'syncing' ? 'Синхронизация...' : 'Ошибка соединения';
 }
 
+// ==================== 6-А. ТЕМНАЯ/СВЕТЛАЯ ТЕМА С СОХРАНЕНИЕМ ====================
+function applyTheme(theme) {
+    if (theme === 'dark') {
+        document.body.classList.add('dark');
+        if (themeToggle) themeToggle.textContent = '☀️';
+    } else {
+        document.body.classList.remove('dark');
+        if (themeToggle) themeToggle.textContent = '🌙';
+    }
+    localStorage.setItem('vesta_theme', theme);
+}
+
+function loadTheme() {
+    const savedTheme = localStorage.getItem('vesta_theme');
+    if (savedTheme) {
+        applyTheme(savedTheme);
+    } else {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        applyTheme(prefersDark ? 'dark' : 'light');
+    }
+}
+
 // ==================== 7. ЗАГРУЗКА ДАННЫХ ====================
 async function loadSheet() {
     if (!spreadsheetId) return;
