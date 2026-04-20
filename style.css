@@ -418,6 +418,18 @@ canvas {
     max-height: 300px;
     width: 100%;
     margin: 0 auto;
+    min-width: 0 !important;   /* отменяет глобальный min-width: 600px */
+}
+/* Ряд из двух круговых диаграмм */
+.pie-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-top: 0;
+}
+.pie-row .chart-card {
+    flex: 1;
+    min-width: 200px;
 }
 @media (min-width: 1024px) {
     .stats-summary-grid {
