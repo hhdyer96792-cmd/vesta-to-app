@@ -1506,9 +1506,12 @@ function initEventListeners() {
     subscribePushBtn.onclick = subscribeToPush;
     openPhotoFolderBtn.onclick = async ()=>{ if(!driveFolderId) driveFolderId=await getOrCreatePhotoFolder(); if(driveFolderId) window.open(`https://drive.google.com/drive/folders/${driveFolderId}`,'_blank'); else alert('Папка не создана'); };
     shareTableBtn.onclick = ()=>window.open(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`,'_blank');
-    themeToggle.onclick = ()=>{ document.body.classList.toggle('dark'); themeToggle.textContent = document.body.classList.contains('dark')?'☀️':'🌙'; };
+    themeToggle.onclick = () => {
+    const isDark = document.body.classList.contains('dark');
+    applyTheme(isDark ? 'light' : 'dark');
+};
     const selectCarBtn = document.getElementById('select-car-btn'); if(selectCarBtn) selectCarBtn.addEventListener('click', openCarSelectModal);
-    document.querySelectorAll('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
+        document.querySelectorAll('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
         document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
         btn.classList.add('active'); document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
@@ -1622,4 +1625,5 @@ pendingActions = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
 settings.notificationMethod = localStorage.getItem('notificationMethod') || 'telegram';
 initGoogleApi();
 initEventListeners();
+loadTheme();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js');
