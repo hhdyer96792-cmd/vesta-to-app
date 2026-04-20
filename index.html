@@ -111,9 +111,17 @@
     <div class="chart-card"><h3>📈 Расход топлива (л/100 км) по месяцам</h3><canvas id="fuelConsumptionChart"></canvas></div>
     <div class="chart-card"><h3>💰 Средняя цена топлива (₽/л) по месяцам</h3><canvas id="fuelPriceChart"></canvas></div>
     <div class="chart-card"><h3>📊 Затраты на топливо и ТО по месяцам</h3><canvas id="costsChart"></canvas></div>
-    <div class="chart-card"><h3>🥧 Распределение затрат по категориям</h3><canvas id="expensePieChart"></canvas></div>
-    <div class="chart-card"><h3>🛢️ Прогноз замены масла</h3><canvas id="oilChart"></canvas></div>
-            </div>
+    <!-- Ряд из двух круговых диаграмм -->
+    <div class="pie-row">
+        <div class="chart-card">
+            <h3>🥧 Распределение затрат по категориям</h3>
+            <canvas id="expensePieChart"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>🛢️ Прогноз замены масла</h3>
+            <canvas id="oilChart"></canvas>
+        </div>
+    </div>
         </div>
 <div style="text-align: center; margin-top: 16px;">
     <button id="reset-all-zoom" class="secondary-btn">⟳ Сбросить масштаб всех графиков</button>
