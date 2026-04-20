@@ -676,6 +676,63 @@ function openCarSelectModal() {
     modal.querySelector('.cancel-btn').onclick = () => modal.remove();
 }
 
+/**
+ * Проверяет, не нарушает ли новая/редактируемая заправка порядок по дате и пробегу.
+ * @param {string} dateISO - дата в формате ГГГГ-ММ-ДД
+ * @param {number} mileage - пробег
+ * @param {number|null} excludeRowIndex - индекс строки (для редактирования, чтобы исключить себя)
+ * @returns {object} { hasConflict, message, prevRecord, nextRecord }
+ */
+function checkFuelOrderConflicts(dateISO, mileage, excludeRowIndex = null) {
+    // Сортируем все заправки по дате (и пробегу при одинаковой дате)
+    const sorted = [...fuelLog]
+        .filter((_, idx) => idx+2 !== excludeRowIndex) // исключаем редактируемую запись
+        .sort((a,b) => {
+            if (a.date === b.date) return a.mileage - b.mileage;
+            return (a.date || '').localeCompare(b.date || '');
+        });
+    
+    // Находим позицию, куда встанет новая запись
+    let prev = null, next = null;
+    for (let i = 0; i < sorted.length; i++) {
+        const r = sorted[i];
+        if (!r.date) continue;
+        if (r.date < dateISO) {
+            prev = r;
+        } else if (r.date === dateISO && r.mileage <= mileage) {
+            prev = r;
+        } else {
+            next = r;
+            break;
+        }
+    }
+    
+    let conflict = false;
+    let message = '';
+    
+    if (prev && (prev.date > dateISO || (prev.date === dateISO && prev.mileage > mileage))) {
+        // такого быть не может, но на всякий случай
+    }
+    if (prev && prev.mileage > mileage) {
+        conflict = true;
+        message += `⚠️ Пробег (${mileage} км) меньше предыдущей заправки от ${prev.date} (${prev.mileage} км). `;
+    }
+    if (next && next.mileage < mileage) {
+        conflict = true;
+        message += `⚠️ Пробег (${mileage} км) больше следующей заправки от ${next.date} (${next.mileage} км). `;
+    }
+    if (prev && prev.date > dateISO) {
+        conflict = true;
+        message += `⚠️ Дата (${dateISO}) раньше предыдущей заправки от ${prev.date}. `;
+    }
+    if (next && next.date < dateISO) {
+        conflict = true;
+        message += `⚠️ Дата (${dateISO}) позже следующей заправки от ${next.date}. `;
+    }
+    
+    return { hasConflict: conflict, message, prevRecord: prev, nextRecord: next };
+}
+
 function openFuelModal(record=null) {
     const isEdit = !!(record && record.rowIndex);
     let defaultDate = record?.date ? isoToDDMMYYYY(record.date) : isoToDDMMYYYY(new Date().toISOString().split('T')[0]);
