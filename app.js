@@ -1062,10 +1062,13 @@ function renderCostsChart() {
     });
 }
 
-// ==================== 16-А. КРУГОВАЯ ДИАГРАММА РАСПРЕДЕЛЕНИЯ ЗАТРАТ ====================
+// ==================== 16-А. КРУГОВАЯ ДИАГРАММА РАСПРЕДЕЛЕНИЯ ЗАТРАТ (с проверкой видимости) ====================
 function renderExpensePieChart() {
     const canvas = document.getElementById('expensePieChart');
     if (!canvas) return;
+    // Не рисуем график, если панель данных скрыта (страница авторизации)
+    if (!dataPanel || dataPanel.style.display !== 'block') return;
+    
     const periodSelect = document.getElementById('stats-period-select');
     const period = periodSelect ? periodSelect.value : 'all';
     const filteredFuel = filterByPeriod(fuelLog, period, 'date');
@@ -1099,37 +1102,10 @@ function renderExpensePieChart() {
     new Chart(ctx, { type: 'doughnut', data: { labels: categories, datasets: [{ data: values, backgroundColor: colors, borderWidth: 0, hoverOffset: 10 }] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: (context) => { const label = context.label || ''; const value = context.raw; const total = context.dataset.data.reduce((a,b) => a + b, 0); const percent = ((value / total) * 100).toFixed(1); return `${label}: ${value.toFixed(2)} ₽ (${percent}%)`; } } } }, cutout: '50%' } });
 }
 
-function updateDrivingModeIndicator() {
-    const modeSpan = document.getElementById('driving-mode');
-    const hintSpan = document.getElementById('driving-mode-hint');
-    if (!modeSpan) return;
-    let avgSpeed = null;
-    if (settings.currentMotohours > 0 && settings.currentMileage > 0) {
-        avgSpeed = settings.currentMileage / settings.currentMotohours;
-    } else if (mileageHistory.length >= 2) {
-        const first = mileageHistory[0];
-        const last = mileageHistory[mileageHistory.length-1];
-        const mileageDiff = last.mileage - first.mileage;
-        const motoDiff = (last.motohours || 0) - (first.motohours || 0);
-        if (motoDiff > 0) avgSpeed = mileageDiff / motoDiff;
-    }
-    let mode = '—', hint = '', modeClass = '';
-    if (avgSpeed !== null) {
-        if (avgSpeed < 25) { mode = '🚦 Городской'; hint = 'Интервал масла: 200 м/ч'; modeClass = 'city'; }
-        else if (avgSpeed >= 25 && avgSpeed <= 45) { mode = '🚙 Смешанный'; hint = 'Интервал масла: 225 м/ч'; modeClass = 'mixed'; }
-        else { mode = '🛣️ Трассовый'; hint = 'Интервал масла: 250 м/ч'; modeClass = 'highway'; }
-        modeSpan.textContent = `${mode} (${avgSpeed.toFixed(1)} км/ч)`;
-        hintSpan.textContent = hint;
-    } else {
-        modeSpan.textContent = 'Нет данных';
-        hintSpan.textContent = 'Добавьте моточасы';
-        modeClass = '';
-    }
-    const container = document.getElementById('driving-mode-indicator');
-    if (container) { container.classList.remove('city', 'highway', 'mixed'); if (modeClass) container.classList.add(modeClass); }
-}
-
+// ==================== ОТРИСОВКА ВСЕХ ГРАФИКОВ (с проверкой видимости) ====================
 function renderFuelAnalytics() {
+    // Не рисуем графики, если панель данных скрыта (страница авторизации)
+    if (!dataPanel || dataPanel.style.display !== 'block') return;
     renderFuelConsumptionChart();
     renderFuelPriceChart();
     renderCostsChart();
@@ -1137,7 +1113,11 @@ function renderFuelAnalytics() {
     updateDrivingModeIndicator();
 }
 
+// ==================== ОТРИСОВКА СТАТИСТИКИ (с проверкой видимости) ====================
 function renderStats() {
+    // Не обновляем статистику, если панель данных скрыта
+    if (!dataPanel || dataPanel.style.display !== 'block') return;
+    
     const periodSelect = document.getElementById('stats-period-select'), period = periodSelect ? periodSelect.value : 'all';
     const stats = calculateStatistics(period);
     if (stats) {
