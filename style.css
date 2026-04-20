@@ -272,13 +272,13 @@ tr.attention { background: rgba(241, 196, 15, 0.08) !important; }
     overflow-x: auto;          /* горизонтальная прокрутка */
     -webkit-overflow-scrolling: touch;
     min-width: 150px;
-    min-height: 150px;
+    min-height: 200px;
 }
 .chart-card canvas {
     min-width: 600px;          /* фиксированная ширина для прокрутки */
     width: auto;               /* не растягиваем на 100% */
     height: auto;
-    max-height: 350px;
+    max-height: 550px;
 }
 canvas {
     width: 100% !important;    /* для круговых диаграмм */
