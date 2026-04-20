@@ -3,14 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>🚗 Vesta Control v5.2e</title>
+    <title>🚗 Vesta Control v5.3f</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2c3e50">
+    <!-- 1. Подключение библиотек Chart.js и плагинов -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 </head>
 <body>
 <div class="app-container">
+    <!-- 2. Шапка приложения -->
     <header>
         <h1>🚗 Vesta: ТО & Бюджет</h1>
         <div class="header-controls">
@@ -21,12 +25,15 @@
         </div>
     </header>
 
+    <!-- 3. Панель авторизации -->
     <div id="auth-panel" class="card">
         <button id="authorize-btn" class="primary-btn">🔑 Войти через Google</button>
         <span id="auth-status"></span>
     </div>
 
+    <!-- 4. Основная панель с данными (скрыта до авторизации) -->
     <div id="data-panel" style="display:none;">
+        <!-- 5. Вкладки -->
         <div class="tabs">
             <button class="tab-btn active" data-tab="to">📋 ТО</button>
             <button class="tab-btn" data-tab="stats">📊 Статистика</button>
@@ -37,7 +44,7 @@
             <button class="tab-btn" data-tab="settings">⚙️ Настройки</button>
         </div>
 
-        <!-- Вкладка ТО -->
+        <!-- 6. Вкладка ТО (активна по умолчанию) -->
         <div id="tab-to" class="tab-content active">
             <div class="stats-grid">
                 <div class="stat-card"><span class="stat-label">Пробег</span><span class="stat-value" id="display-mileage">0</span><span class="stat-unit">км</span></div>
@@ -45,18 +52,12 @@
                 <div class="stat-card"><span class="stat-label">Моточасы</span><span class="stat-value" id="display-motohours">0</span><span class="stat-unit">ч</span></div>
                 <div class="stat-card"><span class="stat-label">Ср. м/ч/день</span><span class="stat-value" id="display-avg-motohours">1.65</span><span class="stat-unit">ч</span></div>
             </div>
-
             <div class="card" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                 <label style="margin:0;">Пробег: <input type="number" id="new-mileage" placeholder="км" style="width:120px;"></label>
                 <label style="margin:0;">Моточасы: <input type="number" id="new-motohours" placeholder="ч" style="width:120px;"></label>
                 <button id="update-mileage-btn" class="primary-btn">Обновить</button>
             </div>
-
-            <div class="card top5-widget">
-                <h3>🔝 Ближайшие работы</h3>
-                <div id="top5-container"></div>
-            </div>
-           
+            <div class="card top5-widget"><h3>🔝 Ближайшие работы</h3><div id="top5-container"></div></div>
             <div class="action-bar">
                 <button id="add-operation-btn" class="primary-btn">➕ Операция</button>
                 <button id="recalculate-btn" class="secondary-btn">🔄 Пересчитать</button>
@@ -72,11 +73,10 @@
             </div>
         </div>
 
-        <!-- Вкладка Статистика -->
+        <!-- 7. Вкладка Статистика -->
         <div id="tab-stats" class="tab-content">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
-                <label style="display: flex; align-items: center; gap: 8px;">
-                    <span>Период:</span>
+                <label style="display: flex; align-items: center; gap: 8px;"><span>Период:</span>
                     <select id="stats-period-select" style="width: auto; margin: 0;">
                         <option value="all">Весь период</option>
                         <option value="year">Последний год</option>
@@ -91,7 +91,70 @@
                     <span class="mode-value" id="driving-mode">—</span>
                     <span class="mode-hint" id="driving-mode-hint"></span>
                 </div>
+                <button id="reset-all-zoom" class="secondary-btn" style="margin-left: auto;">⟳ Сбросить масштаб</button>
             </div>
+            <div class="stats-summary-grid">
+                <div class="stat-card"><span class="stat-label">💰 Всего на ТО</span><span class="stat-value" id="total-maintenance-cost">0</span><span class="stat-unit">₽</span></div>
+                <div class="stat-card"><span class="stat-label">⛽ Всего на топливо</span><span class="stat-value" id="total-fuel-cost">0</span><span class="stat-unit">₽</span></div>
+                <div class="stat-card"><span class="stat-label">📏 Стоимость 1 км</span><span class="stat-value" id="cost-per-km">0</span><span class="stat-unit">₽/км</span></div>
+                <div class="stat-card"><span class="stat-label">📊 Средний расход</span><span class="stat-value" id="avg-fuel-consumption">0</span><span class="stat-unit">л/100 км</span></div>
+                <div class="stat-card"><span class="stat-label">🚗 Ср. пробег/день</span><span class="stat-value" id="avg-mileage-per-day">0</span><span class="stat-unit">км</span></div>
+                <div class="stat-card"><span class="stat-label">⏱️ Ср. моточасы/день</span><span class="stat-value" id="avg-motohours-per-day">0</span><span class="stat-unit">ч</span></div>
+                <div class="stat-card ownership-card"><span class="stat-label">📅 Владение</span><span class="stat-value" id="ownership-display">0</span><span class="stat-unit" id="ownership-unit">дней</span><button id="toggle-ownership-unit" class="icon-btn" title="Переключить дни/годы">🔄</button></div>
+            </div>
+            <div class="stats-container">
+                <div class="chart-card"><h3>📈 Расход топлива (л/100 км) по месяцам</h3><canvas id="fuelConsumptionChart"></canvas></div>
+                <div class="chart-card"><h3>💰 Средняя цена топлива (₽/л) по месяцам</h3><canvas id="fuelPriceChart"></canvas></div>
+                <div class="chart-card"><h3>📊 Затраты на топливо и ТО по месяцам</h3><canvas id="costsChart"></canvas></div>
+                <!-- Две круговые диаграммы в ряд -->
+                <div class="pie-row">
+                    <div class="chart-card"><h3>🥧 Распределение затрат по категориям</h3><canvas id="expensePieChart"></canvas></div>
+                    <div class="chart-card"><h3>🛢️ Прогноз замены масла</h3><canvas id="oilChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 8. Вкладка История -->
+        <div id="tab-history" class="tab-content">
+            <div class="table-wrapper">
+                <table id="history-table">
+                    <thead><tr><th>Дата</th><th>Операция</th><th>Пробег</th><th>М/ч</th><th>Запчасти</th><th>Работа</th><th>Прим.</th><th>DIY</th><th></th></tr></thead>
+                    <tbody id="history-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 9. Вкладка Топливо -->
+        <div id="tab-fuel" class="tab-content">
+            <div class="action-bar">
+                <button id="add-fuel-btn" class="primary-btn">➕ Добавить заправку</button>
+                <button id="voice-fuel-btn" class="secondary-btn" title="Голосовой ввод">🎤</button>
+            </div>
+            <div class="table-wrapper">
+                <table id="fuel-table">
+                    <thead><tr><th>Дата</th><th>Пробег</th><th>Литры</th><th>Цена/л</th><th>Полный бак</th><th>Тип</th><th>Прим.</th><th></th></tr></thead>
+                    <tbody id="fuel-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 10. Вкладка Шины -->
+        <div id="tab-tires" class="tab-content">
+            <div id="tire-recommendation" class="info-card"></div>
+            <div class="action-bar"><button id="add-tire-btn" class="primary-btn">➕ Сменить резину</button></div>
+            <div class="table-wrapper">
+                <table id="tires-table">
+                    <thead><tr><th>Дата</th><th>Тип</th><th>Пробег</th><th>Модель</th><th>Размер</th><th>Износ</th><th>Прим.</th><th></th></tr></thead>
+                    <tbody id="tires-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 11. Вкладка Запчасти -->
+        <div id="tab-parts" class="tab-content">
+            <div class="action-bar"><button id="add-part-btn" class="primary-btn">➕ Добавить запчасть</button></div>
+            <div class="table-wrapper">
+                <table id="parts-table">            </div>
 
             <div class="stats-summary-grid">
                 <div class="stat-card"><span class="stat-label">💰 Всего на ТО</span><span class="stat-value" id="total-maintenance-cost">0</span><span class="stat-unit">₽</span></div>
