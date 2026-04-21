@@ -1050,24 +1050,14 @@ async function syncPendingActions() {
                 // 3. Добавляем в WorkCosts
                 await appendSheet('WorkCosts!A:D', [[a.opId, a.workCost, a.isDIY, a.notes]]);
                 
-                // 4. Списание запчастей (как в онлайн-версии)
+                // 4. Списание запчастей (с нормализацией)
                 const op = operations.find(o => o.id == a.opId);
                 if (op) {
-                	const normalizedOpName = normalizeOperationName(op.name, operations);
-const partsForOp = parts.filter(p => 
-    normalizeOperationName(p.operation, operations) === normalizedOpName ||
-    p.operation === op.category
-);
-for (const part of partsForOp) {
-    const stock = part.inStock || 0;
-    if (stock > 0) {
-        const newStock = stock - 1;
-        const rowData = [part.operation, part.oem, part.analog, part.price, part.supplier, part.link, part.comment, newStock, part.location];
-        await writeSheet(`PartsCatalog!A${part.id}:I${part.id}`, [rowData]);
-        console.log(`(офлайн) Списана запчасть ${part.oem || part.analog}, остаток: ${newStock}`);
-    }
-}
-                    const partsForOp = parts.filter(p => p.operation === op.name || p.operation === op.category);
+                    const normalizedOpName = normalizeOperationName(op.name, operations);
+                    const partsForOp = parts.filter(p => 
+                        normalizeOperationName(p.operation, operations) === normalizedOpName ||
+                        p.operation === op.category
+                    );
                     for (const part of partsForOp) {
                         const stock = part.inStock || 0;
                         if (stock > 0) {
@@ -1078,14 +1068,13 @@ for (const part of partsForOp) {
                         }
                     }
                     
-                    // 5. Автоматическое добавление зависимых операций (если операция входит в AUTO_DEDUCT_PAIRS)
+                    // 5. Автоматическое добавление зависимых операций
                     const mainPair = AUTO_DEDUCT_PAIRS.find(p => p.main === op.name);
                     if (mainPair) {
                         const depOp = operations.find(o => o.name === mainPair.dependent);
                         if (depOp) {
                             const alreadyExists = serviceRecords.some(rec => rec.operation_id == depOp.id && rec.date === a.date);
                             if (!alreadyExists) {
-                                // Добавляем зависимую операцию "на лету" (без отдельного pending)
                                 await writeSheet(`Журнал ТО!C${depOp.rowIndex}:E${depOp.rowIndex}`, [[a.date, a.mileage, a.motohours]]);
                                 await appendSheet('История!A:A', [[depOp.id, a.date, a.mileage, a.motohours, 0, 0, false, mainPair.note || 'Автоматически', '', new Date().toISOString()]]);
                                 console.log(`(офлайн) Автоматически добавлена операция: ${mainPair.dependent}`);
