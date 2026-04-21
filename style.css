@@ -628,3 +628,11 @@ button svg {
 button svg {
     margin-right: 4px;
 }
+
+/* Стиль для строк-заголовков категорий в таблице ТО */
+.category-row td {
+    background-color: var(--primary);
+    color: white;
+    font-weight: bold;
+    text-align: left;
+}
