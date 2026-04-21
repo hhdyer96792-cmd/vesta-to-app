@@ -1239,8 +1239,8 @@ table th:first-child::after {
 #maintenance-table th:first-child,
 #maintenance-table td:first-child {
     width: 180px;
-    min-width: 120px;
-    max-width: 220px;
+    min-width: 100px;
+    max-width: 160px;
     white-space: normal;
     word-break: break-word;
     vertical-align: top;
