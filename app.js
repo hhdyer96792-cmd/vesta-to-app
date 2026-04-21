@@ -979,18 +979,41 @@ async function syncPendingActions() {
     for (const a of actions) {
         try {
             if (a.type === 'service') {
+                // 1. Обновляем дату, пробег, моточасы в журнале ТО
                 await writeSheet(`Журнал ТО!C${a.rowIndex}:E${a.rowIndex}`, [[a.date, a.mileage, a.motohours]]);
+                
+                // 2. Добавляем запись в историю
                 await appendSheet('История!A:A', [[a.opId, a.date, a.mileage, a.motohours, a.partsCost, a.workCost, a.isDIY, a.notes, a.photoUrl, new Date().toISOString()]]);
+                
+                // 3. Добавляем запись о работах (WorkCosts)
                 await appendSheet('WorkCosts!A:D', [[a.opId, a.workCost, a.isDIY, a.notes]]);
+                
+                // 4. СПИСАНИЕ ЗАПЧАСТЕЙ (аналогично онлайн-версии)
+                const op = operations.find(o => o.id == a.opId);
+                if (op) {
+                    const partsForOp = parts.filter(p => p.operation === op.name || p.operation === op.category);
+                    for (const part of partsForOp) {
+                        const stock = part.inStock || 0;
+                        if (stock > 0) {
+                            const newStock = stock - 1;
+                            const rowData = [part.operation, part.oem, part.analog, part.price, part.supplier, part.link, part.comment, newStock, part.location];
+                            await writeSheet(`PartsCatalog!A${part.id}:I${part.id}`, [rowData]);
+                            console.log(`(офлайн-синхр) Списана запчасть ${part.oem || part.analog}, остаток: ${newStock}`);
+                        }
+                    }
+                }
+                
+                // 5. Удаляем обработанное действие из очереди
+                pendingActions = pendingActions.filter(act => act !== a);
             }
-            pendingActions = pendingActions.filter(act => act !== a);
-        } catch (e) { console.warn(e); }
+        } catch (e) {
+            console.warn('Ошибка синхронизации действия:', a, e);
+        }
     }
     localStorage.setItem(PENDING_KEY, JSON.stringify(pendingActions));
     if (pendingActions.length === 0) setSyncStatus('synced');
     await loadSheet();
 }
-
 // ==================== 13. ФОТО ====================
 async function getOrCreatePhotoFolder() {
     const query = encodeURIComponent("name='Vesta_TO_Photos' and mimeType='application/vnd.google-apps.folder' and trashed=false");
