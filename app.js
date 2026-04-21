@@ -1840,64 +1840,6 @@ function renderTop5Widget() {
     container.innerHTML = html;
 }
 
-// ==================== 22. ВИДЖЕТ ТОП-5 ====================
-const LINKED_PAIRS = [
-    { main: 'Масло', linked: 'Масляный фильтр', combinedName: 'Масло + фильтр' },
-    { main: 'Масло CVT (частичная)', linked: 'Фильтр вариатора', combinedName: 'Масло CVT + фильтр' }
-];
-
-function renderTop5Widget() {
-    const container = document.getElementById('top5-container');
-    if (!container) return;
-    let candidates = operations.filter(op => { if (!op.intervalKm && !op.intervalMonths && !op.intervalMotohours) return false; const plan = calculatePlan(op); return plan.daysLeft !== null && isFinite(plan.daysLeft) && plan.planDate; });
-    if (candidates.length === 0) { container.innerHTML = '<p class="hint">Нет данных для отображения</p>'; return; }
-    const groupedOps = [];
-    const usedIds = new Set();
-    for (const op of candidates) {
-        if (usedIds.has(op.id)) continue;
-        let isMainOfPair = false, pair = null;
-        for (const p of LINKED_PAIRS) { if (op.name === p.main) { isMainOfPair = true; pair = p; break; } }
-        if (isMainOfPair) {
-            const linkedOp = candidates.find(o => o.name === pair.linked && !usedIds.has(o.id));
-            if (linkedOp) {
-                const mainPlan = calculatePlan(op);
-                const linkedPlan = calculatePlan(linkedOp);
-                const primaryPlan = mainPlan.daysLeft <= linkedPlan.daysLeft ? mainPlan : linkedPlan;
-                const primaryOp = mainPlan.daysLeft <= linkedPlan.daysLeft ? op : linkedOp;
-                groupedOps.push({ name: pair.combinedName, op: primaryOp, plan: primaryPlan, isGroup: true });
-                usedIds.add(op.id); usedIds.add(linkedOp.id);
-                continue;
-            }
-        }
-        let isLinkedInPair = false;
-        for (const p of LINKED_PAIRS) { if (op.name === p.linked) { isLinkedInPair = true; break; } }
-        if (isLinkedInPair) { const mainOp = candidates.find(o => o.name === LINKED_PAIRS.find(p => p.linked === op.name)?.main); if (mainOp && !usedIds.has(mainOp.id)) continue; }
-        if (!usedIds.has(op.id)) { groupedOps.push({ name: op.name, op: op, plan: calculatePlan(op), isGroup: false }); usedIds.add(op.id); }
-    }
-    const sorted = groupedOps.sort((a, b) => a.plan.daysLeft - b.plan.daysLeft);
-    const top5 = sorted.slice(0, 5);
-    let html = '';
-    top5.forEach(item => {
-        const op = item.op, plan = item.plan;
-        let motoFresh = true;
-        if (op.name.includes('Масло') && op.category.includes('ДВС') && mileageHistory.length >= 1) {
-            const lastEntry = mileageHistory[mileageHistory.length-1];
-            if ((settings.currentMotohours - lastEntry.motohours) > 20 || (settings.currentMileage - lastEntry.mileage) > 500) motoFresh = false;
-        }
-        let percent = 0;
-        if (op.intervalKm && plan.planMileage > (op.lastMileage || 0)) percent = Math.min(100, Math.round((settings.currentMileage - (op.lastMileage || 0)) / (plan.planMileage - (op.lastMileage || 0)) * 100));
-        else if (op.intervalMotohours && motoFresh && plan.recMotohours > (op.lastMotohours || 0)) percent = Math.min(100, Math.round((settings.currentMotohours - (op.lastMotohours || 0)) / (plan.recMotohours - (op.lastMotohours || 0)) * 100));
-        else if (op.intervalMonths) { const lastDate = op.lastDate ? new Date(op.lastDate) : new Date(); const totalDays = op.intervalMonths * 30; const elapsed = Math.floor((new Date() - lastDate) / 86400000); percent = Math.min(100, Math.round((elapsed / totalDays) * 100)); }
-        if (percent < 0) percent = 0;
-        const daysLeft = plan.daysLeft, mileageLeft = plan.planMileage - settings.currentMileage, motoLeft = plan.recMotohours ? (plan.recMotohours - settings.currentMotohours) : null;
-        let statusText = daysLeft < 0 ? `⚠️ просрочено на ${Math.abs(daysLeft)} дн.` : `осталось ${daysLeft} дн.`;
-        if (mileageLeft > 0 && op.intervalKm) statusText += ` / ${mileageLeft} км`;
-        else if (motoLeft > 0 && op.intervalMotohours && motoFresh) statusText += ` / ${motoLeft.toFixed(0)} м/ч`;
-        html += `<div class="top5-item"><div class="top5-header"><span class="top5-name">${item.name}</span><span class="top5-stats">${statusText}</span></div><div class="top5-progress-container"><div class="top5-progress-bar" style="width: ${percent}%;"></div></div></div>`;
-    });
-    container.innerHTML = html;
-}
-
 // ==================== 23. ЗАПУСК ====================
 pendingActions = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
 settings.notificationMethod = localStorage.getItem('notificationMethod') || 'telegram';
