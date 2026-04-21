@@ -1840,17 +1840,6 @@ function renderTop5Widget() {
     container.innerHTML = html;
 }
 
-// ==================== 23. ЗАПУСК ====================
-pendingActions = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
-settings.notificationMethod = localStorage.getItem('notificationMethod') || 'telegram';
-loadTheme();
-initGoogleApi();
-initEventListeners();
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js');enderAll(); renderTop5Widget(); alert('Обновлено');
-}
-function updateOwnershipDisplay() { if(!ownershipDisplay||!ownershipUnit) return; ownershipDisplay.textContent = ownershipDisplayMode==='days' ? ownershipDays : (ownershipDays/365.25).toFixed(1); ownershipUnit.textContent = ownershipDisplayMode==='days' ? 'дней' : 'лет'; }
-function calculateOwnershipDays() { const inp = document.getElementById('ownership-days'); if(!purchaseDate){ ownershipDays=0; if(inp) inp.value=''; updateOwnershipDisplay(); return; } const d=new Date(), p=new Date(purchaseDate); ownershipDays=Math.floor(Math.abs(d-p)/86400000); if(inp) inp.value=ownershipDays; updateOwnershipDisplay(); }
-
 // ==================== 22. ВИДЖЕТ ТОП-5 ====================
 const LINKED_PAIRS = [
     { main: 'Масло', linked: 'Масляный фильтр', combinedName: 'Масло + фильтр' },
