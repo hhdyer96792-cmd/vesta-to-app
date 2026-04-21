@@ -1821,9 +1821,9 @@ function initEventListeners() {
     }
     
     // Экспорт CSV (настройки)
-    const exportBtn = document.getElementById('export-data-btn');
-    if (exportBtn) {
-        exportBtn.addEventListener('click', handleExport);
+    const csvExportBtn = document.getElementById('export-data-btn');
+    if (csvExportBtn) {
+        csvExportBtn.addEventListener('click', handleExport);
     }
 }
 
