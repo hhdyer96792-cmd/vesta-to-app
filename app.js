@@ -1758,17 +1758,24 @@ function initEventListeners() {
         applyTheme(isDark ? 'light' : 'dark');
     };
     const selectCarBtn = document.getElementById('select-car-btn'); if(selectCarBtn) selectCarBtn.addEventListener('click', openCarSelectModal);
-    document.querySelectorAll('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
-        document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
-        btn.classList.add('active'); document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
-        if(btn.dataset.tab==='history') loadHistory();
-        if(btn.dataset.tab==='stats') { renderStats(); renderFuelAnalytics(); }
-        if(btn.dataset.tab==='to') renderTop5Widget();
-        if(btn.dataset.tab==='fuel') renderFuelTable();
-        if(btn.dataset.tab==='tires') renderTiresTable();
-        if(btn.dataset.tab==='parts') renderPartsTable();
-    }));
+    
+    // ========== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК (исправлено на .tab-btn) ==========
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            const tab = btn.dataset.tab;
+            document.getElementById(`tab-${tab}`).classList.add('active');
+            if (tab === 'history') loadHistory();
+            if (tab === 'stats') { renderStats(); renderFuelAnalytics(); }
+            if (tab === 'to') renderTop5Widget();
+            if (tab === 'fuel') renderFuelTable();
+            if (tab === 'tires') renderTiresTable();
+            if (tab === 'parts') renderPartsTable();
+        });
+    });
+    
     window.addEventListener('online', ()=>{ isOnline=true; syncPendingActions(); setSyncStatus('synced'); });
     window.addEventListener('offline', ()=>{ isOnline=false; setSyncStatus('error'); });
     addTireBtn.onclick = ()=>openTireModal();
@@ -1820,7 +1827,7 @@ function initEventListeners() {
         });
     }
     
-    // Экспорт CSV (настройки)
+    // ========== ЭКСПОРТ CSV (исправлено: переименовано в csvExportBtn) ==========
     const csvExportBtn = document.getElementById('export-data-btn');
     if (csvExportBtn) {
         csvExportBtn.addEventListener('click', handleExport);
