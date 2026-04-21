@@ -1820,14 +1820,12 @@ function initEventListeners() {
         });
     }
     
-    // Экспорт CSV (настройки)
-    const exportBtn = document.getElementById('export-data-btn');
-    if (exportBtn) {
-        exportBtn.addEventListener('click', handleExport);
+        // Экспорт CSV (настройки)
+    const csvExportBtn = document.getElementById('export-data-btn');
+    if (csvExportBtn) {
+        csvExportBtn.addEventListener('click', handleExport);
     }
 }
-
-// ==================== 21. ЭКСПОРТ CSV (универсальный) ====================
 // ==================== 21. ЭКСПОРТ CSV (универсальный) ====================
 function exportToCSV(data, filename, headers) {
     if (!data || data.length === 0) {
