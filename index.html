@@ -234,6 +234,23 @@
                 <p>Папка для фото создаётся автоматически на Google Диске.</p>
                 <button id="open-photo-folder-btn" class="secondary-btn">📁 Открыть папку с фото</button>
             </div>
+            <div class="card">
+    <h3>📤 Экспорт данных (CSV)</h3>
+    <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
+        <label style="flex: 1; min-width: 200px;">Выберите данные для экспорта:
+            <select id="export-type-select" style="width: 100%;">
+                <option value="to">📋 Журнал ТО</option>
+                <option value="fuel">⛽ Топливо</option>
+                <option value="tires">🛞 Шины</option>
+                <option value="parts">📦 Запчасти</option>
+                <option value="history">📜 История ТО</option>
+                <option value="all">📁 Все данные (ТО + топливо + шины + запчасти + история)</option>
+            </select>
+        </label>
+        <button id="export-data-btn" class="primary-btn">📥 Скачать CSV</button>
+    </div>
+    <p class="hint">Файл будет сохранён в формате CSV (разделитель «;»), совместим с Excel.</p>
+</div>
         </div>
     </div>
 </div>

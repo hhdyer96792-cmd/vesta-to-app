@@ -1616,6 +1616,115 @@ function generateShoppingList(opId) {
     alert(list);
 }
 
+// ==================== ЭКСПОРТ В CSV (УНИВЕРСАЛЬНЫЙ) ====================
+function exportToCSV(data, filename, headers) {
+    if (!data || data.length === 0) {
+        alert('Нет данных для экспорта');
+        return;
+    }
+    let csvRows = [];
+    if (headers) {
+        csvRows.push(headers.join(';'));
+    }
+    for (const row of data) {
+        const values = row.map(cell => {
+            const cellStr = String(cell ?? '').replace(/"/g, '""');
+            if (cellStr.includes(';') || cellStr.includes('\n') || cellStr.includes('"')) {
+                return `"${cellStr}"`;
+            }
+            return cellStr;
+        });
+        csvRows.push(values.join(';'));
+    }
+    const blob = new Blob(["\uFEFF" + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', `${filename}_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+function getExportData(type) {
+    switch (type) {
+        case 'to':
+            return {
+                data: operations.map(op => [
+                    op.category, op.name, op.lastDate || '', op.lastMileage || '', op.lastMotohours || '',
+                    op.intervalKm, op.intervalMonths, op.intervalMotohours ?? ''
+                ]),
+                headers: ['Категория', 'Операция', 'Последняя дата', 'Последний пробег', 'Последние моточасы', 'Интервал км', 'Интервал мес', 'Интервал м/ч'],
+                filename: 'vesta_operations'
+            };
+        case 'fuel':
+            return {
+                data: fuelLog.map(f => [
+                    f.date, f.mileage, f.liters, f.pricePerLiter,
+                    (f.fullTank === 'TRUE' || f.fullTank === true) ? 'Да' : 'Нет',
+                    f.fuelType, f.notes || ''
+                ]),
+                headers: ['Дата', 'Пробег', 'Литры', 'Цена/л', 'Полный бак', 'Тип топлива', 'Примечание'],
+                filename: 'vesta_fuel'
+            };
+        case 'tires':
+            return {
+                data: tireLog.map(t => [
+                    t.date, t.type, t.mileage, t.model || '', t.size || '', t.wear || '', t.notes || '',
+                    t.purchaseCost || '', t.mountCost || '', t.isDIY ? 'Да' : 'Нет'
+                ]),
+                headers: ['Дата', 'Тип', 'Пробег', 'Модель', 'Размер', 'Износ', 'Примечание', 'Стоимость покупки', 'Стоимость монтажа', 'DIY'],
+                filename: 'vesta_tires'
+            };
+        case 'parts':
+            return {
+                data: parts.map(p => [
+                    p.operation, p.oem, p.analog, p.price, p.supplier, p.link, p.comment,
+                    p.inStock || 0, p.location || ''
+                ]),
+                headers: ['Операция', 'OEM', 'Аналог', 'Цена', 'Поставщик', 'Ссылка', 'Комментарий', 'В наличии (шт.)', 'Место хранения'],
+                filename: 'vesta_parts'
+            };
+        case 'history':
+            const filtered = getFilteredHistory();
+            return {
+                data: filtered.map(record => {
+                    const op = operations.find(o => o.id == record.operation_id);
+                    const opName = op ? op.name : 'Неизвестно';
+                    const diy = (record.is_diy === 'TRUE' || record.is_diy === true) ? 'Да' : 'Нет';
+                    return [
+                        record.date || '', opName, record.mileage || '', record.motohours || '',
+                        record.parts_cost || '', record.work_cost || '', record.notes || '', diy
+                    ];
+                }),
+                headers: ['Дата', 'Операция', 'Пробег', 'Моточасы', 'Запчасти (₽)', 'Работа (₽)', 'Примечание', 'DIY'],
+                filename: 'vesta_history'
+            };
+        case 'all':
+            // Экспортируем всё в один CSV? Нет, по отдельности. Но для "все" можно создать zip или несколько файлов.
+            // Проще: последовательно скачать несколько файлов (предупредить пользователя).
+            alert('Функция "Все данные" скачает несколько файлов по очереди.');
+            const types = ['to', 'fuel', 'tires', 'parts', 'history'];
+            for (const t of types) {
+                const { data, headers, filename } = getExportData(t);
+                exportToCSV(data, filename, headers);
+            }
+            return null;
+        default:
+            return null;
+    }
+}
+
+function handleExport() {
+    const select = document.getElementById('export-type-select');
+    const type = select.value;
+    const exportData = getExportData(type);
+    if (exportData && exportData.data) {
+        exportToCSV(exportData.data, exportData.filename, exportData.headers);
+    }
+}
+
 // ==================== 19. ТЕМА (СОХРАНЕНИЕ) ====================
 function applyTheme(theme) {
     if (theme === 'dark') {
@@ -1718,6 +1827,8 @@ function initEventListeners() {
             if (historyCostMax) historyCostMax.value = '';
             applyHistoryFilters();
         });
+        const exportBtn = document.getElementById('export-data-btn');
+if (exportBtn) exportBtn.addEventListener('click', handleExport);
     }
 }
 
