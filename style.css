@@ -1235,3 +1235,13 @@ table th:first-child::after {
         box-shadow: 2px 0 4px rgba(0,0,0,0.05);
     }
 }
+/* Уменьшаем ширину первого столбца (название операции) в таблице ТО */
+#maintenance-table th:first-child,
+#maintenance-table td:first-child {
+    width: 180px;
+    min-width: 120px;
+    max-width: 220px;
+    white-space: normal;
+    word-break: break-word;
+    vertical-align: top;
+}
