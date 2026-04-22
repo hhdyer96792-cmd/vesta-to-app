@@ -735,9 +735,9 @@ table th:first-child {
     #history-table th:nth-child(2),
     #history-table td:nth-child(2) {
         left: 90px;
-        width: 110px;
-        min-width: 110px;
-        max-width: 110px;
+        width: 115px;
+        min-width: 115px;
+        max-width: 115px;
     }
 }
 /* ========== ТАБЛИЦЫ ТОПЛИВО, ШИНЫ, ЗАПЧАСТИ – наследуют глобальные стили, дополнительные корректировки ========== */
