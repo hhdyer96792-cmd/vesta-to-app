@@ -670,15 +670,15 @@ table th:first-child {
 }
 #maintenance-table th:first-child,
 #maintenance-table td:first-child {
-    width: 200px;
-    min-width: 200px;
-    max-width: 200px;
+    width: 210px;
+    min-width: 210px;
+    max-width: 210px;
     box-shadow: 2px 0 4px -2px rgba(0,0,0,0.1);
 }
 #maintenance-table th:nth-child(2),
 #maintenance-table td:nth-child(2) {
     position: sticky;
-    left: 200px;
+    left: 210px;
     background: var(--card-bg);
     z-index: 14;
     width: 160px;
