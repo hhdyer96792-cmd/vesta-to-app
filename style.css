@@ -758,16 +758,16 @@ table th:first-child {
     }
     #maintenance-table th:first-child,
     #maintenance-table td:first-child {
-        width: 115px;
-        min-width: 115px;
-        max-width: 115px;
+        width: 125px;
+        min-width: 125px;
+        max-width: 125px;
     }
     #maintenance-table th:nth-child(2),
     #maintenance-table td:nth-child(2) {
-        left: 115px;
-        width: 95px;
-        min-width: 95px;
-        max-width: 95px;
+        left: 125px;
+        width: 85px;
+        min-width: 85px;
+        max-width: 85px;
     }
     #fuel-table th:first-child,
     #fuel-table td:first-child,
