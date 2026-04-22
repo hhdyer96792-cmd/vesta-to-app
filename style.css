@@ -1180,7 +1180,7 @@ button svg {
     font-weight: bold;
     text-align: left;
 }
-/* ========== STICKY-ШАПКА И ПЕРВЫЙ СТОЛБЕЦ ========== */
+/* ========== STICKY-ШАПКА И ФИКСАЦИЯ ПЕРВЫХ ДВУХ СТОЛБЦОВ ========== */
 .table-wrapper {
     position: relative;
     overflow-x: auto;
@@ -1193,134 +1193,80 @@ table thead th {
     position: sticky;
     top: 0;
     background: var(--card-bg);
-    z-index: 10;
+    z-index: 20;
     box-shadow: inset 0 -1px 0 var(--border);
 }
 
-/* Фиксация первого столбца (ячейки и заголовки) */
-table td:first-child,
-table th:first-child {
+/* Общие стили для ячеек – перенос текста */
+table th, table td {
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    vertical-align: top;
+}
+
+/* Первый столбец – фиксированная ширина и прилипание */
+table th:first-child,
+table td:first-child {
     position: sticky;
     left: 0;
     background: var(--card-bg);
-    z-index: 5;
-}
-
-/* Для заголовка первого столбца — поверх обычных ячеек */
-table th:first-child {
     z-index: 15;
+    width: 180px;
+    min-width: 180px;
+    max-width: 180px;
+    box-shadow: 2px 0 4px -2px rgba(0,0,0,0.1);
 }
 
-/* Добавляем правую тень для первого столбца (визуальный акцент) */
-table td:first-child::after,
-table th:first-child::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: -2px;
-    height: 100%;
-    width: 2px;
-    background: var(--border);
-    pointer-events: none;
+/* Второй столбец – прилипает к первому, своя ширина */
+table th:nth-child(2),
+table td:nth-child(2) {
+    position: sticky;
+    left: 180px;
+    background: var(--card-bg);
+    z-index: 14;
+    width: 160px;
+    min-width: 160px;
+    max-width: 160px;
+    box-shadow: 2px 0 4px -2px rgba(0,0,0,0.1);
 }
 
-/* Для мобильных устройств — увеличиваем отступы для удобства */
+/* Заголовки первых двух столбцов – выше остальных ячеек */
+table th:first-child,
+table th:nth-child(2) {
+    z-index: 25;
+}
+
+/* Адаптация для мобильных */
 @media (max-width: 768px) {
     .table-wrapper {
         max-height: 60vh;
     }
-    table td:first-child,
-    table th:first-child {
-        background: var(--card-bg);
-        box-shadow: 2px 0 4px rgba(0,0,0,0.05);
-    }
-}
-/* 
-/* Уменьшаем ширину первого столбца (название операции) в таблице ТО */
-#maintenance-table th:first-child,
-#maintenance-table td:first-child {
-    width: 180px;
-    min-width: 100px;
-    max-width: 160px;
-    white-space: normal;
-    word-break: break-word;
-    vertical-align: top;
-} 
-*/
-
-/* ========== ФИКСАЦИЯ ВТОРОГО СТОЛБЦА ========== */
-
-/* Фиксируем ширину первого и второго столбцов для всех таблиц,
-   чтобы позиционирование left было точным */
-table th:first-child,
-table td:first-child {
-    width: 130px;
-    min-width: 130px;
-    max-width: 130px;
-}
-
-table th:nth-child(2),
-table td:nth-child(2) {
-    width: 130px;
-    min-width: 130px;
-    max-width: 130px;
-}
-
-/* Фиксация второго столбца (прилипает к первому) */
-table td:nth-child(2),
-table th:nth-child(2) {
-    position: sticky;
-    left: 130px;  /* Ширина первого столбца */
-    background: var(--card-bg);
-    z-index: 5;
-}
-
-/* Для заголовка второго столбца — повышаем z-index, чтобы он был над ячейками */
-table th:nth-child(2) {
-    z-index: 15;
-}
-
-/* Тень для второго столбца */
-table td:nth-child(2)::after,
-table th:nth-child(2)::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: -2px;
-    height: 100%;
-    width: 2px;
-    background: var(--border);
-    pointer-events: none;
-}
-
-/* Адаптация для мобильных устройств */
-@media (max-width: 768px) {
     table th:first-child,
     table td:first-child {
-        width: 60px;
-        min-width: 60px;
-        max-width: 60px;
+        width: 80px;
+        min-width: 80px;
+        max-width: 80px;
     }
     table th:nth-child(2),
     table td:nth-child(2) {
-        width: 60px;
-        min-width: 60px;
-        max-width: 60px;
-        left: 60px;
+        left: 80px;
+        width: 80px;
+        min-width: 80px;
+        max-width: 80px;
     }
 }
 
-/* Если вы хотите сохранить разную ширину для таблицы ТО (как у вас было),
-   раскомментируйте и настройте под свои значения */
+/* Если для таблицы ТО нужна особая ширина – добавьте (раскомментируйте и настройте) */
 /*
 #maintenance-table th:first-child,
 #maintenance-table td:first-child {
-    width: 180px;
-    min-width: 100px;
+    width: 160px;
+    min-width: 160px;
     max-width: 160px;
 }
 #maintenance-table th:nth-child(2),
 #maintenance-table td:nth-child(2) {
-    left: 180px;
+    left: 160px;
 }
 */
