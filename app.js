@@ -547,6 +547,8 @@ function renderTOTable() {
     });
     attachTOListeners();
     updateCalendarButtonsStatus();
+    renderTireWear();
+renderTireCalculator();
     initIcons();
 }
 
