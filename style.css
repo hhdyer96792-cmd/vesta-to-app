@@ -1269,3 +1269,13 @@ table th:nth-child(2) {
     left: 160px;
 }
 */
+/* Калькулятор шин и карточки износа */
+.calculator-card input {
+    margin-bottom: 0;
+}
+.wear-card-item {
+    transition: all 0.2s;
+}
+.wear-card-item .progress-bar-container {
+    margin: 8px 0;
+}
