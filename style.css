@@ -1297,16 +1297,16 @@ table th:nth-child(2)::after {
 @media (max-width: 768px) {
     table th:first-child,
     table td:first-child {
-        width: 90px;
-        min-width: 90px;
-        max-width: 90px;
+        width: 60px;
+        min-width: 60px;
+        max-width: 60px;
     }
     table th:nth-child(2),
     table td:nth-child(2) {
-        width: 90px;
-        min-width: 90px;
-        max-width: 90px;
-        left: 90px;
+        width: 60px;
+        min-width: 60px;
+        max-width: 60px;
+        left: 60px;
     }
 }
 
