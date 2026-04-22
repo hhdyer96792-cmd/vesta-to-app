@@ -670,15 +670,15 @@ table th:first-child {
 }
 #maintenance-table th:first-child,
 #maintenance-table td:first-child {
-    width: 190px;
-    min-width: 190px;
-    max-width: 190px;
+    width: 200px;
+    min-width: 200px;
+    max-width: 200px;
     box-shadow: 2px 0 4px -2px rgba(0,0,0,0.1);
 }
 #maintenance-table th:nth-child(2),
 #maintenance-table td:nth-child(2) {
     position: sticky;
-    left: 190px;
+    left: 200px;
     background: var(--card-bg);
     z-index: 14;
     width: 160px;
@@ -735,9 +735,9 @@ table th:first-child {
     #history-table th:nth-child(2),
     #history-table td:nth-child(2) {
         left: 90px;
-        width: 120px;
-        min-width: 120px;
-        max-width: 120px;
+        width: 125px;
+        min-width: 125px;
+        max-width: 125px;
     }
 }
 /* ========== ТАБЛИЦЫ ТОПЛИВО, ШИНЫ, ЗАПЧАСТИ – наследуют глобальные стили, дополнительные корректировки ========== */
