@@ -1175,8 +1175,8 @@ button svg {
 
 /* Стиль для строк-заголовков категорий в таблице ТО */
 .category-row td {
-    background-color: var(--primary);
-    color: white;
+    background-color: var(--primary) !important;
+    color: white !important;
     font-weight: bold;
     text-align: left;
 }
@@ -1187,7 +1187,6 @@ button svg {
     overflow-y: auto;
     max-height: 70vh;
 }
-
 /* Фиксация заголовков (шапка) */
 table thead th {
     position: sticky;
