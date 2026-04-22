@@ -2083,9 +2083,7 @@ function calculateOwnershipDays() {
     updateOwnershipDisplay();
 }
 
-// ==================== 23. ВИДЖЕТ ТОП-5 ====================
-// ==================== КОНФИГУРАЦИЯ АВТОСПИСАНИЯ ====================
-// Пары "основная операция -> зависимая операция" для автоматического добавления в историю
+// ==================== 23. КОНФИГУРАЦИЯ АВТОСПИСАНИЯ ====================
 const AUTO_DEDUCT_PAIRS = [
     { main: 'Масло', dependent: 'Масляный фильтр', note: 'Автоматически вместе с заменой масла' },
     { main: 'Масло CVT (частичная)', dependent: 'Фильтр вариатора', note: 'Автоматически вместе с частичной заменой масла CVT' },
@@ -2095,6 +2093,12 @@ const AUTO_DEDUCT_PAIRS = [
     { main: 'Воздушный фильтр', dependent: 'Фильтр салона', note: 'Автоматически при замене воздушного фильтра (рекомендовано)' },
 ];
 
+const LINKED_PAIRS = [
+    { main: 'Масло', linked: 'Масляный фильтр', combinedName: 'Масло + фильтр' },
+    { main: 'Масло CVT (частичная)', linked: 'Фильтр вариатора', combinedName: 'Масло CVT + фильтр' }
+];
+
+// ==================== 24. ВИДЖЕТ ТОП-5 ====================
 function renderTop5Widget() {
     const container = document.getElementById('top5-container');
     if (!container) return;
@@ -2155,7 +2159,106 @@ function renderTop5Widget() {
     initIcons();
 }
 
-// ==================== 24. ЗАПУСК ====================
+// ==================== 25. КАЛЬКУЛЯТОР ШИН ====================
+function parseTireSize(sizeStr) {
+    // Форматы: 205/55R16, 205/55 R16, 205-55-16
+    const match = sizeStr.match(/(\d+)[\/\-](\d+)[\/\-R](\d+)/i);
+    if (!match) return null;
+    return {
+        width: parseInt(match[1]),
+        aspect: parseInt(match[2]),
+        diameter: parseInt(match[3])
+    };
+}
+
+function calculateTireDiameter(width, aspect, diameter) {
+    const sidewallHeight = (width * aspect) / 100;
+    const diameterMm = diameter * 25.4;
+    return diameterMm + sidewallHeight * 2;
+}
+
+function renderTireCalculator() {
+    const oldInput = document.getElementById('old-tire-size');
+    const newInput = document.getElementById('new-tire-size');
+    const calcBtn = document.getElementById('calc-tire-btn');
+    const resultDiv = document.getElementById('tire-calc-result');
+    if (!calcBtn) return;
+
+    calcBtn.onclick = () => {
+        const oldSize = oldInput.value.trim();
+        const newSize = newInput.value.trim();
+        if (!oldSize || !newSize) {
+            resultDiv.innerHTML = '⚠️ Введите оба размера (пример: 205/55R16)';
+            return;
+        }
+        const oldParsed = parseTireSize(oldSize);
+        const newParsed = parseTireSize(newSize);
+        if (!oldParsed || !newParsed) {
+            resultDiv.innerHTML = '❌ Неверный формат. Используйте: Ширина/ПрофильRДиаметр (205/55R16)';
+            return;
+        }
+        const oldDiameter = calculateTireDiameter(oldParsed.width, oldParsed.aspect, oldParsed.diameter);
+        const newDiameter = calculateTireDiameter(newParsed.width, newParsed.aspect, newParsed.diameter);
+        const diffPercent = ((newDiameter - oldDiameter) / oldDiameter) * 100;
+        let recommendation = '';
+        if (Math.abs(diffPercent) > 2.5) {
+            recommendation = '⚠️ Отклонение более 2.5% — не рекомендуется, спидометр будет врать.';
+        } else {
+            recommendation = '✅ Отклонение в пределах нормы (до 2.5%).';
+        }
+        resultDiv.innerHTML = `
+            📐 Диаметр старой шины: ${oldDiameter.toFixed(1)} мм<br>
+            📐 Диаметр новой шины: ${newDiameter.toFixed(1)} мм<br>
+            📊 Разница: ${diffPercent.toFixed(2)}%<br>
+            🚗 При реальной скорости 100 км/ч спидометр будет показывать ${(100 / (1 + diffPercent/100)).toFixed(1)} км/ч<br>
+            ${recommendation}
+        `;
+    };
+}
+
+// ==================== 26. ВИЗУАЛИЗАЦИЯ ИЗНОСА ШИН ====================
+function renderTireWear() {
+    const container = document.getElementById('tire-wear-container');
+    if (!container) return;
+
+    const summerTires = tireLog.filter(t => t.type === 'Лето').sort((a,b) => new Date(b.date) - new Date(a.date));
+    const winterTires = tireLog.filter(t => t.type === 'Зима').sort((a,b) => new Date(b.date) - new Date(a.date));
+    
+    const summerLast = summerTires[0];
+    const winterLast = winterTires[0];
+
+    function buildWearCard(tire, type) {
+        if (!tire) return `<div class="wear-card-item"><h4>${type}</h4><p class="hint">Нет данных</p></div>`;
+        let wearPercent = 0;
+        let wearValue = tire.wear ? parseFloat(tire.wear) : 0;
+        if (type === 'Лето') {
+            const minWear = 1.6;
+            const maxDepth = 8;
+            let currentDepth = Math.min(maxDepth, Math.max(minWear, wearValue));
+            wearPercent = ((maxDepth - currentDepth) / (maxDepth - minWear)) * 100;
+            wearPercent = Math.min(100, Math.max(0, wearPercent));
+        } else {
+            wearPercent = Math.min(100, Math.max(0, 100 - wearValue));
+        }
+        const statusColor = wearPercent < 50 ? '#2ecc71' : (wearPercent < 80 ? '#f39c12' : '#e74c3c');
+        return `
+            <div class="wear-card-item" style="flex:1; min-width:200px; background:var(--card-bg); padding:12px; border-radius:12px;">
+                <h4>${type} шины</h4>
+                <p>Модель: ${tire.model || '—'}<br>Размер: ${tire.size || '—'}<br>Пробег на установке: ${tire.mileage || 0} км</p>
+                <div style="margin-top:12px;">
+                    <div style="display:flex; justify-content:space-between;"><span>Износ:</span><span>${wearPercent.toFixed(0)}%</span></div>
+                    <div class="progress-bar-container" style="height:12px;"><div class="progress-bar" style="width:${wearPercent}%; background:${statusColor};"></div></div>
+                    <p class="hint">${type === 'Лето' ? `Остаток протектора: ${wearValue} мм (мин. 1.6 мм)` : `Остаток шипов: ${100 - wearValue}%`}</p>
+                </div>
+            </div>
+        `;
+    }
+
+    container.innerHTML = buildWearCard(summerLast, 'Лето') + buildWearCard(winterLast, 'Зима');
+    initIcons();
+}
+
+// ==================== 27. ЗАПУСК ====================
 pendingActions = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
 settings.notificationMethod = localStorage.getItem('notificationMethod') || 'telegram';
 loadTheme();
