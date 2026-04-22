@@ -1235,6 +1235,7 @@ table th:first-child::after {
         box-shadow: 2px 0 4px rgba(0,0,0,0.05);
     }
 }
+/* 
 /* Уменьшаем ширину первого столбца (название операции) в таблице ТО */
 #maintenance-table th:first-child,
 #maintenance-table td:first-child {
@@ -1244,4 +1245,82 @@ table th:first-child::after {
     white-space: normal;
     word-break: break-word;
     vertical-align: top;
+} 
+*/
+
+/* ========== ФИКСАЦИЯ ВТОРОГО СТОЛБЦА ========== */
+
+/* Фиксируем ширину первого и второго столбцов для всех таблиц,
+   чтобы позиционирование left было точным */
+table th:first-child,
+table td:first-child {
+    width: 130px;
+    min-width: 130px;
+    max-width: 130px;
 }
+
+table th:nth-child(2),
+table td:nth-child(2) {
+    width: 130px;
+    min-width: 130px;
+    max-width: 130px;
+}
+
+/* Фиксация второго столбца (прилипает к первому) */
+table td:nth-child(2),
+table th:nth-child(2) {
+    position: sticky;
+    left: 130px;  /* Ширина первого столбца */
+    background: var(--card-bg);
+    z-index: 5;
+}
+
+/* Для заголовка второго столбца — повышаем z-index, чтобы он был над ячейками */
+table th:nth-child(2) {
+    z-index: 15;
+}
+
+/* Тень для второго столбца */
+table td:nth-child(2)::after,
+table th:nth-child(2)::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -2px;
+    height: 100%;
+    width: 2px;
+    background: var(--border);
+    pointer-events: none;
+}
+
+/* Адаптация для мобильных устройств */
+@media (max-width: 768px) {
+    table th:first-child,
+    table td:first-child {
+        width: 90px;
+        min-width: 90px;
+        max-width: 90px;
+    }
+    table th:nth-child(2),
+    table td:nth-child(2) {
+        width: 90px;
+        min-width: 90px;
+        max-width: 90px;
+        left: 90px;
+    }
+}
+
+/* Если вы хотите сохранить разную ширину для таблицы ТО (как у вас было),
+   раскомментируйте и настройте под свои значения */
+/*
+#maintenance-table th:first-child,
+#maintenance-table td:first-child {
+    width: 180px;
+    min-width: 100px;
+    max-width: 160px;
+}
+#maintenance-table th:nth-child(2),
+#maintenance-table td:nth-child(2) {
+    left: 180px;
+}
+*/
