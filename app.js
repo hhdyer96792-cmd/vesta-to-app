@@ -547,8 +547,6 @@ function renderTOTable() {
     });
     attachTOListeners();
     updateCalendarButtonsStatus();
-    renderTireWear();
-renderTireCalculator();
     initIcons();
 }
 
@@ -625,6 +623,8 @@ function renderTiresTable() {
         tbody.appendChild(tr);
     });
     attachTireListeners();
+    renderTireWear();
+renderTireCalculator();
     initIcons();
 }
 
@@ -2186,36 +2186,40 @@ function renderTireCalculator() {
     const resultDiv = document.getElementById('tire-calc-result');
     if (!calcBtn) return;
 
-    calcBtn.onclick = () => {
+    // Удаляем старые обработчики через клонирование
+    const newBtn = calcBtn.cloneNode(true);
+    calcBtn.parentNode.replaceChild(newBtn, calcBtn);
+    
+    newBtn.addEventListener('click', () => {
         const oldSize = oldInput.value.trim();
         const newSize = newInput.value.trim();
         if (!oldSize || !newSize) {
-            resultDiv.innerHTML = '⚠️ Введите оба размера (пример: 205/55R16)';
+            resultDiv.innerHTML = '<i data-lucide="alert-triangle"></i> Введите оба размера (пример: 205/55R16)';
+            initIcons();
             return;
         }
         const oldParsed = parseTireSize(oldSize);
         const newParsed = parseTireSize(newSize);
         if (!oldParsed || !newParsed) {
-            resultDiv.innerHTML = '❌ Неверный формат. Используйте: Ширина/ПрофильRДиаметр (205/55R16)';
+            resultDiv.innerHTML = '<i data-lucide="alert-circle"></i> Неверный формат. Используйте: Ширина/ПрофильRДиаметр (205/55R16)';
+            initIcons();
             return;
         }
         const oldDiameter = calculateTireDiameter(oldParsed.width, oldParsed.aspect, oldParsed.diameter);
         const newDiameter = calculateTireDiameter(newParsed.width, newParsed.aspect, newParsed.diameter);
         const diffPercent = ((newDiameter - oldDiameter) / oldDiameter) * 100;
-        let recommendation = '';
-        if (Math.abs(diffPercent) > 2.5) {
-            recommendation = '⚠️ Отклонение более 2.5% — не рекомендуется, спидометр будет врать.';
-        } else {
-            recommendation = '✅ Отклонение в пределах нормы (до 2.5%).';
-        }
+        const recommendation = Math.abs(diffPercent) > 2.5 
+            ? '<i data-lucide="alert-triangle"></i> Отклонение более 2.5% — не рекомендуется, спидометр будет врать.'
+            : '<i data-lucide="check-circle"></i> Отклонение в пределах нормы (до 2.5%).';
         resultDiv.innerHTML = `
-            📐 Диаметр старой шины: ${oldDiameter.toFixed(1)} мм<br>
-            📐 Диаметр новой шины: ${newDiameter.toFixed(1)} мм<br>
-            📊 Разница: ${diffPercent.toFixed(2)}%<br>
-            🚗 При реальной скорости 100 км/ч спидометр будет показывать ${(100 / (1 + diffPercent/100)).toFixed(1)} км/ч<br>
+            <i data-lucide="ruler"></i> Диаметр старой шины: ${oldDiameter.toFixed(1)} мм<br>
+            <i data-lucide="ruler"></i> Диаметр новой шины: ${newDiameter.toFixed(1)} мм<br>
+            <i data-lucide="bar-chart-2"></i> Разница: ${diffPercent.toFixed(2)}%<br>
+            <i data-lucide="car"></i> При реальной скорости 100 км/ч спидометр будет показывать ${(100 / (1 + diffPercent/100)).toFixed(1)} км/ч<br>
             ${recommendation}
         `;
-    };
+        initIcons(); // отрисовка иконок
+    });
 }
 
 // ==================== 26. ВИЗУАЛИЗАЦИЯ ИЗНОСА ШИН ====================
