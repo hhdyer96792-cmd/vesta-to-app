@@ -765,9 +765,9 @@ table th:first-child {
     #maintenance-table th:nth-child(2),
     #maintenance-table td:nth-child(2) {
         left: 125px;
-        width: 95px;
-        min-width: 95px;
-        max-width: 95px;
+        width: 100px;
+        min-width: 100px;
+        max-width: 100px;
     }
     #fuel-table th:first-child,
     #fuel-table td:first-child,
