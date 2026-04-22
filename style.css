@@ -1243,16 +1243,16 @@ table th:nth-child(2) {
     }
     table th:first-child,
     table td:first-child {
-        width: 90px;
-        min-width: 90px;
-        max-width: 90px;
+        width: 95px;
+        min-width: 95px;
+        max-width: 95px;
     }
     table th:nth-child(2),
     table td:nth-child(2) {
-        left: 90px;
-        width: 90px;
-        min-width: 90px;
-        max-width: 90px;
+        left: 95px;
+        width: 95px;
+        min-width: 95px;
+        max-width: 95px;
     }
 }
 
