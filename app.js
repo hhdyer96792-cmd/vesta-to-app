@@ -310,6 +310,9 @@ function hideSkeleton(targetId) {
 
 function initIcons() {
     if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        // Удаляем все ранее созданные иконки (SVG)
+        document.querySelectorAll('svg[data-lucide]').forEach(svg => svg.remove());
+        // Создаём иконки заново
         lucide.createIcons();
     }
 }
