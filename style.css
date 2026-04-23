@@ -815,19 +815,3 @@ table th:first-child {
 .execute-plan-btn:hover {
     opacity: 0.8;
 }
-/* Принудительная стилизация иконок Lucide */
-svg[data-lucide] {
-    stroke: currentColor;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    fill: none;
-    color: var(--text);
-    width: 1.2rem;
-    height: 1.2rem;
-}
-/* Для иконок, которые должны быть залиты (например, check-circle) можно добавить fill */
-svg[data-lucide].fill-primary {
-    fill: var(--primary);
-    stroke: none;
-}
