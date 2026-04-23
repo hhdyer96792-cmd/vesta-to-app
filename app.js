@@ -1672,25 +1672,23 @@ function renderStats() {
         updateOwnershipDisplay();
     }
     const statsTab = document.getElementById('tab-stats');
-    if (statsTab && statsTab.classList.contains('active')) {
-        const oilOp = operations.find(op => op.name.includes('Масло') && op.category.includes('ДВС'));
-        if (oilOp) {
-            const plan = calculatePlan(oilOp);
-            const canvas = oilChart;
-            if (canvas && typeof Chart !== 'undefined') {
-                try {
-                    const ctx = canvas.getContext('2d');
-                    const current = settings.currentMileage;
-                    const last = oilOp.lastMileage || 0;
-                    const next = plan.planMileage;
-                    const percent = Math.min(100, Math.max(0, Math.round((current - last) / (next - last) * 100)));
-                    const existingChart = Chart.getChart(canvas);
-                    if (existingChart) existingChart.destroy();
-                    new Chart(ctx, { type: 'doughnut', data: { labels: ['Пройдено', 'Осталось'], datasets: [{ data: [percent, 100 - percent], backgroundColor: ['#2ecc71', '#e0e0e0'] }] }, options: { cutout: '70%', plugins: { legend: { display: false } } } });
-                } catch(e) { console.warn('Ошибка графика масла:', e); }
-            }
+if (statsTab && statsTab.classList.contains('active')) {
+    const oilOp = operations.find(op => op.name.includes('Масло') && op.category.includes('ДВС'));
+    if (oilOp) {
+        const plan = calculatePlan(oilOp);
+        const current = settings.currentMileage;
+        const last = oilOp.lastMileage || 0;
+        const next = plan.planMileage;
+        let percent = 0;
+        if (next > last) {
+            percent = Math.min(100, Math.max(0, Math.round((current - last) / (next - last) * 100)));
         }
+        const progressFill = document.querySelector('.oil-progress-bar-fill');
+        const percentSpan = document.querySelector('.oil-progress-percent');
+        if (progressFill) progressFill.style.width = percent + '%';
+        if (percentSpan) percentSpan.textContent = percent + '%';
     }
+}
     initIcons();
 }
 
@@ -2989,3 +2987,42 @@ window.addEventListener('load', () => {
 
 // Включить автоматическое восстановление иконок
 setupIconObserver();
+
+// ========== ФИКСЫ ИНТЕРФЕЙСА (без конфликтов) ==========
+(function() {
+    // 1. Переключение темы (используем существующую переменную themeToggle)
+  //  if (typeof themeToggle !== 'undefined' && themeToggle) {
+        const originalClick = themeToggle.onclick;
+        themeToggle.onclick = function(e) {
+            if (originalClick) originalClick.call(this, e);
+            document.body.classList.toggle('dark');
+            localStorage.setItem('vesta_theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+            setTimeout(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); }, 50);
+        };
+    } //
+    // 2. Обновление иконок после renderAll
+    const originalRenderAll = window.renderAll;
+    if (originalRenderAll) {
+        window.renderAll = function() {
+            originalRenderAll();
+            setTimeout(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); }, 100);
+        };
+    }
+    // 3. Кнопка "План в календарь"
+    if (typeof addPlanToCalendar === 'function') {
+        const planCalendarBtn = document.getElementById('plan-to-calendar-btn');
+        if (planCalendarBtn) planCalendarBtn.addEventListener('click', addPlanToCalendar);
+    }
+    // 4. Сброс масштаба графиков
+    const resetZoomBtn = document.getElementById('reset-all-zoom');
+    if (resetZoomBtn) {
+        resetZoomBtn.addEventListener('click', () => {
+            ['fuelConsumptionChart', 'fuelPriceChart', 'costsChart'].forEach(id => {
+                const canvas = document.getElementById(id);
+                const chart = canvas && Chart.getChart(canvas);
+                if (chart && typeof chart.resetZoom === 'function') chart.resetZoom();
+            });
+            if (typeof showToast === 'function') showToast('Масштаб графиков сброшен', 'info');
+        });
+    }
+})();
