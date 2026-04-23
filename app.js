@@ -701,6 +701,10 @@ function isoToDDMMYYYY(isoStr) {
 function openServiceModal(opId, opName) {
     const op = operations.find(o => o.id == opId);
     const isOsago = (op && op.category === 'Документы' && op.name.includes('ОСАГО'));
+    
+    // Переменные для хранения выбранных файлов
+    let selectedFiles = [];
+    
     const modal = createModal('➕ Выполнить ТО', `
         <form id="service-form" enctype="multipart/form-data">
             <input type="hidden" name="opId" value="${opId}"><p><strong>${opName}</strong></p>
@@ -717,27 +721,86 @@ function openServiceModal(opId, opName) {
                 <h4><i data-lucide="wrench"></i> Работы</h4><label>Стоимость, ₽</label><input type="number" name="workCost" step="0.01">
                 <label><input type="checkbox" name="isDIY" value="true"> Сделал сам</label>
             `}
-            <h4><i data-lucide="camera"></i> Фото</h4><input type="file" name="photo" accept="image/*" capture="environment">
+            <h4><i data-lucide="camera"></i> Фото</h4>
+            <!-- Зона перетаскивания -->
+            <div id="drop-area" class="drop-area">
+                <i data-lucide="upload-cloud"></i> <span class="drop-text">Перетащите фото сюда или кликните для выбора</span>
+                <input type="file" id="photo-input" name="photo" accept="image/*" multiple style="display:none;">
+            </div>
+            <div id="photo-preview" class="photo-preview"></div>
             <label>Примечание</label><input type="text" name="notes">
             <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
         </form>
     `);
+    
+    // Настройка drag-and-drop
+    const dropArea = modal.querySelector('#drop-area');
+    const fileInput = modal.querySelector('#photo-input');
+    const previewContainer = modal.querySelector('#photo-preview');
+    
+    if (dropArea && fileInput) {
+        dropArea.addEventListener('click', () => fileInput.click());
+        dropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropArea.classList.add('drag-over');
+        });
+        dropArea.addEventListener('dragleave', () => {
+            dropArea.classList.remove('drag-over');
+        });
+        dropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropArea.classList.remove('drag-over');
+            const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+            if (files.length) {
+                selectedFiles = files;
+                updatePreview(selectedFiles, previewContainer);
+            }
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                selectedFiles = Array.from(e.target.files);
+                updatePreview(selectedFiles, previewContainer);
+            }
+        });
+    }
+    
+    function updatePreview(files, container) {
+        container.innerHTML = '';
+        files.forEach((file, idx) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = document.createElement('img');
+                img.src = ev.target.result;
+                img.title = file.name;
+                container.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    
     const form = modal.querySelector('#service-form');
     form.onsubmit = (e) => {
         e.preventDefault();
-        const data = new FormData(form), photo = data.get('photo');
+        const data = new FormData(form);
         const currentOpName = opName, currentIsOsago = isOsago;
         modal.remove();
         (async () => {
             try {
-                let photoUrl = ''; if (photo && photo.size > 0) photoUrl = await uploadPhoto(photo);
+                let photoUrls = [];
+                if (selectedFiles.length > 0) {
+                    for (const file of selectedFiles) {
+                        const url = await uploadPhoto(file);
+                        photoUrls.push(url);
+                    }
+                }
                 const cost = data.get('cost')||'0', workCost = data.get('workCost')||'0', isDIY = data.get('isDIY')==='true';
                 const notes = data.get('notes')||'', fileLink = data.get('fileLink')||'', osagoMonths = data.get('osagoMonths')||'12';
                 const motohours = parseFloat(data.get('motohours'))||0;
                 let formattedDate = ddmmYYYYtoISO(data.get('date'));
                 let fullNotes = notes;
                 if (currentIsOsago) fullNotes = `ОСАГО. Стоимость: ${cost} ₽. Срок: ${osagoMonths} мес. Ссылка: ${fileLink}. ` + notes;
-                await addServiceRecord(data.get('opId'), formattedDate, data.get('mileage'), motohours, cost, workCost, isDIY, fullNotes, photoUrl);
+                if (photoUrls.length) fullNotes += `\nФото: ${photoUrls.join(', ')}`;
+                await addServiceRecord(data.get('opId'), formattedDate, data.get('mileage'), motohours, cost, workCost, isDIY, fullNotes, photoUrls[0] || '');
                 const normalizedOpName = normalizeOperationName(opName, operations);
                 const partsForOp = parts.filter(p => 
                     normalizeOperationName(p.operation, operations) === normalizedOpName ||
@@ -758,6 +821,7 @@ function openServiceModal(opId, opName) {
         })();
     };
     modal.querySelector('.cancel-btn').onclick = () => modal.remove();
+    initIcons();
 }
 
 function openOperationForm(op = null) {
