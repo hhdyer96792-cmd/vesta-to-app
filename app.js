@@ -310,7 +310,12 @@ function hideSkeleton(targetId) {
 
 function initIcons() {
     if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        // Удаляем все ранее созданные SVG (чтобы пересоздать)
+        document.querySelectorAll('svg[data-lucide]').forEach(svg => svg.remove());
         lucide.createIcons();
+    } else {
+        // Если библиотека ещё не загружена, ждём
+        setTimeout(initIcons, 100);
     }
 }
 
@@ -413,8 +418,12 @@ loadPriceHistory();
         loadHistory();
         addOrUpdateProfile(spreadsheetId);
         renderAll();
-        hideSkeleton('table-body');
-        hideSkeleton('stats-summary-grid');
+// Ждём, пока все DOM-элементы с иконками появятся, затем создаём иконки
+setTimeout(() => {
+    initIcons();
+    hideSkeleton('table-body');
+    hideSkeleton('stats-summary-grid');
+}, 150);
     } catch (e) {
         setSyncStatus('error');
         const cached = localStorage.getItem(CACHE_KEY);
