@@ -349,13 +349,36 @@ async function loadSheet() {
             settings.telegramChatId = settingsData[7]?.[0]||'';
         }
 
-        parts = partsData.map((r,i)=>({
-            id:i+2, operation:r[0]||'', oem:r[1]||'', analog:r[2]||'',
-            price:r[3]||'', supplier:r[4]||'', link:r[5]||'', comment:r[6]||'',
-            inStock: r[7] ? parseFloat(r[7]) : 0,
-            location: r[8] || ''
-        }));
-
+        parts = partsData.map((r,i)=>{
+    // Преобразуем старую цену в историю, если нет priceHistory
+    let priceHistory = [];
+    const oldPrice = r[3] || '';
+    // Если есть старая цена, создаём первую запись в истории
+    if (oldPrice !== '') {
+        priceHistory.push({
+            date: new Date().toISOString().split('T')[0], // текущая дата как дата добавления
+            price: parseFloat(oldPrice),
+            supplier: r[4] || ''
+        });
+    }
+    // Пытаемся загрузить priceHistory из дополнительного столбца J (если есть)
+    // Для простоты пока не будем читать из отдельного листа, а сохраним в localStorage.
+    // В релизе нужно будет добавить лист PartsPriceHistory.
+    return {
+        id: i+2,
+        operation: r[0]||'',
+        oem: r[1]||'',
+        analog: r[2]||'',
+        price: oldPrice, // сохраняем для совместимости
+        supplier: r[4]||'',
+        link: r[5]||'',
+        comment: r[6]||'',
+        inStock: r[7] ? parseFloat(r[7]) : 0,
+        location: r[8] || '',
+        priceHistory: priceHistory
+    };
+});
+loadPriceHistory();
         const fuelData = await readSheet('FuelLog!A2:G').catch(()=>[]);
         fuelLog = fuelData.map(r=>({
             date: typeof r[0]==='number'?excelDateToISO(r[0]):r[0], mileage:+r[1], liters:+r[2],
@@ -569,12 +592,73 @@ function renderPartsTable() {
                 <button class="icon-btn edit-part-btn" data-id="${p.id}"><i data-lucide="pencil"></i></button>
                 <button class="icon-btn delete-part-btn" data-id="${p.id}"><i data-lucide="trash-2"></i></button>
                 <button class="icon-btn search-part-btn" data-oem="${p.oem}"><i data-lucide="search"></i></button>
+                ${p.priceHistory && p.priceHistory.length > 1 ? `<button class="icon-btn price-history-btn" data-id="${p.id}" title="История цен"><i data-lucide="trending-up"></i></button>` : ''}
             </td>
         `;
         tbody.appendChild(tr);
     });
     attachPartsListeners();
+    document.querySelectorAll('.price-history-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const partId = parseInt(btn.dataset.id);
+            const part = parts.find(p => p.id === partId);
+            if (part && part.priceHistory && part.priceHistory.length) {
+                showPriceHistoryChart(part);
+            }
+        });
+    });
     initIcons();
+}
+
+function showPriceHistoryChart(part) {
+    const history = part.priceHistory;
+    if (!history || history.length < 2) {
+        showToast('Недостаточно данных для графика (нужно минимум 2 записи)', 'warning');
+        return;
+    }
+    const sorted = [...history].sort((a,b) => new Date(a.date) - new Date(b.date));
+    const labels = sorted.map(h => h.date);
+    const prices = sorted.map(h => h.price);
+    
+    const modal = createModal(`История цен: ${part.operation} (${part.oem || part.analog})`, `
+        <div style="width:100%; height:300px;">
+            <canvas id="priceHistoryChart" style="width:100%; height:100%;"></canvas>
+        </div>
+        <p class="hint">Изменение цены во времени. Данные сохраняются локально.</p>
+    `);
+    
+    setTimeout(() => {
+        const canvas = document.getElementById('priceHistoryChart');
+        if (canvas && typeof Chart !== 'undefined') {
+            const ctx = canvas.getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Цена (₽)',
+                        data: prices,
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52,152,219,0.1)',
+                        fill: true,
+                        tension: 0.2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        tooltip: { callbacks: { label: (ctx) => `${ctx.raw} ₽` } },
+                        legend: { position: 'top' }
+                    },
+                    scales: { y: { title: { display: true, text: 'Цена (₽)' }, beginAtZero: false } }
+                }
+            });
+        }
+        initIcons();
+    }, 50);
 }
 
 function renderFuelTable() {
@@ -904,31 +988,81 @@ function openCarSelectModal() {
 function openPartForm(part = null) {
     const isEdit = !!part;
     const operationOptions = operations.map(op => `<option value="${op.name}" ${part && part.operation === op.name ? 'selected' : ''}>${op.name} (${op.category})</option>`).join('');
+    
+    let priceHistoryHtml = '';
+    if (part && part.priceHistory && part.priceHistory.length) {
+        priceHistoryHtml = '<h4>История цен</h4><ul style="margin-bottom:12px; max-height:150px; overflow-y:auto;">';
+        part.priceHistory.forEach(entry => {
+            priceHistoryHtml += `<li>${entry.date}: ${entry.price} ₽ (${entry.supplier || '—'})</li>`;
+        });
+        priceHistoryHtml += '</ul>';
+    }
+    
     const modal = createModal(isEdit ? '✏️ Запчасть' : '➕ Запчасть', `
         <form id="part-form">
             <input type="hidden" name="id" value="${part?.id || ''}">
             <label>Операция</label><select name="operation" required><option value="">-- Выберите операцию --</option>${operationOptions}</select>
             <label>OEM</label><input type="text" name="oem" value="${part?.oem || ''}">
             <label>Аналог</label><input type="text" name="analog" value="${part?.analog || ''}">
-            <label>Цена</label><input type="number" name="price" step="0.01" value="${part?.price || ''}">
+            <label>Цена (₽)</label><input type="number" name="price" step="0.01" value="${part?.price || ''}">
+            ${isEdit ? `<label><input type="checkbox" id="update-price-only"> Добавить новую цену (не заменять)</label>` : ''}
             <label>Поставщик</label><input type="text" name="supplier" value="${part?.supplier || ''}">
             <label>Ссылка</label><input type="url" name="link" value="${part?.link || ''}">
             <label>Комментарий</label><input type="text" name="comment" value="${part?.comment || ''}">
             <label>В наличии (шт.)</label><input type="number" name="inStock" min="0" step="1" value="${part?.inStock || 0}">
             <label>Место хранения</label><input type="text" name="location" value="${part?.location || ''}" placeholder="Гараж, бардачок, полка...">
+            ${priceHistoryHtml}
             <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
         </form>
     `);
+    
     const form = modal.querySelector('#part-form');
     form.onsubmit = (e) => {
         e.preventDefault();
         const d = Object.fromEntries(new FormData(form));
+        const updateOnlyPrice = modal.querySelector('#update-price-only')?.checked || false;
+        const newPrice = parseFloat(d.price);
+        const newSupplier = d.supplier;
+        
+        let priceHistory = part?.priceHistory ? [...part.priceHistory] : [];
+        
+        if (isEdit && updateOnlyPrice && !isNaN(newPrice) && newPrice !== parseFloat(part.price)) {
+            priceHistory.push({
+                date: new Date().toISOString().split('T')[0],
+                price: newPrice,
+                supplier: newSupplier
+            });
+        }
+        
         const row = [d.operation, d.oem, d.analog, d.price, d.supplier, d.link, d.comment, d.inStock, d.location];
         modal.remove();
+        
         if (isEdit) {
-            writeSheet(`PartsCatalog!A${part.id}:I${part.id}`, [row]).then(()=>loadSheet()).catch(e=>console.warn(e));
+            writeSheet(`PartsCatalog!A${part.id}:I${part.id}`, [row]).then(() => {
+                const idx = parts.findIndex(p => p.id == part.id);
+                if (idx !== -1) {
+                    parts[idx] = {
+                        ...parts[idx],
+                        operation: d.operation,
+                        oem: d.oem,
+                        analog: d.analog,
+                        price: d.price,
+                        supplier: d.supplier,
+                        link: d.link,
+                        comment: d.comment,
+                        inStock: parseFloat(d.inStock) || 0,
+                        location: d.location,
+                        priceHistory: updateOnlyPrice ? priceHistory : (parts[idx].priceHistory || [])
+                    };
+                    if (updateOnlyPrice) {
+                        parts[idx].priceHistory = priceHistory;
+                        savePriceHistory();
+                    }
+                }
+                loadSheet();
+            }).catch(e => console.warn(e));
         } else {
-            appendSheet('PartsCatalog!A:I', [row]).then(()=>loadSheet()).catch(e=>console.warn(e));
+            appendSheet('PartsCatalog!A:I', [row]).then(() => loadSheet()).catch(e => console.warn(e));
         }
         showToast(isEdit ? 'Запчасть обновлена' : 'Запчасть добавлена', 'success');
     };
@@ -2324,6 +2458,28 @@ function calculateOwnershipDays() {
     ownershipDays=Math.floor(Math.abs(d-p)/86400000);
     if (inp) inp.value=ownershipDays;
     updateOwnershipDisplay();
+}
+
+// ==================== ИСТОРИЯ ЦЕН НА ЗАПЧАСТИ ====================
+function savePriceHistory() {
+    const historyData = {};
+    parts.forEach(part => {
+        if (part.priceHistory && part.priceHistory.length) {
+            historyData[part.id] = part.priceHistory;
+        }
+    });
+    localStorage.setItem('vesta_price_history', JSON.stringify(historyData));
+}
+
+function loadPriceHistory() {
+    const stored = localStorage.getItem('vesta_price_history');
+    if (!stored) return;
+    const historyData = JSON.parse(stored);
+    parts.forEach(part => {
+        if (historyData[part.id]) {
+            part.priceHistory = historyData[part.id];
+        }
+    });
 }
 
 // ==================== 23. КОНФИГУРАЦИЯ АВТОСПИСАНИЯ ====================
