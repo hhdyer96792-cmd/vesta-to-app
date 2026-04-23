@@ -815,3 +815,39 @@ table th:first-child {
 .execute-plan-btn:hover {
     opacity: 0.8;
 }
+/* Drag-and-drop зона для фото */
+.drop-area {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    background: var(--bg);
+    transition: all 0.2s;
+    cursor: pointer;
+    margin-bottom: 12px;
+}
+.drop-area.drag-over {
+    border-color: var(--primary);
+    background: rgba(52, 152, 219, 0.1);
+}
+.drop-area .drop-text {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+.drop-area .drop-text i {
+    margin-right: 6px;
+}
+.photo-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+.photo-preview img {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
