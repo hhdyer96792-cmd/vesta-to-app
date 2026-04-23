@@ -788,3 +788,30 @@ table th:first-child {
 .wear-card-item .progress-bar-container {
     margin: 8px 0;
 }
+/* ========== Планировщик ТО =========== */
+.plan-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+.plan-table th, .plan-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+}
+.plan-table th {
+    background: var(--card-bg);
+    font-weight: 600;
+}
+.execute-plan-btn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+.execute-plan-btn:hover {
+    opacity: 0.8;
+}
