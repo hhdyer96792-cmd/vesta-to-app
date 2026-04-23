@@ -306,5 +306,20 @@
 
 <div id="toast-container" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px;"></div>
 <script src="app.js"></script>
+    <script>
+    // Дожидаемся загрузки DOM и библиотеки Lucide
+    function ensureIcons() {
+        if (typeof lucide !== 'undefined' && lucide.createIcons) {
+            // Удаляем старые иконки, если они были созданы неверно
+            document.querySelectorAll('svg[data-lucide]').forEach(svg => svg.remove());
+            lucide.createIcons();
+        } else {
+            setTimeout(ensureIcons, 100);
+        }
+    }
+    document.addEventListener('DOMContentLoaded', ensureIcons);
+    // Также вызываем после полной загрузки всех данных (если app.js уже загружен)
+    if (document.readyState === 'complete') ensureIcons();
+    </script>
 </body>
 </html>
