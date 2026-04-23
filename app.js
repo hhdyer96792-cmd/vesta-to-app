@@ -2628,6 +2628,9 @@ function getPlanPeriodDates(period) {
             const quarterEndMonth = Math.ceil((now.getMonth() + 1) / 3) * 3;
             end = new Date(now.getFullYear(), quarterEndMonth, 0);
             break;
+			 case '6months':   // <-- добавить этот блок
+            end = new Date(now.getFullYear(), now.getMonth() + 6, 0);
+            break;
         case 'year':
             end = new Date(now.getFullYear(), 11, 31);
             break;
