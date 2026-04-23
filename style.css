@@ -12,6 +12,9 @@
     --border: rgba(0, 0, 0, 0.08);
     --shadow: 0 8px 20px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.02);
     --glass-blur: blur(12px);
+    --input-bg: #ffffff;      /* светлая тема */
+    --input-text: #1e293b;
+    --modal-bg: #ffffff;
 }
 
 body.dark {
@@ -22,481 +25,189 @@ body.dark {
     --text-muted: #94a3b8;
     --border: rgba(255, 255, 255, 0.1);
     --shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    --input-bg: #334155;       /* тёмный графит */
+    --input-text: #f1f5f9;
+    --modal-bg: #1e293b;
 }
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+/* 1. Карточки пробега и моточасов в мобильной версии – рядом */
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+    .stat-card {
+        padding: 10px;
+    }
+    .stat-value {
+        font-size: 1.2rem;
+    }
+    /* компактнее */
+    .stat-label {
+        font-size: 0.7rem;
+    }
 }
 
-body {
-    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    padding: 16px;
-    line-height: 1.5;
-    transition: background 0.2s, color 0.2s;
-    padding-bottom: 70px; /* место под нижнюю панель */
-}
-
-.app-container {
-    max-width: 1400px;
-    margin: 0 auto;
-}
-
-/* Хедер — только логотип */
-.modern-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-bottom: 24px;
-    padding: 8px 0;
-}
-.logo-area {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-.logo-icon {
-    width: 32px;
-    height: 32px;
-    color: var(--primary);
-}
-h1 {
-    font-size: 1.6rem;
-    font-weight: 700;
-    background: linear-gradient(135deg, var(--primary), #8b5cf6);
-    background-clip: text;
-    -webkit-background-clip: text;
-    color: transparent;
-}
-.badge-version {
-    background: var(--primary);
-    padding: 2px 8px;
-    border-radius: 40px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: white;
-}
-
-/* Нижняя панель навигации */
-.bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: var(--card-solid);
-    backdrop-filter: blur(12px);
-    border-top: 1px solid var(--border);
-    padding: 8px 16px;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-    z-index: 100;
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
-}
-.tabs-wrapper {
-    flex: 1;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-.tab-scroll {
-    display: flex;
-    gap: 6px;
-    min-width: max-content;
-}
-/* Увеличенная высота кнопок вкладок (на 150%) */
-.tab-btn {
-    background: transparent;
-    color: var(--text);
-    border: 1px solid var(--border);
-    padding: 12px 20px;      /* было 8px 16px → увеличено */
-    font-weight: 500;
-    white-space: nowrap;
-    border-radius: 40px;
-    min-height: 56px;        /* комфортная высота для тапа */
-    font-size: 1rem;
-}
-.tab-btn.active {
-    background: var(--primary);
-    color: white;
-    border-color: var(--primary);
-}
-.bottom-actions {
-    display: flex;
-    gap: 8px;
-}
-.bottom-actions .icon-btn {
-    background: transparent;
-    padding: 8px;
-    border: 1px solid var(--border);
-    border-radius: 40px;
-}
-
-/* Кнопки и карточки */
-button {
-    border: none;
-    border-radius: 60px;
-    padding: 10px 18px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--primary);
-    color: white;
-}
-button:active { transform: scale(0.97); }
-.primary-btn { background: var(--primary); }
-.secondary-btn {
-    background: transparent;
-    border: 1px solid var(--primary);
-    color: var(--primary);
-}
-.icon-btn {
-    background: transparent;
-    padding: 10px;
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: 50% !important;
-    width: 40px;
-    height: 40px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-.icon-btn svg {
-    margin: 0;
-}
-.icon-btn:hover { background: var(--border); }
-.card {
-    background: var(--card-solid);
-    border-radius: 24px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: var(--shadow);
-    backdrop-filter: var(--glass-blur);
-}
-.glass-card {
-    background: var(--card-bg);
-    backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--border);
-}
-
-/* Статистические карточки */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 16px;
-    margin-bottom: 20px;
-}
-.stat-card {
-    text-align: center;
-    padding: 16px;
-    border-radius: 24px;
-}
-.stat-label {
-    font-size: 0.85rem;
-    opacity: 0.8;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-}
-.stat-value {
-    font-size: 2rem;
-    font-weight: 800;
-    margin: 8px 0;
-}
-.stat-unit {
-    font-size: 0.8rem;
-}
-
-/* Вкладки контента — исправлено: только активная видна */
-.tab-content { display: none; }
-.tab-content.active { display: block; }
-
-/* Таблицы с закреплённым первым столбцом */
-.table-wrapper {
-    overflow-x: auto;
-    border-radius: 20px;
-    border: 1px solid var(--border);
-    background: var(--card-solid);
+/* 2. Иконки перед полями ввода пробега и моточасов */
+.input-icon {
     position: relative;
-}
-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.9rem;
-}
-th, td {
-    padding: 14px 12px;
-    border-bottom: 1px solid var(--border);
-    text-align: left;
-    white-space: nowrap;
-    background: var(--card-solid);
-}
-th {
-    font-weight: 600;
-    position: sticky;
-    top: 0;
-    z-index: 20;
-}
-/* Закрепляем первый столбец во всех таблицах */
-td:first-child, th:first-child {
-    position: sticky;
-    left: 0;
-    background: var(--card-solid);
-    z-index: 15;
-    box-shadow: 2px 0 4px -2px rgba(0,0,0,0.1);
-}
-th:first-child {
-    z-index: 25;
-}
-tbody tr:hover { background: rgba(59,130,246,0.05); }
-.actions-col { text-align: center; }
-
-/* Ввод */
-.modern-input, .modern-select {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 48px;
-    padding: 12px 18px;
-    width: 100%;
-    font-size: 1rem;
-    color: var(--text);
-    outline: none;
-    transition: 0.2s;
-}
-.modern-input:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
-}
-
-/* Модалки */
-.modal {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: rgba(0,0,0,0.6);
-    backdrop-filter: blur(6px);
     display: flex;
     align-items: center;
-    justify-content: center;
-    z-index: 1000;
-}
-.modal-content {
-    background: var(--card-solid);
-    border-radius: 32px;
-    padding: 24px;
-    max-width: 500px;
-    width: 90%;
-    max-height: 85vh;
-    overflow-y: auto;
-}
-
-/* Прогресс бары */
-.top5-item { margin-bottom: 16px; }
-.top5-header { display: flex; justify-content: space-between; font-size: 0.9rem; }
-.top5-progress-container {
-    background: var(--border);
-    border-radius: 20px;
-    height: 8px;
-    margin-top: 6px;
-    overflow: hidden;
-}
-.top5-progress-bar {
-    background: var(--primary);
-    width: 0%;
-    height: 100%;
-}
-/* Прогресс-бар масла (линейный, градиент) */
-.oil-progress-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    margin-top: 8px;
-}
-.oil-progress-bar-bg {
     width: 100%;
-    height: 24px;
-    background: var(--border);
-    border-radius: 30px;
-    overflow: hidden;
 }
-.oil-progress-bar-fill {
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, #2ecc71, #f39c12, #e74c3c);
-    border-radius: 30px;
-    transition: width 0.3s ease;
+.input-icon i, .input-icon svg {
+    position: absolute;
+    left: 12px;
+    color: var(--text-muted);
+    pointer-events: none;
+    width: 1.2rem;
+    height: 1.2rem;
 }
-.oil-progress-percent {
-    font-size: 1.2rem;
-    font-weight: bold;
-}
-/* Прогресс-бары износа шин (карточки) */
-.wear-card-item .progress-bar-container {
-    height: 12px;
-    background: var(--border);
-    border-radius: 20px;
-    margin: 8px 0;
-    overflow: hidden;
-}
-.wear-card-item .progress-bar {
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, #2ecc71, #f39c12, #e74c3c);
-    border-radius: 20px;
-    transition: width 0.3s;
+.input-icon input {
+    padding-left: 2.5rem;
+    width: 100%;
 }
 
-/* Утилиты */
-.flex-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
+/* блок обновления пробега – кнопка по ширине и выравнивание */
+.update-mileage-card .flex-row {
     align-items: flex-end;
 }
+.update-mileage-card .flex-row button {
+    flex: 0 0 auto;
+    min-width: 100px;
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+}
+
+/* 3. Мобильная версия – карточки компактнее (уже сделано выше) */
+
+/* 4. Модальное окно с выбором периода – тёмная тема */
+.modal-content select,
+.modal-content input,
+.modal-content .modern-select {
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    border-color: var(--border);
+}
+
+/* 5. Планировщик в мобильной версии – ширина первого столбца с переносом */
+@media (max-width: 768px) {
+    .plan-table th:first-child,
+    .plan-table td:first-child {
+        max-width: 120px;
+        white-space: normal;
+        word-break: break-word;
+    }
+    .plan-table th:nth-child(2),
+    .plan-table td:nth-child(2) {
+        max-width: 100px;
+        white-space: normal;
+        word-break: break-word;
+    }
+}
+
+/* 6. Кнопка "Выполнить" – только иконка */
+.execute-plan-btn {
+    background: transparent;
+    border: none;
+    padding: 6px;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    font-size: 0;
+}
+.execute-plan-btn i, .execute-plan-btn svg {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    color: var(--primary);
+}
+
+/* 7. Кнопки + Операция и др. – компактнее, в одну строку */
 .action-bar {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
-    margin: 16px 0;
+    gap: 8px;
+    justify-content: space-between;
 }
-.plan-controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-bottom: 16px;
-}
-.plan-container-scroll { overflow-x: auto; }
-.plan-table { width: 100%; border-collapse: collapse; }
-.plan-table th, .plan-table td {
-    padding: 10px;
-    border-bottom: 1px solid var(--border);
-    text-align: left;
+.action-bar button {
+    flex: 1;
+    min-width: 80px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
     white-space: nowrap;
 }
-.execute-plan-btn {
-    background: var(--primary);
-    border: none;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    color: white;
-    cursor: pointer;
+
+/* 8. Закрепить панель действий над таблицей */
+.action-bar {
+    position: sticky;
+    top: 0;
+    background: var(--card-solid);
+    z-index: 30;
+    padding: 8px 0;
+    margin-top: 0;
+    margin-bottom: 16px;
+    backdrop-filter: blur(8px);
 }
 
-/* Статистика: сетка и графики */
-.stats-summary-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 16px;
-    margin-bottom: 24px;
+/* 9. Карточка операций – первый столбец с переносом */
+@media (max-width: 768px) {
+    #maintenance-table th:first-child,
+    #maintenance-table td:first-child {
+        max-width: 120px;
+        white-space: normal;
+        word-break: break-word;
+    }
 }
-.stats-container { display: flex; flex-direction: column; gap: 24px; }
-.chart-card {
-    background: var(--card-solid);
-    border-radius: 20px;
-    padding: 16px;
-    margin-bottom: 0;
-}
-.chart-card canvas {
-    width: 100%;
-    height: auto;
-    max-height: 300px;
-}
-.pie-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-}
-.pie-row .chart-card { flex: 1; min-width: 200px; }
 
-.toast-container {
-    position: fixed;
-    bottom: 80px;
-    right: 20px;
-    z-index: 1100;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+/* 10-15. Модальные окна – тёмная тема, поля ввода, размеры */
+.modal-content {
+    background: var(--modal-bg);
+    max-width: 460px;
+    width: 90%;
+    padding: 20px;
 }
-.toast {
-    background: var(--card-solid);
-    border-left: 5px solid var(--primary);
-    padding: 12px 20px;
-    border-radius: 20px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+.modal-content input,
+.modal-content select,
+.modal-content textarea {
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    border: 1px solid var(--border);
+    padding: 10px 14px;   /* уменьшена высота на ~20% */
     font-size: 0.9rem;
 }
-
-/* ========== МОБИЛЬНЫЕ АДАПТАЦИИ ========== */
-@media (max-width: 768px) {
-    body { padding: 12px; padding-bottom: 80px; }
-    .stat-value { font-size: 1.5rem; }
-    .stats-grid { grid-template-columns: repeat(2,1fr); }
-    .stats-summary-grid { grid-template-columns: repeat(2,1fr); gap: 12px; }
-
-    /* Уменьшаем графики */
-    .chart-card canvas { max-height: 200px !important; }
-    /* Укрупняем поля ввода */
-    .modern-input, .modern-select, input, select {
-        font-size: 16px;
-        padding: 14px 18px;
-        min-height: 48px;
-    }
-    .icon-btn {
-        width: 44px;
-        height: 44px;
-        padding: 0;
-    }
-    /* Кнопки действий внутри вкладок — внизу */
-    .tab-content .action-bar { order: 2; margin-top: 16px; margin-bottom: 20px; }
-    .tab-content .table-wrapper { order: 1; }
-    .tab-content .stats-grid,
-    .tab-content .update-mileage-card,
-    .tab-content .top5-widget,
-    .tab-content .planner-card { order: 0; }
-
-    /* Увеличенные кнопки вкладок на мобильных */
-    .tab-btn {
-        padding: 10px 16px;
-        font-size: 0.9rem;
-        min-height: 48px;
-    }
-
-    .modal-actions button { flex: 1; justify-content: center; }
-    .pie-row { flex-direction: column; }
-    .plan-controls { flex-direction: column; align-items: stretch; }
-    .plan-controls button { width: 100%; }
-
-    /* Нижняя панель на телефонах — более компактная, но табы выше */
-    .bottom-nav {
-        padding: 8px 12px;
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-    .tabs-wrapper {
-        order: 1;
-        width: 100%;
-    }
-    .bottom-actions {
-        order: 2;
-        width: 100%;
-        justify-content: space-around;
-    }
+.modal-content label {
+    display: block;
+    margin-top: 12px;
+    margin-bottom: 4px;
+    text-align: left;
+    font-weight: 500;
+}
+.modal-actions button {
+    padding: 8px 16px;
+}
+/* уменьшаем высоту модального окна */
+.modal-content {
+    max-height: 80vh;
+    overflow-y: auto;
 }
 
-@media (max-width: 480px) {
-    .stats-summary-grid { grid-template-columns: 1fr; }
-    .action-bar button { width: auto; flex: 1; }
+/* 13. Чекбокс "Сделал сам" – без лишних пробелов, слева */
+.modal-content label input[type="checkbox"] {
+    width: auto;
+    margin-right: 8px;
+    display: inline-block;
 }
+.modal-content label.checkbox-label {
+    display: flex;
+    align-items: center;
+}
+
+/* 14. Выпадающий список в тёмной теме */
+.modal-content select option {
+    background: var(--input-bg);
+    color: var(--input-text);
+}
+
+/* 16-17. Модальное окно подтверждения удаления (alert-like) – исправляется в JS */

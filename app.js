@@ -2040,7 +2040,7 @@ function generateShoppingList(opId) {
     if (!op) return;
     const items = parts.filter(p => p.operation === op.name || p.operation === op.category);
     if (!items.length) { alert('Нет запчастей для этой операции'); return; }
-    let list = `🛒 ${op.name}:\n`;
+    let list = `🛒 Список запчастей для ${op.name}:\n`;
     items.forEach(p => {
         const stock = p.inStock || 0;
         const location = p.location ? ` (${p.location})` : '';
@@ -2941,7 +2941,7 @@ function renderMaintenancePlan() {
                 <td>${escapeHtml(op.category)}</td>
                 <td>${formattedDate}</td>
                 <td>${planData.planMileage.toLocaleString()} км</td>
-                <td><button class="icon-btn execute-plan-btn" data-op-id="${op.id}" data-op-name="${escapeHtml(op.name)}"><i data-lucide="check-circle"></i> Выполнить</button></td>
+                html += `<button class="icon-btn execute-plan-btn" data-op-id="${op.id}" data-op-name="${escapeHtml(op.name)}" title=""><i data-lucide="check-circle"></i></button>`;
             </tr>
         `;
     });
@@ -2988,32 +2988,22 @@ window.addEventListener('load', () => {
 // Включить автоматическое восстановление иконок
 setupIconObserver();
 
-// ========== ФИКСЫ ИНТЕРФЕЙСА (без конфликтов) ==========
+// ========== ФИКСЫ ИНТЕРФЕЙСА (только необходимые доработки) ==========
 (function() {
-    // 1. Переключение темы (используем существующую переменную themeToggle)
-  //  if (typeof themeToggle !== 'undefined' && themeToggle) {
-        const originalClick = themeToggle.onclick;
-        themeToggle.onclick = function(e) {
-            if (originalClick) originalClick.call(this, e);
-            document.body.classList.toggle('dark');
-            localStorage.setItem('vesta_theme', document.body.classList.contains('dark') ? 'dark' : 'light');
-            setTimeout(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); }, 50);
-        };
-    } //
-    // 2. Обновление иконок после renderAll
-    const originalRenderAll = window.renderAll;
-    if (originalRenderAll) {
-        window.renderAll = function() {
+    // 1. Обновление иконок после renderAll (без конфликта)
+    const originalRenderAll = renderAll;          // прямая ссылка на функцию
+    if (typeof originalRenderAll === 'function') {
+        renderAll = function() {
             originalRenderAll();
             setTimeout(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); }, 100);
         };
     }
-    // 3. Кнопка "План в календарь"
+    // 2. Кнопка "План в календарь"
     if (typeof addPlanToCalendar === 'function') {
         const planCalendarBtn = document.getElementById('plan-to-calendar-btn');
         if (planCalendarBtn) planCalendarBtn.addEventListener('click', addPlanToCalendar);
     }
-    // 4. Сброс масштаба графиков
+    // 3. Сброс масштаба графиков
     const resetZoomBtn = document.getElementById('reset-all-zoom');
     if (resetZoomBtn) {
         resetZoomBtn.addEventListener('click', () => {
