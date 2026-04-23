@@ -176,6 +176,7 @@ function initGoogleApi() {
         if (lastId) {
             spreadsheetId = lastId;
             loadSheet();
+			setTimeout(() => initIcons(), 50);
         } else {
             openCarSelectModal();
         }
@@ -393,19 +394,28 @@ async function loadSheet() {
         loadHistory();
         addOrUpdateProfile(spreadsheetId);
         renderAll();
-        hideSkeleton('table-body');
-        hideSkeleton('stats-summary-grid');
+        
+        // Небольшая задержка, чтобы DOM полностью обновился, после чего пересоздаём иконки
+        setTimeout(() => {
+            initIcons();
+            hideSkeleton('table-body');
+            hideSkeleton('stats-summary-grid');
+        }, 100);
+        
     } catch (e) {
         setSyncStatus('error');
         const cached = localStorage.getItem(CACHE_KEY);
         if (cached) {
             const d = JSON.parse(cached);
-            operations=d.operations; settings=d.settings; parts=d.parts||[];
-            fuelLog=d.fuelLog||[]; tireLog=d.tireLog||[]; workCosts=d.workCosts||[];
+            operations = d.operations; settings = d.settings; parts = d.parts || [];
+            fuelLog = d.fuelLog || []; tireLog = d.tireLog || []; workCosts = d.workCosts || [];
             dataPanel.style.display = 'block';
             renderAll();
-            hideSkeleton('table-body');
-            hideSkeleton('stats-summary-grid');
+            setTimeout(() => {
+                initIcons();
+                hideSkeleton('table-body');
+                hideSkeleton('stats-summary-grid');
+            }, 100);
         }
     }
 }
