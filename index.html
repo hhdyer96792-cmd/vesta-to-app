@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<!-- ==================== 1. ДОКУМЕНТ HTML (АВТОРИЗАЦИЯ ПРИЖАТА К НИЗУ) ==================== -->
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>🚗 Vesta Control — Metro Style</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0078D7">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <script src="app.js" defer></script>
+</head>
+<body>
+<div class="app-container">
+    <!-- Шапка (видна всегда, но не мешает авторизации) -->
+    <header>
+        <h1>🚗 Vesta Control</h1>
+        <div class="header-controls">
+            <button id="theme-toggle" title="Переключить тему"><i data-lucide="moon"></i></button>
+            <button id="sync-indicator" class="synced" title="Статус синхронизации"><i data-lucide="cloud"></i></button>
+            <button id="share-table-btn" class="icon-btn" title="Поделиться таблицей"><i data-lucide="users"></i></button>
+            <button id="select-car-btn" class="icon-btn" title="Выбрать автомобиль"><i data-lucide="car"></i></button>
+        </div>
+    </header>
+
+    <!-- ==================== 2. АВТОРИЗАЦИЯ (ПРИЖАТА К НИЗУ) ==================== -->
+    <div id="auth-panel" class="auth-bottom">
+        <div class="auth-card metro-card">
+            <h2><i data-lucide="key"></i> Авторизация</h2>
+            <p>Войдите в аккаунт Google для доступа к данным</p>
+            <button id="authorize-btn" class="primary-btn metro-btn auth-btn"><i data-lucide="google"></i> Войти через Google</button>
+            <span id="auth-status"></span>
+        </div>
+    </div>
+
+
+    <!-- ОСНОВНАЯ ПАНЕЛЬ (видна после авторизации) -->
+    <div id="data-panel" style="display:none;">
+        <!-- Вкладки (плиточный стиль) -->
+        <div class="tabs metro-tabs">
+            <button class="tab-btn active" data-tab="to"><i data-lucide="clipboard-list"></i><span>ТО</span></button>
+            <button class="tab-btn" data-tab="stats"><i data-lucide="bar-chart-3"></i><span>Статистика</span></button>
+            <button class="tab-btn" data-tab="history"><i data-lucide="scroll"></i><span>История</span></button>
+            <button class="tab-btn" data-tab="fuel"><i data-lucide="fuel"></i><span>Топливо</span></button>
+            <button class="tab-btn" data-tab="tires"><i data-lucide="circle"></i><span>Шины</span></button>
+            <button class="tab-btn" data-tab="parts"><i data-lucide="package"></i><span>Запчасти</span></button>
+            <button class="tab-btn" data-tab="settings"><i data-lucide="settings"></i><span>Настройки</span></button>
+        </div>
+
+        <!-- ОСНОВНОЙ КОНТЕНТ (таблицы, графики) -->
+        <div class="content-scroll-area">
+            <!-- Вкладка ТО -->
+            <div id="tab-to" class="tab-content active">
+                <div class="stats-grid metro-stats">
+                    <div class="stat-card"><span class="stat-label">Пробег</span><span class="stat-value" id="display-mileage">0</span><span class="stat-unit">км</span></div>
+                    <div class="stat-card"><span class="stat-label">Ср./день</span><span class="stat-value" id="display-avg-mileage">20</span><span class="stat-unit">км</span></div>
+                    <div class="stat-card"><span class="stat-label">Моточасы</span><span class="stat-value" id="display-motohours">0</span><span class="stat-unit">ч</span></div>
+                    <div class="stat-card"><span class="stat-label">Ср. м/ч/день</span><span class="stat-value" id="display-avg-motohours">1.65</span><span class="stat-unit">ч</span></div>
+                </div>
+                <div class="card metro-card quick-update">
+                    <label>Пробег: <input type="number" id="new-mileage" placeholder="км"></label>
+                    <label>Моточасы: <input type="number" id="new-motohours" placeholder="ч"></label>
+                    <button id="update-mileage-btn" class="primary-btn metro-btn"><i data-lucide="refresh-cw"></i> Обновить</button>
+                </div>
+                <div class="card metro-card top5-widget"><h3><i data-lucide="arrow-up"></i> Ближайшие работы</h3><div id="top5-container"></div></div>
+                <div class="card metro-card planner-card">
+                    <h3><i data-lucide="calendar-range"></i> Планировщик ТО</h3>
+                    <div class="plan-controls">
+                        <select id="plan-period-select">
+                            <option value="month">Месяц</option>
+                            <option value="quarter">Квартал</option>
+                            <option value="6months">6 месяцев</option>
+                            <option value="year">Год</option>
+                        </select>
+                        <button id="generate-plan-btn" class="primary-btn metro-btn"><i data-lucide="calendar"></i> План</button>
+                        <button id="plan-to-calendar-btn" class="secondary-btn metro-btn" style="display:none;"><i data-lucide="calendar-plus"></i> В календарь</button>
+                    </div>
+                    <div id="plan-container" class="plan-list"></div>
+                </div>
+                <div class="table-wrapper metro-table">
+                    <table id="maintenance-table">
+                        <thead><tr><th>Операция</th><th>Посл. ТО</th><th>Пробег</th><th>М/ч</th><th>План</th><th>Статус</th><th></th></tr></thead>
+                        <tbody id="table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Вкладка Статистика -->
+            <div id="tab-stats" class="tab-content">
+                <div class="filter-bar">
+                    <label>Период: <select id="stats-period-select"></select></label>
+                    <div id="driving-mode-indicator" class="driving-mode-card"></div>
+                    <button id="reset-all-zoom" class="metro-btn small"><i data-lucide="refresh-ccw"></i> Сброс</button>
+                </div>
+                <div class="stats-summary-grid metro-stats">
+                    <div class="stat-card"><span class="stat-label">💰 ТО</span><span class="stat-value" id="total-maintenance-cost">0</span><span class="stat-unit">₽</span></div>
+                    <div class="stat-card"><span class="stat-label">⛽ Топливо</span><span class="stat-value" id="total-fuel-cost">0</span><span class="stat-unit">₽</span></div>
+                    <div class="stat-card"><span class="stat-label">📏 1 км</span><span class="stat-value" id="cost-per-km">0</span><span class="stat-unit">₽/км</span></div>
+                    <div class="stat-card"><span class="stat-label">📊 Расход</span><span class="stat-value" id="avg-fuel-consumption">0</span><span class="stat-unit">л/100км</span></div>
+                    <div class="stat-card"><span class="stat-label">🚗 км/день</span><span class="stat-value" id="avg-mileage-per-day">0</span><span class="stat-unit">км</span></div>
+                    <div class="stat-card"><span class="stat-label">🕒 м/ч/день</span><span class="stat-value" id="avg-motohours-per-day">0</span><span class="stat-unit">ч</span></div>
+                    <div class="stat-card ownership-card"><span class="stat-label">📅 Владение</span><span class="stat-value" id="ownership-display">0</span><span class="stat-unit" id="ownership-unit">дней</span><button id="toggle-ownership-unit" class="icon-btn"><i data-lucide="refresh-ccw"></i></button></div>
+                </div>
+                <div class="chart-grid">
+                    <div class="chart-card"><canvas id="fuelConsumptionChart"></canvas><p>Расход топлива</p></div>
+                    <div class="chart-card"><canvas id="fuelPriceChart"></canvas><p>Цена топлива</p></div>
+                    <div class="chart-card"><canvas id="costsChart"></canvas><p>Затраты на ТО и топливо</p></div>
+                    <div class="chart-card"><canvas id="expensePieChart"></canvas><p>Распределение затрат</p></div>
+                    <div class="chart-card"><canvas id="oilChart"></canvas><p>Прогноз масла</p></div>
+                </div>
+                <div class="card metro-card">
+                    <h3>Прогноз пробега</h3>
+                    <div><input type="number" id="prediction-target" placeholder="Целевой пробег"><button id="calc-prediction-btn" class="metro-btn">Рассчитать</button></div>
+                    <div id="prediction-result" class="hint"></div>
+                </div>
+            </div>
+
+            <!-- Вкладка История -->
+            <div id="tab-history" class="tab-content">
+                <div class="filters-row">
+                    <select id="history-period-select"><option value="all">Весь период</option></select>
+                    <select id="history-operation-filter"></select>
+                    <input type="text" id="history-search" placeholder="Поиск">
+                    <label><input type="checkbox" id="history-diy-only"> DIY</label>
+                    <input type="number" id="history-cost-min" placeholder="от ₽">
+                    <input type="number" id="history-cost-max" placeholder="до ₽">
+                    <button id="history-reset-filters" class="metro-btn small">Сброс</button>
+                </div>
+                <div class="table-wrapper metro-table"><table id="history-table"><thead>...</thead><tbody id="history-body"></tbody></table></div>
+            </div>
+
+            <!-- Вкладка Топливо, Шины, Запчасти, Настройки — аналогично с таблицами -->
+            <div id="tab-fuel" class="tab-content"><div class="table-wrapper metro-table"><table id="fuel-table"><thead>...</thead><tbody id="fuel-body"></tbody></table></div></div>
+            <div id="tab-tires" class="tab-content">
+                <div class="card metro-card"><h3>Калькулятор шин</h3><input type="text" id="old-tire-size" placeholder="205/55R16"><input type="text" id="new-tire-size" placeholder="215/50R17"><button id="calc-tire-btn" class="metro-btn">Рассчитать</button><div id="tire-calc-result"></div></div>
+                <div class="card metro-card"><h3>Износ шин</h3><div id="tire-wear-container"></div></div>
+                <div class="table-wrapper metro-table"><table id="tires-table"><thead>...</thead><tbody id="tires-body"></tbody></table></div>
+            </div>
+            <div id="tab-parts" class="tab-content"><div class="table-wrapper metro-table"><table id="parts-table"><thead>...</thead><tbody id="parts-body"></tbody></table></div></div>
+            <div id="tab-settings" class="tab-content">
+                <div class="card metro-card"><h3>Точки отсчёта</h3><label>Пробег при покупке: <input type="number" id="set-base-mileage"></label><label>Моточасы: <input type="number" id="set-base-motohours"></label></div>
+                <div class="card metro-card"><h3>Владение</h3><label>Дата покупки: <input type="date" id="purchase-date"></label><label>Дней: <input type="text" id="ownership-days" readonly></label></div>
+                <div class="card metro-card"><h3>Уведомления</h3><select id="notification-method"><option>telegram</option><option>push</option><option>both</option></select><input type="text" id="telegram-token" placeholder="Токен"><input type="text" id="telegram-chatid" placeholder="Chat ID"><button id="subscribe-push-btn" class="metro-btn">Подписаться</button><button id="save-settings-btn" class="primary-btn metro-btn">Сохранить</button></div>
+                <div class="card metro-card"><h3>Фото</h3><button id="open-photo-folder-btn" class="metro-btn">Открыть папку</button></div>
+                <div class="card metro-card"><h3>Экспорт</h3><select id="export-type-select"><option value="to">ТО</option><option value="fuel">Топливо</option><option value="tires">Шины</option><option value="parts">Запчасти</option><option value="history">История</option><option value="all">Все</option></select><select id="export-format-select"><option value="csv">CSV</option><option value="xlsx">Excel</option></select><button id="export-data-btn" class="metro-btn">Экспорт</button></div>
+                <div class="card metro-card"><button id="generate-pdf-btn" class="metro-btn">PDF-отчёт</button></div>
+            </div>
+        </div>
+
+         <!-- НИЖНЯЯ ПАНЕЛЬ ДЕЙСТВИЙ -->
+        <div class="bottom-actions">
+            <button id="add-operation-btn" class="metro-btn floating-btn"><i data-lucide="plus"></i> Операция</button>
+            <button id="add-fuel-btn" class="metro-btn floating-btn"><i data-lucide="fuel"></i> Заправка</button>
+            <button id="add-tire-btn" class="metro-btn floating-btn"><i data-lucide="circle"></i> Резина</button>
+            <button id="add-part-btn" class="metro-btn floating-btn"><i data-lucide="package"></i> Запчасть</button>
+            <button id="voice-fuel-btn" class="metro-btn"><i data-lucide="mic"></i></button>
+            <button id="recalculate-btn" class="metro-btn"><i data-lucide="refresh-ccw"></i></button>
+            <button id="export-btn" class="metro-btn"><i data-lucide="download"></i></button>
+            <button id="import-btn" class="metro-btn"><i data-lucide="upload"></i></button>
+            <input type="file" id="import-file" accept=".json" style="display:none;">
+        </div>
+    </div>
+</div>
+<div id="toast-container"></div>
+</body>
