@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<!-- ==================== 1. ДОКУМЕНТ HTML ==================== -->
+<html lang="ru">
+<head>
+    <!-- 1.1 Мета-теги для адаптивности и PWA -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>🚗 Vesta Control v8.7-stable</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2c3e50">
+    <!-- 1.2 Внешние библиотеки (Chart.js, Hammer, хартия, Lucide, html2pdf, SheetJS) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <script src="app.js" defer></script>
+</head>
+<body>
+<div class="app-container">
+    <!-- ==================== 2. ШАПКА С УПРАВЛЕНИЕМ ==================== -->
+    <header>
+        <h1>🚗 Vesta Control</h1>
+        <div class="header-controls">
+            <button id="theme-toggle" title="Переключить тему"><i data-lucide="moon"></i></button>
+            <button id="sync-indicator" class="synced" title="Статус синхронизации"><i data-lucide="cloud"></i></button>
+            <button id="share-table-btn" class="icon-btn" title="Поделиться таблицей"><i data-lucide="users"></i></button>
+            <button id="select-car-btn" class="icon-btn" title="Выбрать автомобиль"><i data-lucide="car"></i></button>
+        </div>
+    </header>
+
+    <!-- ==================== 3. ПАНЕЛЬ АВТОРИЗАЦИИ ==================== -->
+    <div id="auth-panel" class="card">
+        <button id="authorize-btn" class="primary-btn"><i data-lucide="key"></i> Войти через Google</button>
+        <span id="auth-status"></span>
+    </div>
+
+    <!-- ==================== 4. ОСНОВНАЯ ПАНЕЛЬ ДАННЫХ ==================== -->
+    <div id="data-panel" style="display:none;">
+        <!-- 4.1 Вкладки (TabBar) с иконками и подписями -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="to"><i data-lucide="clipboard-list"></i><span>ТО</span></button>
+            <button class="tab-btn" data-tab="stats"><i data-lucide="bar-chart-3"></i><span>Статистика</span></button>
+            <button class="tab-btn" data-tab="history"><i data-lucide="scroll"></i><span>История</span></button>
+            <button class="tab-btn" data-tab="fuel"><i data-lucide="fuel"></i><span>Топливо</span></button>
+            <button class="tab-btn" data-tab="tires"><i data-lucide="circle"></i><span>Шины</span></button>
+            <button class="tab-btn" data-tab="parts"><i data-lucide="package"></i><span>Запчасти</span></button>
+            <button class="tab-btn" data-tab="settings"><i data-lucide="settings"></i><span>Настройки</span></button>
+        </div>
+
+        <!-- ==================== 5. ВКЛАДКА ТО (ПЛАНИРОВЩИК) ==================== -->
+        <div id="tab-to" class="tab-content active">
+            <!-- 5.1 Карточки с текущими показателями -->
+            <div class="stats-grid" id="stats-grid-skeleton">
+                <div class="stat-card"><span class="stat-label">Пробег</span><span class="stat-value" id="display-mileage">0</span><span class="stat-unit">км</span></div>
+                <div class="stat-card"><span class="stat-label">Ср. пробег/день</span><span class="stat-value" id="display-avg-mileage">20</span><span class="stat-unit">км</span></div>
+                <div class="stat-card"><span class="stat-label">Моточасы</span><span class="stat-value" id="display-motohours">0</span><span class="stat-unit">ч</span></div>
+                <div class="stat-card"><span class="stat-label">Ср. м/ч/день</span><span class="stat-value" id="display-avg-motohours">1.65</span><span class="stat-unit">ч</span></div>
+            </div>
+            <!-- 5.2 Быстрое обновление пробега -->
+            <div class="card" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <label style="margin:0;">Пробег: <input type="number" id="new-mileage" placeholder="км" style="width:120px;"></label>
+                <label style="margin:0;">Моточасы: <input type="number" id="new-motohours" placeholder="ч" style="width:120px;"></label>
+                <button id="update-mileage-btn" class="primary-btn"><i data-lucide="refresh-cw"></i> Обновить</button>
+            </div>
+            <!-- 5.3 Виджет ближайших работ -->
+            <div class="card top5-widget"><h3><i data-lucide="arrow-up"></i> Ближайшие работы</h3><div id="top5-container"></div></div>
+            <!-- 5.4 Планировщик ТО -->
+            <div class="card planner-card">
+                <h3><i data-lucide="calendar-range"></i> Планировщик ТО</h3>
+                <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 16px;">
+                    <label style="flex:1; min-width:150px;">Период:
+                        <select id="plan-period-select" style="width:100%">
+                            <option value="month">Месяц</option>
+                            <option value="quarter">Квартал</option>
+                            <option value="6months">6 месяцев</option>
+                            <option value="year">Год</option>
+                        </select>
+                    </label>
+                    <button id="generate-plan-btn" class="primary-btn"><i data-lucide="calendar"></i> Сформировать план</button>
+                    <button id="plan-to-calendar-btn" class="secondary-btn" style="display:none;"><i data-lucide="calendar-plus"></i> Добавить все в календарь</button>
+                </div>
+                <div id="plan-container" style="max-height: 400px; overflow-y: auto;">
+                    <p class="hint">Выберите период и нажмите «Сформировать план».</p>
+                </div>
+            </div>
+            <!-- 5.5 Панель действий -->
+            <div class="action-bar">
+                <button id="add-operation-btn" class="primary-btn"><i data-lucide="plus"></i> Операция</button>
+                <button id="recalculate-btn" class="secondary-btn"><i data-lucide="refresh-ccw"></i> Пересчитать</button>
+                <button id="export-btn" class="secondary-btn"><i data-lucide="download"></i> Экспорт</button>
+                <button id="import-btn" class="secondary-btn"><i data-lucide="upload"></i> Импорт</button>
+                <input type="file" id="import-file" accept=".json" style="display:none;">
+            </div>
+            <!-- 5.6 Таблица ТО с фиксированными колонками -->
+            <div class="table-wrapper" id="table-skeleton">
+                <table id="maintenance-table">
+                    <thead><tr><th>Операция</th><th>Последнее ТО</th><th>Пробег</th><th>М/ч</th><th>План</th><th>Статус</th><th></th></tr></thead>
+                    <tbody id="table-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ==================== 6. ВКЛАДКА СТАТИСТИКА ==================== -->
+        <div id="tab-stats" class="tab-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                <label style="display: flex; align-items: center; gap: 8px;"><span>Период:</span>
+                    <select id="stats-period-select" style="width: auto; margin: 0;">
+                        <option value="all">Весь период</option>
+                        <option value="year">Последний год</option>
+                        <option value="6months">Последние 6 месяцев</option>
+                        <option value="quarter">Последний квартал</option>
+                        <option value="month">Последний месяц</option>
+                        <option value="week">Последняя неделя</option>
+                    </select>
+                </label>
+                <div id="driving-mode-indicator" class="driving-mode-card">
+                    <span class="mode-label"><i data-lucide="gauge"></i> Режим:</span>
+                    <span class="mode-value" id="driving-mode">—</span>
+                    <span class="mode-hint" id="driving-mode-hint"></span>
+                </div>
+                <button id="reset-all-zoom" class="secondary-btn" style="margin-left: auto;"><i data-lucide="refresh-ccw"></i> Сбросить масштаб</button>
+            </div>
+            <!-- 6.1 Сводка затрат -->
+            <div class="stats-summary-grid" id="stats-summary-skeleton">
+                <div class="stat-card"><span class="stat-label"><i data-lucide="dollar-sign"></i> Всего на ТО</span><span class="stat-value" id="total-maintenance-cost">0</span><span class="stat-unit">₽</span></div>
+                <div class="stat-card"><span class="stat-label"><i data-lucide="fuel"></i> Всего на топливо</span><span class="stat-value" id="total-fuel-cost">0</span><span class="stat-unit">₽</span></div>
+                <div class="stat-card"><span class="stat-label"><i data-lucide="ruler"></i> Стоимость 1 км</span><span class="stat-value" id="cost-per-km">0</span><span class="stat-unit">₽/км</span></div>
+                <div class="stat-card"><span class="stat-label"><i data-lucide="bar-chart-2"></i> Средний расход</span><span class="stat-value" id="avg-fuel-consumption">0</span><span class="stat-unit">л/100 км</span></div>
+                <div class="stat-card"><span class="stat-label"><i data-lucide="car"></i> Ср. пробег/день</span><span class="stat-value" id="avg-mileage-per-day">0</span><span class="stat-unit">км</span></div>
+                <div class="stat-card"><span class="stat-label"><i data-lucide="clock"></i> Ср. моточасы/день</span><span class="stat-value" id="avg-motohours-per-day">0</span><span class="stat-unit">ч</span></div>
+                <div class="stat-card ownership-card"><span class="stat-label"><i data-lucide="calendar"></i> Владение</span><span class="stat-value" id="ownership-display">0</span><span class="stat-unit" id="ownership-unit">дней</span><button id="toggle-ownership-unit" class="icon-btn" title="Переключить дни/годы"><i data-lucide="refresh-ccw"></i></button></div>
+            </div>
+            <!-- 6.2 Графики -->
+            <div class="stats-container">
+                <div class="chart-card"><h3><i data-lucide="line-chart"></i> Расход топлива (л/100 км)</h3><canvas id="fuelConsumptionChart"></canvas></div>
+                <div class="chart-card"><h3><i data-lucide="dollar-sign"></i> Средняя цена топлива (₽/л)</h3><canvas id="fuelPriceChart"></canvas></div>
+                <div class="chart-card"><h3><i data-lucide="bar-chart-3"></i> Затраты на топливо и ТО</h3><canvas id="costsChart"></canvas></div>
+                <div class="card">
+                    <h3><i data-lucide="trending-up"></i> Прогноз пробега</h3>
+                    <div style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+                        <label style="flex:1; min-width:150px;">Целевой пробег (км):
+                            <input type="number" id="prediction-target" placeholder="например, 100000" style="width:100%">
+                        </label>
+                        <button id="calc-prediction-btn" class="secondary-btn"><i data-lucide="calculator"></i> Рассчитать</button>
+                    </div>
+                    <div id="prediction-result" class="hint" style="margin-top:12px;"></div>
+                </div>
+                <div class="pie-row">
+                    <div class="chart-card"><h3><i data-lucide="pie-chart"></i> Распределение затрат</h3><canvas id="expensePieChart"></canvas></div>
+                    <div class="chart-card"><h3><i data-lucide="droplet"></i> Прогноз замены масла</h3><canvas id="oilChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 7. ВКЛАДКА ИСТОРИЯ ==================== -->
+        <div id="tab-history" class="tab-content">
+            <div class="card" style="margin-bottom: 16px;">
+                <h3><i data-lucide="filter"></i> Фильтры истории</h3>
+                <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
+                    <label style="flex: 1; min-width: 150px;">Период: <select id="history-period-select" style="width: 100%;">...</select></label>
+                    <label style="flex: 1; min-width: 150px;">Операция: <select id="history-operation-filter" style="width: 100%;"></select></label>
+                    <label style="flex: 1; min-width: 150px;">Поиск: <input type="text" id="history-search" placeholder="Название или примечание..." style="width: 100%;"></label>
+                    <label style="flex: 0 0 auto;"><input type="checkbox" id="history-diy-only"> Только DIY</label>
+                    <label style="flex: 1; min-width: 120px;">Стоимость от (₽): <input type="number" id="history-cost-min" placeholder="0" style="width: 100%;"></label>
+                    <label style="flex: 1; min-width: 120px;">Стоимость до (₽): <input type="number" id="history-cost-max" placeholder="100000" style="width: 100%;"></label>
+                    <button id="history-reset-filters" class="secondary-btn"><i data-lucide="refresh-ccw"></i> Сбросить</button>
+                </div>
+            </div>
+            <div class="table-wrapper"><table id="history-table"><thead>...</thead><tbody id="history-body"></tbody></table></div>
+        </div>
+
+        <!-- ==================== 8. ВКЛАДКА ТОПЛИВО ==================== -->
+        <div id="tab-fuel" class="tab-content">
+            <div class="action-bar">
+                <button id="add-fuel-btn" class="primary-btn"><i data-lucide="plus"></i> Добавить заправку</button>
+                <button id="voice-fuel-btn" class="secondary-btn" title="Голосовой ввод"><i data-lucide="mic"></i></button>
+            </div>
+            <div class="table-wrapper"><table id="fuel-table"><thead>...</thead><tbody id="fuel-body"></tbody></table></div>
+        </div>
+
+        <!-- ==================== 9. ВКЛАДКА ШИНЫ ==================== -->
+        <div id="tab-tires" class="tab-content">
+            <div id="tire-recommendation" class="info-card"></div>
+            <div class="card calculator-card">
+                <h3><i data-lucide="calculator"></i> Калькулятор шин</h3>
+                <div style="display: flex; flex-wrap: wrap; gap: 16px;">
+                    <label style="flex:1;">Старый размер:<br><input type="text" id="old-tire-size" placeholder="205/55R16"></label>
+                    <label style="flex:1;">Новый размер:<br><input type="text" id="new-tire-size" placeholder="215/50R17"></label>
+                    <button id="calc-tire-btn" class="primary-btn"><i data-lucide="rotate-cw"></i> Рассчитать</button>
+                </div>
+                <div id="tire-calc-result" class="hint" style="margin-top:12px;"></div>
+            </div>
+            <div class="card wear-card"><h3><i data-lucide="activity"></i> Износ шин</h3><div id="tire-wear-container"></div></div>
+            <div class="action-bar"><button id="add-tire-btn" class="primary-btn"><i data-lucide="plus"></i> Сменить резину</button></div>
+            <div class="table-wrapper"><table id="tires-table"><thead>...</thead><tbody id="tires-body"></tbody></table></div>
+        </div>
+
+        <!-- ==================== 10. ВКЛАДКА ЗАПЧАСТИ ==================== -->
+        <div id="tab-parts" class="tab-content">
+            <div class="action-bar"><button id="add-part-btn" class="primary-btn"><i data-lucide="plus"></i> Добавить запчасть</button></div>
+            <div class="table-wrapper"><table id="parts-table"><thead>...</thead><tbody id="parts-body"></tbody></table></div>
+        </div>
+
+        <!-- ==================== 11. ВКЛАДКА НАСТРОЙКИ ==================== -->
+        <div id="tab-settings" class="tab-content">
+            <div class="card"><h3><i data-lucide="wrench"></i> Точки отсчёта</h3><label>Пробег (км): <input type="number" id="set-base-mileage"></label><label>Моточасы: <input type="number" id="set-base-motohours"></label><p class="hint">Используются, если история пуста</p></div>
+            <div class="card"><h3><i data-lucide="calendar"></i> Владение</h3><label>Дата покупки: <input type="date" id="purchase-date"></label><label>Дней владения: <input type="text" id="ownership-days" readonly></label></div>
+            <div class="card"><h3><i data-lucide="bell"></i> Уведомления</h3><label>Способ: <select id="notification-method"><option value="telegram">Telegram</option><option value="push">Push</option><option value="both">Оба</option></select></label><div id="telegram-settings"><label>Bot Token: <input type="text" id="telegram-token"></label><label>Chat ID: <input type="text" id="telegram-chatid"></label></div><div id="push-settings"><p id="push-status">Push не настроены</p><button id="subscribe-push-btn" class="secondary-btn"><i data-lucide="bell"></i> Подписаться</button></div><button id="save-settings-btn" class="primary-btn"><i data-lucide="save"></i> Сохранить</button><div id="settings-result"></div></div>
+            <div class="card"><h3><i data-lucide="folder"></i> Фотоотчёты</h3><button id="open-photo-folder-btn" class="secondary-btn"><i data-lucide="folder-open"></i> Открыть папку</button></div>
+            <div class="card"><h3><i data-lucide="download"></i> Экспорт данных</h3><div style="display: flex; flex-wrap: wrap; gap: 12px;"><label>Тип: <select id="export-type-select"><option value="to">ТО</option><option value="fuel">Топливо</option><option value="tires">Шины</option><option value="parts">Запчасти</option><option value="history">История</option><option value="all">Все данные</option></select></label><label>Формат: <select id="export-format-select"><option value="csv">CSV</option><option value="xlsx">Excel</option></select></label><button id="export-data-btn" class="primary-btn"><i data-lucide="download"></i> Экспорт</button></div></div>
+            <div class="card"><h3><i data-lucide="file-text"></i> PDF-отчёт</h3><button id="generate-pdf-btn" class="primary-btn"><i data-lucide="download"></i> Скачать сервисную историю</button></div>
+        </div>
+    </div>
+</div>
+<div id="toast-container" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px;"></div>
+</body>
+</html>
