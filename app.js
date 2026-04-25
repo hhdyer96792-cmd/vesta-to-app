@@ -3492,3 +3492,46 @@ if (document.readyState === 'loading') {
 } else {
     initDrawerShareButton();
 }
+
+// ==================== ФИНАЛЬНАЯ ИНИЦИАЛИЗАЦИЯ НАВИГАЦИИ ПОСЛЕ ПОЛНОЙ ЗАГРУЗКИ ====================
+window.addEventListener('load', function() {
+    console.log('load: переинициализация навигации'); // можно удалить после отладки
+    
+    // Повторно вызываем функции инициализации
+    if (typeof initNewNav === 'function') initNewNav();
+    if (typeof initDesktopSidebar === 'function') initDesktopSidebar();
+    if (typeof setInitialActiveTab === 'function') setInitialActiveTab();
+    
+    // Прямое назначение обработчиков для всех кнопок навигации (резервный вариант)
+    document.querySelectorAll('.sidebar-item, .bottom-nav-item, .drawer-item[data-tab]').forEach(btn => {
+        // Удаляем старые обработчики, если они уже были привязаны (чтобы избежать дублирования)
+        if (btn._navHandler) btn.removeEventListener('click', btn._navHandler);
+        
+        const handler = function(e) {
+            const tab = this.dataset.tab;
+            if (tab && typeof switchToTab === 'function') {
+                switchToTab(tab);
+            }
+            // Закрываем drawer, если кнопка находится внутри drawer-меню
+            const drawer = document.getElementById('drawer-menu');
+            if (drawer && this.closest('.drawer-content')) {
+                drawer.classList.add('hidden');
+            }
+        };
+        btn.addEventListener('click', handler);
+        btn._navHandler = handler; // сохраняем для возможного удаления
+    });
+    
+    // Дополнительная перерисовка иконок
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons({
+            attrs: {
+                width: '1.2rem',
+                height: '1.2rem',
+                stroke: 'currentColor',
+                strokeWidth: 2,
+                fill: 'none'
+            }
+        });
+    }
+});
