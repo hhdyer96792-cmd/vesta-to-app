@@ -1,0 +1,3061 @@
+// ==================== 1. КОНФИГУРАЦИЯ ====================
+const CLIENT_ID = '593689755085-9llh88kf9pvedbcpfumifq4gkj0kh248.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/drive.file';
+const CACHE_KEY = 'vesta_to_cache';
+const PENDING_KEY = 'vesta_pending_actions';
+
+// ==================== 2. ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
+let accessToken = null;
+let spreadsheetId = '';
+let driveFolderId = null;
+
+let operations = [];
+let parts = [];
+let fuelLog = [];
+let tireLog = [];
+let workCosts = [];
+let serviceRecords = [];
+
+let settings = {
+    currentMileage: 0,
+    currentMotohours: 0,
+    avgDailyMileage: 45,
+    avgDailyMotohours: 1.8,
+    telegramToken: '',
+    telegramChatId: '',
+    notificationMethod: 'telegram'
+};
+
+let isOnline = navigator.onLine;
+let pendingActions = [];
+
+let mileageHistory = [];
+let baseMileage = 0;
+let baseMotohours = 0;
+let purchaseDate = '';
+let ownershipDays = 0;
+let ownershipDisplayMode = 'days';
+let tireInputsInitialized = false;
+
+let carProfiles = [];
+let currentProfileId = '';
+const PROFILES_KEY = 'vesta_car_profiles';
+
+// DOM элементы
+const authPanel = document.getElementById('auth-panel');
+const authBtn = document.getElementById('authorize-btn');
+const authStatus = document.getElementById('auth-status');
+const dataPanel = document.getElementById('data-panel');
+const syncIndicator = document.getElementById('sync-indicator');
+const themeToggle = document.getElementById('theme-toggle');
+const displayMileage = document.getElementById('display-mileage');
+const displayMotohours = document.getElementById('display-motohours');
+const displayAvgMileage = document.getElementById('display-avg-mileage');
+const displayAvgMotohours = document.getElementById('display-avg-motohours');
+const addOperationBtn = document.getElementById('add-operation-btn');
+const recalculateBtn = document.getElementById('recalculate-btn');
+const exportBtn = document.getElementById('export-btn');
+const importBtn = document.getElementById('import-btn');
+const importFile = document.getElementById('import-file');
+const tableBody = document.getElementById('table-body');
+const partsBody = document.getElementById('parts-body');
+const fuelBody = document.getElementById('fuel-body');
+const tiresBody = document.getElementById('tires-body');
+const historyBody = document.getElementById('history-body');
+const addFuelBtn = document.getElementById('add-fuel-btn');
+const voiceFuelBtn = document.getElementById('voice-fuel-btn');
+const addTireBtn = document.getElementById('add-tire-btn');
+const addPartBtn = document.getElementById('add-part-btn');
+const setMileage = document.getElementById('set-mileage');
+const setMotohours = document.getElementById('set-motohours');
+const setAvgMileage = document.getElementById('set-avg-mileage');
+const setAvgMotohours = document.getElementById('set-avg-motohours');
+const telegramTokenInput = document.getElementById('telegram-token');
+const telegramChatIdInput = document.getElementById('telegram-chatid');
+const notificationMethodSelect = document.getElementById('notification-method');
+const saveSettingsBtn = document.getElementById('save-settings-btn');
+const settingsResult = document.getElementById('settings-result');
+const subscribePushBtn = document.getElementById('subscribe-push-btn');
+const pushStatus = document.getElementById('push-status');
+const openPhotoFolderBtn = document.getElementById('open-photo-folder-btn');
+const shareTableBtn = document.getElementById('share-table-btn');
+const oilChart = document.getElementById('oilChart');
+const costsChart = document.getElementById('costsChart');
+const fuelChart = document.getElementById('fuelChart');
+const totalMaintenanceCostEl = document.getElementById('total-maintenance-cost');
+const totalFuelCostEl = document.getElementById('total-fuel-cost');
+const costPerKmEl = document.getElementById('cost-per-km');
+const avgFuelConsumptionEl = document.getElementById('avg-fuel-consumption');
+const avgMileagePerDayEl = document.getElementById('avg-mileage-per-day');
+const avgMotohoursPerDayEl = document.getElementById('avg-motohours-per-day');
+const ownershipDisplay = document.getElementById('ownership-display');
+const ownershipUnit = document.getElementById('ownership-unit');
+const toggleOwnershipUnitBtn = document.getElementById('toggle-ownership-unit');
+
+// ==================== 3. УТИЛИТЫ ====================
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = sanitizeHtml(message);
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+function setSyncStatus(status) {
+    const syncIcon = syncIndicator.querySelector('i');
+    if (!syncIcon) return;
+    switch(status) {
+        case 'synced':
+            syncIndicator.className = 'synced';
+            syncIndicator.title = 'Синхронизировано с Google';
+            syncIcon.setAttribute('data-lucide', 'cloud');
+            break;
+        case 'syncing':
+            syncIndicator.className = 'syncing';
+            syncIndicator.title = 'Синхронизация...';
+            syncIcon.setAttribute('data-lucide', 'cloud');
+            break;
+        case 'local':
+            syncIndicator.className = 'local';
+            syncIndicator.title = 'Локальный режим (данные только в браузере)';
+            syncIcon.setAttribute('data-lucide', 'cloud-off');
+            break;
+        case 'error':
+            syncIndicator.className = 'error';
+            syncIndicator.title = 'Ошибка соединения';
+            syncIcon.setAttribute('data-lucide', 'cloud-off');
+            break;
+        default:
+            syncIndicator.className = '';
+            syncIcon.setAttribute('data-lucide', 'cloud');
+    }
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
+}
+
+function initIcons() {
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
+}
+
+function sanitizeHtml(text) {
+    if (!text) return '';
+    if (typeof DOMPurify !== 'undefined') {
+        return DOMPurify.sanitize(text);
+    }
+    return text.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
+
+function escapeHtml(str) {
+    return sanitizeHtml(str);
+}
+
+function normalizeOperationName(userInput, operationsList) {
+    if (!userInput) return null;
+    const input = userInput.trim().toLowerCase();
+    const keywordsMap = [
+        { keywords: ['масло', 'двигатель', 'двс'], canonicalPart: 'Масло' },
+        { keywords: ['масло', 'cvt', 'вариатор'], canonicalPart: 'Масло CVT (частичная)' },
+        { keywords: ['фильтр', 'масляный'], canonicalPart: 'Масляный фильтр' },
+        { keywords: ['фильтр', 'вариатора'], canonicalPart: 'Фильтр вариатора' },
+        { keywords: ['ремень', 'грм', 'грм'], canonicalPart: 'Ремень ГРМ' },
+        { keywords: ['ролик', 'грм'], canonicalPart: 'Ролик ГРМ' },
+        { keywords: ['помпа', 'водяной насос'], canonicalPart: 'Помпа' },
+        { keywords: ['колодки', 'тормозные'], canonicalPart: 'Тормозные колодки' },
+        { keywords: ['датчик', 'износа'], canonicalPart: 'Датчик износа колодок' },
+        { keywords: ['воздушный', 'фильтр'], canonicalPart: 'Воздушный фильтр' },
+        { keywords: ['фильтр', 'салона'], canonicalPart: 'Фильтр салона' },
+        { keywords: ['свечи', 'зажигания'], canonicalPart: 'Свечи зажигания' },
+        { keywords: ['провода', 'высоковольтные'], canonicalPart: 'Высоковольтные провода' },
+        { keywords: ['тормозная', 'жидкость'], canonicalPart: 'Тормозная жидкость' },
+        { keywords: ['прокачка', 'тормозов'], canonicalPart: 'Прокачка тормозов' },
+    ];
+    for (const map of keywordsMap) {
+        const match = map.keywords.every(kw => input.includes(kw));
+        if (match) {
+            const found = operationsList.find(op => op.name.toLowerCase() === map.canonicalPart.toLowerCase());
+            if (found) return found.name;
+        }
+    }
+    const exactMatch = operationsList.find(op => op.name.toLowerCase() === input);
+    return exactMatch ? exactMatch.name : userInput;
+}
+
+// ==================== 4. АВТОРИЗАЦИЯ (Google Identity Services) ====================
+let tokenClient = null;
+
+function startAuth() {
+    if (tokenClient) {
+        tokenClient.requestAccessToken({ prompt: 'consent' });
+    } else {
+        console.error('TokenClient не инициализирован');
+        setTimeout(startAuth, 500);
+    }
+}
+
+function initGoogleApi() {
+    if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+        setTimeout(initGoogleApi, 500);
+        return;
+    }
+    
+    tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: (tokenResponse) => {
+            if (tokenResponse.access_token) {
+                accessToken = tokenResponse.access_token;
+                authStatus.textContent = '✅ Авторизован';
+                authPanel.style.display = 'none';
+                setSyncStatus('synced');
+                const lastId = getLastUsedProfileId();
+                if (lastId) {
+                    spreadsheetId = lastId;
+                    loadSheet();
+                    addOrUpdateProfile(lastId);
+                } else {
+                    openCarSelectModal();
+                }
+            }
+        },
+        error_callback: (error) => {
+            console.error('Ошибка авторизации:', error);
+            authStatus.textContent = '❌ Ошибка авторизации';
+            authPanel.style.display = 'block';
+        },
+    });
+
+    try {
+        tokenClient.requestAccessToken({ prompt: '' });
+    } catch (e) {
+        authPanel.style.display = 'block';
+        authStatus.textContent = '⚠️ Требуется вход';
+    }
+}
+
+async function refreshAccessToken() {
+    return new Promise((resolve, reject) => {
+        const originalCallback = tokenClient.callback;
+        tokenClient.callback = (tokenResponse) => {
+            tokenClient.callback = originalCallback;
+            if (tokenResponse.access_token) {
+                accessToken = tokenResponse.access_token;
+                resolve(true);
+            } else {
+                reject(new Error('Не удалось обновить токен'));
+            }
+        };
+        tokenClient.requestAccessToken({ prompt: '' });
+    });
+}
+
+// ==================== 5. API И СИНХРОНИЗАЦИЯ ====================
+async function apiCall(url, options = {}) {
+    if (!accessToken) throw new Error('Not authorized');
+    
+    const makeRequest = async (token) => {
+        return await fetch(url, {
+            ...options,
+            headers: { ...options.headers, Authorization: `Bearer ${token}` },
+        });
+    };
+    
+    let res = await makeRequest(accessToken);
+    if (res.status === 401) {
+        console.log('Токен истёк, обновляем...');
+        try {
+            await refreshAccessToken();
+            res = await makeRequest(accessToken);
+        } catch (e) {
+            authPanel.style.display = 'block';
+            throw new Error('Требуется повторная авторизация');
+        }
+    }
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    return res.json();
+}
+
+async function readSheet(range) {
+    const data = await apiCall(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`);
+    return data.values || [];
+}
+
+async function writeSheet(range, values) {
+    await apiCall(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?valueInputOption=USER_ENTERED`, {
+        method: 'PUT',
+        body: JSON.stringify({ values }),
+    });
+}
+
+async function appendSheet(range, values) {
+    await apiCall(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
+        method: 'POST',
+        body: JSON.stringify({ values }),
+    });
+}
+
+async function safeWriteSheet(range, values) {
+    if (accessToken) {
+        await writeSheet(range, values);
+    } else {
+        addPendingAction({ type: 'write', range, values });
+    }
+}
+
+async function safeAppendSheet(range, values) {
+    if (accessToken) {
+        await appendSheet(range, values);
+    } else {
+        addPendingAction({ type: 'append', range, values });
+    }
+}
+
+
+// ==================== 6. ЗАГРУЗКА ДАННЫХ ====================
+async function loadSheet() {
+    if (!spreadsheetId) {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+            const d = JSON.parse(cached);
+            operations = d.operations || [];
+            settings = d.settings || { currentMileage: 0, currentMotohours: 0, avgDailyMileage: 45, avgDailyMotohours: 1.8 };
+            parts = d.parts || [];
+            fuelLog = d.fuelLog || [];
+            tireLog = d.tireLog || [];
+            workCosts = d.workCosts || [];
+            dataPanel.style.display = 'block';
+            renderAll();
+        }
+        return;
+    }
+    if (!accessToken) {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+            const d = JSON.parse(cached);
+            operations = d.operations; settings = d.settings; parts = d.parts||[];
+            fuelLog = d.fuelLog||[]; tireLog = d.tireLog||[]; workCosts = d.workCosts||[];
+            dataPanel.style.display = 'block';
+            renderAll();
+        }
+        return;
+    }
+    setSyncStatus('syncing');
+    
+    try {
+        const [opsData, settingsData, partsData, tiresData, workCostsData] = await Promise.all([
+            readSheet('Журнал ТО!A2:H'),
+            readSheet('Журнал ТО!Q1:Q8'),
+            readSheet('PartsCatalog!A2:I').catch(() => []),
+            readSheet('Tires!A2:J').catch(() => []),
+            readSheet('WorkCosts!A2:D').catch(() => [])
+        ]);
+
+        operations = opsData.filter(r => r[1]).map((r, i) => {
+            let lastDate = null;
+            if (r[2]) { const p = new Date(r[2]); lastDate = isNaN(p) ? null : p.toISOString().split('T')[0]; }
+            return {
+                id: i+2, rowIndex: i+2, category: r[0]||'', name: r[1],
+                intervalKm: +r[5]||0, intervalMonths: +r[6]||0, intervalMotohours: r[7]?+r[7]:null,
+                lastDate, lastMileage: +r[3]||0, lastMotohours: +r[4]||0
+            };
+        });
+
+        if (settingsData.length >= 8) {
+            settings.currentMileage = +settingsData[0][0]||0;
+            settings.currentMotohours = +settingsData[1][0]||0;
+            settings.avgDailyMileage = +settingsData[2][0]||45;
+            settings.avgDailyMotohours = +settingsData[3][0]||1.8;
+            settings.telegramToken = settingsData[6]?.[0]||'';
+            settings.telegramChatId = settingsData[7]?.[0]||'';
+        }
+
+        parts = partsData.map((r,i)=>{
+            let priceHistory = [];
+            const oldPrice = r[3] || '';
+            if (oldPrice !== '') {
+                priceHistory.push({
+                    date: new Date().toISOString().split('T')[0],
+                    price: parseFloat(oldPrice),
+                    supplier: r[4] || ''
+                });
+            }
+            return {
+                id: i+2,
+                operation: r[0]||'',
+                oem: r[1]||'',
+                analog: r[2]||'',
+                price: oldPrice,
+                supplier: r[4]||'',
+                link: r[5]||'',
+                comment: r[6]||'',
+                inStock: r[7] ? parseFloat(r[7]) : 0,
+                location: r[8] || '',
+                priceHistory: priceHistory
+            };
+        });
+        loadPriceHistory();
+        const fuelData = await readSheet('FuelLog!A2:G').catch(()=>[]);
+        fuelLog = fuelData.map(r=>({
+            date: typeof r[0]==='number'?excelDateToISO(r[0]):r[0], mileage:+r[1], liters:+r[2],
+            pricePerLiter:+r[3], fullTank:r[4], fuelType:r[5]||'Бензин', notes:r[6]
+        })).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+
+        tireLog = tiresData.map(r=>({
+            date: typeof r[0]==='number'?excelDateToISO(r[0]):r[0], type:r[1]||'', mileage:+r[2]||0,
+            model:r[3]||'', size:r[4]||'', wear:r[5]||'', notes:r[6]||'',
+            purchaseCost:+r[7]||0, mountCost:+r[8]||0, isDIY:r[9]==='TRUE'||r[9]===true
+        })).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+
+        workCosts = workCostsData.map(r=>({ operationId:+r[0], cost:+r[1], isDIY:r[2]==='TRUE', notes:r[3] }));
+
+        const mileageData = await readSheet('MileageLog!A2:C').catch(()=>[]);
+        mileageHistory = mileageData.map(r=>({ date:r[0], mileage:+r[1], motohours:+r[2] }))
+            .sort((a,b)=>new Date(a.date)-new Date(b.date));
+
+        const extraSettings = await readSheet('Журнал ТО!Q9:Q12').catch(()=>[]);
+        if (extraSettings.length>=4) {
+            baseMileage = +extraSettings[0][0]||0;
+            baseMotohours = +extraSettings[1][0]||0;
+            purchaseDate = extraSettings[2]?.[0]||'';
+        }
+        calculateOwnershipDays();
+
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ operations, settings, parts, fuelLog, tireLog, workCosts }));
+        dataPanel.style.display = 'block';
+        setSyncStatus('synced');
+        syncPendingActions();
+        driveFolderId = await getOrCreatePhotoFolder();
+        loadHistory();
+        addOrUpdateProfile(spreadsheetId);
+        renderAll();
+    } catch (e) {
+        setSyncStatus('error');
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+            const d = JSON.parse(cached);
+            operations=d.operations; settings=d.settings; parts=d.parts||[];
+            fuelLog=d.fuelLog||[]; tireLog=d.tireLog||[]; workCosts=d.workCosts||[];
+            dataPanel.style.display = 'block';
+            renderAll();
+        }
+    }
+}
+
+// ==================== 7. РАСЧЁТ ПЛАНОВ ====================
+function getOilMotohoursInterval(op, avgSpeed) {
+    if (!isFinite(avgSpeed) || avgSpeed <= 0) return op.intervalMotohours || 250;
+    if (op.name.includes('Масло') && op.category.includes('ДВС')) {
+        return avgSpeed < 20 ? 200 : 250;
+    }
+    return op.intervalMotohours;
+}
+
+function calculatePlan(op) {
+    const today = new Date(); today.setHours(0,0,0,0);
+    let recDate = new Date(8640000000000000);
+    if (op.intervalMonths) {
+        recDate = op.lastDate ? new Date(op.lastDate) : new Date(today);
+        recDate.setMonth(recDate.getMonth() + op.intervalMonths);
+    }
+    const recMileage = op.lastMileage ? op.lastMileage + op.intervalKm : op.intervalKm;
+    let avgSpeed = 30;
+    if (settings.avgDailyMotohours > 0) {
+        avgSpeed = settings.avgDailyMileage / settings.avgDailyMotohours;
+    }
+    const motoInterval = getOilMotohoursInterval(op, avgSpeed);
+    let isMotohoursFresh = true;
+    if (op.name.includes('Масло') && op.category.includes('ДВС')) {
+        if (mileageHistory.length >= 1) {
+            const last = mileageHistory[mileageHistory.length-1];
+            if ((settings.currentMotohours - last.motohours) > 20 || (settings.currentMileage - last.mileage) > 500) isMotohoursFresh = false;
+        }
+    }
+    let recMotohours = null;
+    if (motoInterval && isMotohoursFresh) {
+        recMotohours = op.lastMotohours ? op.lastMotohours + motoInterval : settings.currentMotohours + motoInterval;
+    }
+    let dateByMileage = new Date(8640000000000000);
+    if (recMileage > settings.currentMileage && settings.avgDailyMileage > 0) {
+        const days = Math.ceil((recMileage - settings.currentMileage) / settings.avgDailyMileage);
+        dateByMileage = new Date(today); dateByMileage.setDate(today.getDate() + days);
+    }
+    let dateByMoto = new Date(8640000000000000);
+    if (recMotohours && recMotohours > settings.currentMotohours && settings.avgDailyMotohours > 0) {
+        const days = Math.ceil((recMotohours - settings.currentMotohours) / settings.avgDailyMotohours);
+        dateByMoto = new Date(today); dateByMoto.setDate(today.getDate() + days);
+    }
+    const planDate = new Date(Math.min(recDate, dateByMileage, dateByMoto));
+    let daysLeft = Math.ceil((planDate - today) / 86400000);
+    if (planDate.getFullYear() > 275000) daysLeft = 0;
+    let planDateStr = planDate.getFullYear() < 275000 ? planDate.toISOString().split('T')[0] : '';
+    return {
+        recDate: recDate.getFullYear() < 275000 ? recDate.toISOString().split('T')[0] : '',
+        recMileage,
+        recMotohours: recMotohours || '',
+        planDate: planDateStr,
+        planMileage: recMileage,
+        daysLeft: isFinite(daysLeft) ? daysLeft : 0
+    };
+}
+
+// ==================== 8. ОТРИСОВКА ТАБЛИЦ ====================
+function renderTOTable() {
+    const tbody = tableBody;
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    const grouped = {};
+    operations.forEach(op => { if (!grouped[op.category]) grouped[op.category] = []; grouped[op.category].push(op); });
+    const categories = Object.keys(grouped).sort((a,b) => a==='Прочее'?1:b==='Прочее'?-1:a.localeCompare(b));
+    categories.forEach(cat => {
+        const headerRow = document.createElement('tr');
+        headerRow.className = 'category-row';
+        headerRow.innerHTML = `<td colspan="7">${escapeHtml(cat)}</td>`;
+        tbody.appendChild(headerRow);
+        const opsInCat = grouped[cat].sort((a,b)=>calculatePlan(a).daysLeft - calculatePlan(b).daysLeft);
+        opsInCat.forEach(op => {
+            const plan = calculatePlan(op);
+            let statusClass = '';
+            let statusText = '';
+            if (plan.daysLeft < 0) {
+                statusClass = 'overdue';
+                statusText = `<i data-lucide="alert-triangle"></i> ${Math.abs(plan.daysLeft)} дн.`;
+            } else if (plan.daysLeft <= 10) {
+                statusClass = 'critical';
+                statusText = `${plan.daysLeft} дн.`;
+            } else if (plan.daysLeft <= 20) {
+                statusClass = 'warning';
+                statusText = `${plan.daysLeft} дн.`;
+            } else if (plan.daysLeft <= 30) {
+                statusClass = 'attention';
+                statusText = `${plan.daysLeft} дн.`;
+            } else {
+                statusText = `${plan.daysLeft} дн.`;
+            }
+            const cacheKey = `${op.name}|${plan.planDate}`;
+            const isAdded = calendarEventCache.get(cacheKey) || false;
+            const calendarIcon = isAdded ? '<i data-lucide="check"></i>' : '<i data-lucide="calendar"></i>';
+            const calendarTitle = isAdded ? 'Уже в календаре' : 'Добавить в календарь';
+            const calendarClass = isAdded ? 'calendar-btn calendar-btn-added' : 'calendar-btn';
+            const tr = document.createElement('tr');
+            tr.dataset.rowIndex = op.rowIndex;
+            tr.dataset.operationId = op.id;
+            tr.innerHTML = `
+                <td><strong>${escapeHtml(op.name)}</strong></td>
+                <td>${op.lastDate ? op.lastDate.split('-').reverse().join('-') : '—'}</td>
+                <td>${op.lastMileage || '—'}</td>
+                <td>${op.lastMotohours || '—'}</td>
+                <td><strong>${plan.planDate.split('-').reverse().join('-')}</strong><br><small>${plan.planMileage} км</small></td>
+                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                <td>
+                    <button class="icon-btn" data-action="add-record" data-op-id="${op.id}" data-op-name="${escapeHtml(op.name)}"><i data-lucide="plus"></i></button>
+                    <button class="icon-btn" data-action="edit-op" data-op-id="${op.id}"><i data-lucide="pencil"></i></button>
+                    <button class="icon-btn ${calendarClass}" data-action="calendar" data-op-name="${escapeHtml(op.name)}" data-plan-date="${plan.planDate}" data-plan-mileage="${plan.planMileage}" title="${calendarTitle}">${calendarIcon}</button>
+                    <button class="icon-btn" data-action="shopping-list" data-op-id="${op.id}"><i data-lucide="shopping-cart"></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    });
+    updateCalendarButtonsStatus().finally(() => initIcons());
+}
+
+function renderPartsTable() {
+    const tbody = partsBody;
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    parts.forEach(p => {
+        const tr = document.createElement('tr'); tr.dataset.id = p.id;
+        tr.innerHTML = `
+            <td>${escapeHtml(p.operation)}</td>
+            <td>${escapeHtml(p.oem)}</td>
+            <td>${escapeHtml(p.analog)}</td>
+            <td>${p.price ? escapeHtml(p.price)+' ₽' : ''}</td>
+            <td>${escapeHtml(p.supplier)}</td>
+            <td>${p.link ? `<a href="${escapeHtml(p.link)}" target="_blank"><i data-lucide="external-link"></i></a>` : ''}</td>
+            <td>${escapeHtml(p.comment)}</td>
+            <td style="text-align:center;">${p.inStock || 0}</td>
+            <td>${escapeHtml(p.location)}</td>
+            <td>
+                <button class="icon-btn" data-action="edit-part" data-id="${p.id}"><i data-lucide="pencil"></i></button>
+                <button class="icon-btn" data-action="delete-part" data-id="${p.id}"><i data-lucide="trash-2"></i></button>
+                <button class="icon-btn" data-action="search-part" data-oem="${escapeHtml(p.oem)}"><i data-lucide="search"></i></button>
+                ${p.priceHistory && p.priceHistory.length > 1 ? `<button class="icon-btn" data-action="price-history" data-id="${p.id}" title="История цен"><i data-lucide="trending-up"></i></button>` : ''}
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+    initIcons();
+}
+
+function renderFuelTable() {
+    const tbody = fuelBody;
+    tbody.innerHTML = '';
+    fuelLog.forEach((f,i) => {
+        if (!f.date) return;
+        const tr = document.createElement('tr');
+        const fullTankIcon = f.fullTank === 'TRUE' || f.fullTank === true ? '<i data-lucide="check"></i>' : '';
+        tr.innerHTML = `
+            <td>${escapeHtml(f.date)}</td>
+            <td>${f.mileage||''}</td>
+            <td>${f.liters||''}</td>
+            <td>${f.pricePerLiter||''}</td>
+            <td style="text-align:center;">${fullTankIcon}</td>
+            <td>${escapeHtml(f.fuelType||'')}</td>
+            <td>${escapeHtml(f.notes||'')}</td>
+            <td>
+                <button class="icon-btn" data-action="edit-fuel" data-idx="${i}"><i data-lucide="pencil"></i></button>
+                <button class="icon-btn" data-action="delete-fuel" data-idx="${i}"><i data-lucide="trash-2"></i></button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+    initIcons();
+}
+
+function renderTiresTable() {
+    const tbody = tiresBody;
+    tbody.innerHTML = '';
+    tireLog.forEach((t,i) => {
+        if (!t.date) return;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${escapeHtml(t.date)}</td>
+            <td>${escapeHtml(t.type||'')}</td>
+            <td>${t.mileage||''}</td>
+            <td>${escapeHtml(t.model||'')}</td>
+            <td>${escapeHtml(t.size||'')}</td>
+            <td>${escapeHtml(t.wear||'')}</td>
+            <td>${escapeHtml(t.notes||'')}</td>
+            <td>
+                <button class="icon-btn" data-action="edit-tire" data-idx="${i}"><i data-lucide="pencil"></i></button>
+                <button class="icon-btn" data-action="delete-tire" data-idx="${i}"><i data-lucide="trash-2"></i></button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+    renderTireWear();
+    renderTireCalculator();
+    initIcons();
+}
+
+function renderAll() {
+    if (!dataPanel || dataPanel.style.display !== 'block') return;
+    if (displayMileage) displayMileage.textContent = settings.currentMileage;
+    if (displayMotohours) displayMotohours.textContent = settings.currentMotohours;
+    if (displayAvgMileage) displayAvgMileage.textContent = settings.avgDailyMileage;
+    if (displayAvgMotohours) displayAvgMotohours.textContent = settings.avgDailyMotohours;
+    renderTOTable();
+    renderPartsTable();
+    renderFuelTable();
+    renderTiresTable();
+    renderStats();
+    renderTop5Widget();
+    if (setMileage) setMileage.value = settings.currentMileage;
+    if (setMotohours) setMotohours.value = settings.currentMotohours;
+    if (setAvgMileage) setAvgMileage.value = settings.avgDailyMileage;
+    if (setAvgMotohours) setAvgMotohours.value = settings.avgDailyMotohours;
+    if (telegramTokenInput) telegramTokenInput.value = settings.telegramToken || '';
+    if (telegramChatIdInput) telegramChatIdInput.value = settings.telegramChatId || '';
+    if (notificationMethodSelect) notificationMethodSelect.value = settings.notificationMethod || 'telegram';
+    const baseMileageInput = document.getElementById('set-base-mileage');
+    if (baseMileageInput) baseMileageInput.value = baseMileage;
+    const baseMotohoursInput = document.getElementById('set-base-motohours');
+    if (baseMotohoursInput) baseMotohoursInput.value = baseMotohours;
+    const purchaseDateInput = document.getElementById('purchase-date');
+    if (purchaseDateInput) purchaseDateInput.value = purchaseDate;
+    calculateOwnershipDays();
+    if (document.getElementById('tab-dashboard')?.classList.contains('active')) {
+        renderDashboard();
+    }
+    initIcons();
+}
+
+// ==================== 9. КАЛЕНДАРЬ ====================
+const CALENDAR_CACHE_KEY = 'vesta_calendar_events';
+const calendarEventCache = new Map();
+(function(){ try{ const s=localStorage.getItem(CALENDAR_CACHE_KEY); if(s){ JSON.parse(s).forEach(([k,v])=>calendarEventCache.set(k,v)); } }catch(e){} })();
+function saveCalendarCache() { localStorage.setItem(CALENDAR_CACHE_KEY, JSON.stringify([...calendarEventCache])); }
+async function checkCalendarEventExists(opName, planDate) {
+    if (!accessToken) return false;
+    try { const t1=new Date(planDate).toISOString(), t2=new Date(new Date(planDate).setDate(new Date(planDate).getDate()+1)).toISOString(); const res=await apiCall(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${t1}&timeMax=${t2}&q=${encodeURIComponent(opName)}`); return res.items?.length>0; } catch(e){ return false; }
+}
+async function updateCalendarButtonsStatus() {
+    if (!accessToken) return;
+    const btns = document.querySelectorAll('[data-action="calendar"]');
+    if (!btns.length) return;
+    for (const b of btns) {
+        const op = b.dataset.opName, d = b.dataset.planDate;
+        if (op && d) {
+            const key = `${op}|${d}`;
+            if (calendarEventCache.has(key)) {
+                apply(b, calendarEventCache.get(key));
+            } else {
+                try {
+                    const ex = await checkCalendarEventExists(op, d);
+                    calendarEventCache.set(key, ex);
+                    saveCalendarCache();
+                    apply(b, ex);
+                } catch(e) { console.warn(e); }
+            }
+        }
+    }
+    function apply(b, ex) {
+        b.innerHTML = ex ? '<i data-lucide="check"></i>' : '<i data-lucide="calendar"></i>';
+        b.classList[ex ? 'add' : 'remove']('calendar-btn-added');
+        b.title = ex ? 'Уже в календаре' : 'Добавить в календарь';
+    }
+}
+async function addToCalendar(opName, planDate, planMileage) {
+    if (!accessToken) { alert('Авторизуйтесь'); return; }
+    if (await checkCalendarEventExists(opName, planDate)) { alert('Уже есть'); return; }
+    const event = { summary:`ТО: ${opName}`, description:`Пробег: ${planMileage} км.`, start:{date:planDate}, end:{date:planDate}, reminders:{useDefault:false, overrides:[{method:'popup',minutes:15*24*60},{method:'popup',minutes:2*24*60}]} };
+    try {
+        await apiCall('https://www.googleapis.com/calendar/v3/calendars/primary/events', { method:'POST', body:JSON.stringify(event) });
+        alert('✅ Добавлено'); const key=`${opName}|${planDate}`; calendarEventCache.set(key,true); saveCalendarCache();
+        const b=document.querySelector(`[data-action="calendar"][data-op-name="${opName}"][data-plan-date="${planDate}"]`);
+        if(b){ 
+            b.innerHTML='<i data-lucide="check"></i>'; 
+            b.classList.add('calendar-btn-added'); 
+            b.title='Уже в календаре';
+            initIcons();
+        }
+    } catch(e) { alert('Ошибка'); }
+}
+
+// ==================== 10. МОДАЛЬНЫЕ ОКНА ====================
+function createModal(title, content) {
+    const modal = document.createElement('div'); modal.className = 'modal'; modal.style.display = 'flex';
+    modal.innerHTML = `<div class="modal-content"><span class="close">&times;</span><h3>${escapeHtml(title)}</h3>${content}</div>`;
+    document.body.appendChild(modal);
+    modal.querySelector('.close').onclick = () => modal.remove();
+    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+    initIcons();
+    return modal;
+}
+
+function applyDateMaskISO(event) {
+    let input = event.target, value = input.value.replace(/\D/g,''); if(value.length>8) value=value.slice(0,8);
+    let formatted = ''; if(value.length>0){ formatted=value.substring(0,4); if(value.length>=5) formatted+='-'+value.substring(4,6); if(value.length>=7) formatted+='-'+value.substring(6,8); }
+    input.value = formatted;
+}
+
+function applyDateMaskDDMMYYYY(event) {
+    let input = event.target, value = input.value.replace(/\D/g,''); if(value.length>8) value=value.slice(0,8);
+    let formatted = ''; if(value.length>0){ formatted=value.substring(0,2); if(value.length>=3) formatted+='-'+value.substring(2,4); if(value.length>=5) formatted+='-'+value.substring(4,8); }
+    input.value = formatted;
+}
+
+function ddmmYYYYtoISO(dateStr) {
+    if (!dateStr || !/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) return dateStr;
+    const parts = dateStr.split('-'); return `${parts[2]}-${parts[1]}-${parts[0]}`;
+}
+
+function isoToDDMMYYYY(isoStr) {
+    if (!isoStr || isoStr.length !== 10) return isoStr;
+    const parts = isoStr.split('-'); return `${parts[2]}-${parts[1]}-${parts[0]}`;
+}
+
+function openServiceModal(opId, opName) {
+    const op = operations.find(o => o.id == opId);
+    const isOsago = (op && op.category === 'Документы' && op.name.includes('ОСАГО'));
+    let selectedFiles = [];
+    const modal = createModal('➕ Выполнить ТО', `
+        <form id="service-form" enctype="multipart/form-data">
+            <input type="hidden" name="opId" value="${opId}"><p><strong>${escapeHtml(opName)}</strong></p>
+            <label>Дата (ДД-ММ-ГГГГ)</label>
+            <input type="text" name="date" placeholder="ДД-ММ-ГГГГ" pattern="\\d{2}-\\d{2}-\\d{4}" required oninput="applyDateMaskDDMMYYYY(event)">
+            <label>Пробег, км</label><input type="number" name="mileage" value="${settings.currentMileage}">
+            <label>Моточасы</label><input type="text" inputmode="decimal" name="motohours" value="${settings.currentMotohours}">
+            ${isOsago ? `
+                <label>Стоимость полиса, ₽</label><input type="number" name="cost" step="0.01">
+                <label>Ссылка на файл (Google Drive)</label><input type="url" name="fileLink" placeholder="https://drive.google.com/...">
+                <label>Срок действия (мес.)</label><input type="number" name="osagoMonths" value="12" min="1" max="12">
+            ` : `
+                <h4><i data-lucide="tool"></i> Запчасти</h4><label>Стоимость, ₽</label><input type="number" name="cost" step="0.01">
+                <h4><i data-lucide="wrench"></i> Работы</h4><label>Стоимость, ₽</label><input type="number" name="workCost" step="0.01">
+                <label><input type="checkbox" name="isDIY" value="true"> Сделал сам</label>
+            `}
+            <h4><i data-lucide="camera"></i> Фото</h4>
+            <div id="drop-area" class="drop-area">
+                <i data-lucide="upload-cloud"></i> <span class="drop-text">Перетащите фото сюда или кликните для выбора</span>
+                <input type="file" id="photo-input" name="photo" accept="image/*" multiple style="display:none;">
+            </div>
+            <div id="photo-preview" class="photo-preview"></div>
+            <label>Примечание</label><input type="text" name="notes">
+            <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
+        </form>
+    `);
+    const dropArea = modal.querySelector('#drop-area');
+    const fileInput = modal.querySelector('#photo-input');
+    const previewContainer = modal.querySelector('#photo-preview');
+    if (dropArea && fileInput) {
+        dropArea.addEventListener('click', () => fileInput.click());
+        dropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropArea.classList.add('drag-over');
+        });
+        dropArea.addEventListener('dragleave', () => {
+            dropArea.classList.remove('drag-over');
+        });
+        dropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropArea.classList.remove('drag-over');
+            const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+            if (files.length) {
+                selectedFiles = files;
+                updatePreview(selectedFiles, previewContainer);
+            }
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                selectedFiles = Array.from(e.target.files);
+                updatePreview(selectedFiles, previewContainer);
+            }
+        });
+    }
+    function updatePreview(files, container) {
+        container.innerHTML = '';
+        files.forEach((file, idx) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = document.createElement('img');
+                img.src = ev.target.result;
+                img.title = file.name;
+                container.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    const form = modal.querySelector('#service-form');
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        const data = new FormData(form);
+        const currentOpName = opName, currentIsOsago = isOsago;
+        modal.remove();
+        (async () => {
+            try {
+                let photoUrls = [];
+                if (selectedFiles.length > 0) {
+                    for (const file of selectedFiles) {
+                        const url = await uploadPhoto(file);
+                        photoUrls.push(url);
+                    }
+                }
+                const cost = data.get('cost')||'0', workCost = data.get('workCost')||'0', isDIY = data.get('isDIY')==='true';
+                const notes = data.get('notes')||'', fileLink = data.get('fileLink')||'', osagoMonths = data.get('osagoMonths')||'12';
+                const motohours = parseFloat(data.get('motohours'))||0;
+                let formattedDate = ddmmYYYYtoISO(data.get('date'));
+                let fullNotes = notes;
+                if (currentIsOsago) fullNotes = `ОСАГО. Стоимость: ${cost} ₽. Срок: ${osagoMonths} мес. Ссылка: ${fileLink}. ` + notes;
+                if (photoUrls.length) fullNotes += `\nФото: ${photoUrls.join(', ')}`;
+                await addServiceRecord(data.get('opId'), formattedDate, data.get('mileage'), motohours, cost, workCost, isDIY, fullNotes, photoUrls[0] || '');
+                const normalizedOpName = normalizeOperationName(opName, operations);
+                const partsForOp = parts.filter(p => 
+                    normalizeOperationName(p.operation, operations) === normalizedOpName ||
+                    p.operation === op.category
+                );
+                for (const part of partsForOp) {
+                    const stock = part.inStock || 0;
+                    if (stock > 0) {
+                        const newStock = stock - 1;
+                        const rowData = [part.operation, part.oem, part.analog, part.price, part.supplier, part.link, part.comment, newStock, part.location];
+                        await safeWriteSheet(`PartsCatalog!A${part.id}:I${part.id}`, [rowData]);
+                    }
+                }
+                await addDependentOperations(currentOpName, data.get('opId'), formattedDate, data.get('mileage'), motohours, 'Автоматически');
+                showToast('ТО успешно выполнено', 'success');
+            } catch (error) { console.error(error); showToast('Ошибка сохранения', 'error'); }
+        })();
+    };
+    modal.querySelector('.cancel-btn').onclick = () => modal.remove();
+    initIcons();
+}
+
+async function addServiceRecord(opId, date, mileage, motohours, partsCost, workCost, isDIY, notes, photoUrl) {
+    const op = operations.find(o => o.id == opId);
+    if (!op) return;
+    op.lastDate = date;
+    op.lastMileage = +mileage;
+    op.lastMotohours = +motohours;
+    if (isOnline && accessToken) {
+        await safeWriteSheet(`Журнал ТО!C${op.rowIndex}:E${op.rowIndex}`, [[date, mileage, motohours || '']]);
+        await safeAppendSheet('История!A:A', [[opId, date, mileage, motohours, partsCost, workCost, isDIY, notes, photoUrl, new Date().toISOString()]]);
+        await safeAppendSheet('WorkCosts!A:D', [[opId, workCost, isDIY, notes]]);
+        sendNotification('Выполнено ТО', `${op.name}\nПробег: ${mileage} км\nЗатраты: ${+partsCost + +workCost} ₽`);
+        await loadSheet();
+    } else {
+        addPendingAction({ type: 'service', opId, date, mileage, motohours, partsCost, workCost, isDIY, notes, photoUrl, rowIndex: op.rowIndex });
+        serviceRecords.unshift({
+            operation_id: opId, date, mileage, motohours,
+            parts_cost: partsCost, work_cost: workCost, is_diy: isDIY, notes, photo_url: photoUrl,
+            timestamp: new Date().toISOString()
+        });
+        renderAll();
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ operations, settings, parts, fuelLog, tireLog, workCosts }));
+    }
+    // Автоматическое создание следующего ОСАГО
+    if (op.category === 'Документы' && op.name.includes('ОСАГО')) {
+        const nextDate = new Date(date);
+        nextDate.setMonth(nextDate.getMonth() + 12);
+        const newOp = {
+            category: 'Документы',
+            name: 'ОСАГО (следующий год)',
+            intervalMonths: 12,
+            intervalKm: 0,
+            intervalMotohours: null,
+            lastDate: null,
+            lastMileage: 0,
+            lastMotohours: 0
+        };
+        await saveOperation(newOp);
+    }
+}
+
+async function saveOperation(data) {
+    const category = data.category, name = data.name, km = data.km||'', months = data.months||'', moto = data.moto||'';
+    const rowIndex = parseInt(data.rowIndex,10), id = data.id;
+    const existingOp = operations.find(o => o.id == id);
+    const lastDate = existingOp ? existingOp.lastDate||'' : '', lastMileage = existingOp ? existingOp.lastMileage||'' : '', lastMotohours = existingOp ? existingOp.lastMotohours||'' : '';
+    const rowData = [category, name, lastDate, lastMileage, lastMotohours, km, months, moto];
+    if (id && !isNaN(rowIndex) && rowIndex >= 2) {
+        if (accessToken) await safeWriteSheet(`Журнал ТО!A${rowIndex}:H${rowIndex}`, [rowData]);
+        const op = operations.find(o => o.id == id);
+        if (op) { op.category=category; op.name=name; op.intervalKm=parseInt(km)||0; op.intervalMonths=parseInt(months)||0; op.intervalMotohours=moto?parseInt(moto):null; }
+    } else {
+        if (accessToken) {
+            await safeAppendSheet('Журнал ТО!A:H', [rowData]);
+        } else {
+            const newId = operations.length + 2;
+            operations.push({
+                id: newId, rowIndex: newId, category, name,
+                intervalKm: parseInt(km)||0, intervalMonths: parseInt(months)||0,
+                intervalMotohours: moto?parseInt(moto):null,
+                lastDate: null, lastMileage: 0, lastMotohours: 0
+            });
+        }
+    }
+    renderAll();
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ operations, settings, parts, fuelLog, tireLog, workCosts }));
+    showToast('Операция сохранена', 'success');
+}
+
+function openOperationForm(op = null) {
+    const modal = createModal(op ? '✏️ Редактировать' : '➕ Новая операция', `
+        <form id="op-form"><input type="hidden" name="id" value="${op?.id||''}"><input type="hidden" name="rowIndex" value="${op?.rowIndex||''}">
+            <label>Категория</label>
+            <select name="category" required>
+                <option value="ДВС" ${op?.category==='ДВС'?'selected':''}>ДВС</option>
+                <option value="Вариатор" ${op?.category==='Вариатор'?'selected':''}>Вариатор</option>
+                <option value="Тормозная система" ${op?.category==='Тормозная система'?'selected':''}>Тормозная система</option>
+                <option value="Подвеска" ${op?.category==='Подвеска'?'selected':''}>Подвеска</option>
+                <option value="Зажигание" ${op?.category==='Зажигание'?'selected':''}>Зажигание</option>
+                <option value="Охлаждение" ${op?.category==='Охлаждение'?'selected':''}>Охлаждение</option>
+                <option value="ГРМ" ${op?.category==='ГРМ'?'selected':''}>ГРМ</option>
+                <option value="Навесное" ${op?.category==='Навесное'?'selected':''}>Навесное</option>
+                <option value="Трансмиссия" ${op?.category==='Трансмиссия'?'selected':''}>Трансмиссия</option>
+                <option value="Топливная система" ${op?.category==='Топливная система'?'selected':''}>Топливная система</option>
+                <option value="Сезонное" ${op?.category==='Сезонное'?'selected':''}>Сезонное</option>
+                <option value="Документы" ${op?.category==='Документы'?'selected':''}>Документы</option>
+                <option value="Прочее" ${op?.category==='Прочее'?'selected':''}>Прочее</option>
+            </select>
+            <label>Название</label><input type="text" name="name" value="${escapeHtml(op?.name||'')}" required>
+            <label>Интервал, км</label><input type="number" name="km" value="${op?.intervalKm||''}">
+            <label>Интервал, мес</label><input type="number" name="months" value="${op?.intervalMonths||''}">
+            <label>Интервал, моточасов</label><input type="number" name="moto" value="${op?.intervalMotohours||''}">
+            <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
+        </form>
+    `);
+    const form = modal.querySelector('#op-form');
+    form.onsubmit = (e) => { e.preventDefault(); const fd = Object.fromEntries(new FormData(form)); modal.remove(); saveOperation(fd).catch(e=>console.warn(e)); };
+    modal.querySelector('.cancel-btn').onclick = () => modal.remove();
+}
+
+async function addDependentOperations(mainOpName, opId, date, mileage, motohours, notesPrefix) {
+    const AUTO_DEDUCT_PAIRS = [
+        { main: 'Масло', dependent: 'Масляный фильтр', note: 'Автоматически вместе с заменой масла' },
+        { main: 'Масло CVT (частичная)', dependent: 'Фильтр вариатора', note: 'Автоматически вместе с частичной заменой масла CVT' },
+        { main: 'Ремень ГРМ', dependent: 'Ролик ГРМ', note: 'Автоматически вместе с заменой ремня ГРМ' },
+        { main: 'Ремень ГРМ', dependent: 'Помпа', note: 'Автоматически вместе с заменой ремня ГРМ' },
+        { main: 'Тормозные колодки', dependent: 'Датчик износа колодок', note: 'Автоматически вместе с заменой колодок' },
+        { main: 'Воздушный фильтр', dependent: 'Фильтр салона', note: 'Автоматически при замене воздушного фильтра (рекомендовано)' },
+    ];
+    const normalizedMain = normalizeOperationName(mainOpName, operations);
+    const pairs = AUTO_DEDUCT_PAIRS.filter(p => 
+        p.main.toLowerCase() === normalizedMain.toLowerCase()
+    );
+    for (const pair of pairs) {
+        const dependentOp = operations.find(op => 
+            normalizeOperationName(pair.dependent, operations) === op.name
+        ) || operations.find(op => op.name.toLowerCase() === pair.dependent.toLowerCase());
+        if (dependentOp) {
+            const alreadyExists = serviceRecords.some(rec => 
+                rec.operation_id == dependentOp.id && rec.date === date
+            );
+            if (!alreadyExists) {
+                await addServiceRecord(
+                    dependentOp.id, date, mileage, motohours, 
+                    0, 0, false, 
+                    pair.note || notesPrefix, 
+                    ''
+                );
+                console.log(`Автоматически добавлена операция: ${dependentOp.name} для ${normalizedMain}`);
+            }
+        } else {
+            console.warn(`Не найдена зависимая операция: ${pair.dependent}`);
+        }
+    }
+}
+
+// ==================== 11. ДОПОЛНИТЕЛЬНЫЕ МОДАЛЬНЫЕ ОКНА ====================
+function openPartForm(part = null) {
+    const isEdit = !!part;
+    const operationOptions = operations.map(op => `<option value="${escapeHtml(op.name)}" ${part && part.operation === op.name ? 'selected' : ''}>${escapeHtml(op.name)} (${escapeHtml(op.category)})</option>`).join('');
+    let priceHistoryHtml = '';
+    if (part && part.priceHistory && part.priceHistory.length) {
+        priceHistoryHtml = '<h4>История цен</h4><ul style="margin-bottom:12px; max-height:150px; overflow-y:auto;">';
+        part.priceHistory.forEach(entry => {
+            priceHistoryHtml += `<li>${escapeHtml(entry.date)}: ${entry.price} ₽ (${escapeHtml(entry.supplier || '—')})</li>`;
+        });
+        priceHistoryHtml += '</ul>';
+    }
+    const modal = createModal(isEdit ? '✏️ Запчасть' : '➕ Запчасть', `
+        <form id="part-form">
+            <input type="hidden" name="id" value="${part?.id || ''}">
+            <label>Операция</label><select name="operation" required><option value="">-- Выберите операцию --</option>${operationOptions}</select>
+            <label>OEM</label><input type="text" name="oem" value="${escapeHtml(part?.oem || '')}">
+            <label>Аналог</label><input type="text" name="analog" value="${escapeHtml(part?.analog || '')}">
+            <label>Цена (₽)</label><input type="number" name="price" step="0.01" value="${part?.price || ''}">
+            ${isEdit ? `<label><input type="checkbox" id="update-price-only"> Добавить новую цену (не заменять)</label>` : ''}
+            <label>Поставщик</label><input type="text" name="supplier" value="${escapeHtml(part?.supplier || '')}">
+            <label>Ссылка</label><input type="url" name="link" value="${escapeHtml(part?.link || '')}">
+            <label>Комментарий</label><input type="text" name="comment" value="${escapeHtml(part?.comment || '')}">
+            <label>В наличии (шт.)</label><input type="number" name="inStock" min="0" step="1" value="${part?.inStock || 0}">
+            <label>Место хранения</label><input type="text" name="location" value="${escapeHtml(part?.location || '')}" placeholder="Гараж, бардачок, полка...">
+            ${priceHistoryHtml}
+            <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
+        </form>
+    `);
+    const form = modal.querySelector('#part-form');
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        const d = Object.fromEntries(new FormData(form));
+        const updateOnlyPrice = modal.querySelector('#update-price-only')?.checked || false;
+        const newPrice = parseFloat(d.price);
+        const newSupplier = d.supplier;
+        let priceHistory = part?.priceHistory ? [...part.priceHistory] : [];
+        if (isEdit && updateOnlyPrice && !isNaN(newPrice) && newPrice !== parseFloat(part.price)) {
+            priceHistory.push({
+                date: new Date().toISOString().split('T')[0],
+                price: newPrice,
+                supplier: newSupplier
+            });
+        }
+        const row = [d.operation, d.oem, d.analog, d.price, d.supplier, d.link, d.comment, d.inStock, d.location];
+        modal.remove();
+        if (isEdit) {
+            safeWriteSheet(`PartsCatalog!A${part.id}:I${part.id}`, [row]).then(() => {
+                const idx = parts.findIndex(p => p.id == part.id);
+                if (idx !== -1) {
+                    parts[idx] = {
+                        ...parts[idx],
+                        operation: d.operation,
+                        oem: d.oem,
+                        analog: d.analog,
+                        price: d.price,
+                        supplier: d.supplier,
+                        link: d.link,
+                        comment: d.comment,
+                        inStock: parseFloat(d.inStock) || 0,
+                        location: d.location,
+                        priceHistory: updateOnlyPrice ? priceHistory : (parts[idx].priceHistory || [])
+                    };
+                    if (updateOnlyPrice) {
+                        parts[idx].priceHistory = priceHistory;
+                        savePriceHistory();
+                    }
+                }
+                renderAll();
+                if (accessToken) loadSheet();
+            }).catch(e => console.warn(e));
+        } else {
+            if (!accessToken) {
+                const newId = parts.length + 2;
+                parts.push({
+                    id: newId,
+                    operation: d.operation,
+                    oem: d.oem,
+                    analog: d.analog,
+                    price: d.price,
+                    supplier: d.supplier,
+                    link: d.link,
+                    comment: d.comment,
+                    inStock: parseFloat(d.inStock) || 0,
+                    location: d.location,
+                    priceHistory: []
+                });
+                localStorage.setItem(CACHE_KEY, JSON.stringify({ operations, settings, parts, fuelLog, tireLog, workCosts }));
+                renderAll();
+                showToast('Запчасть добавлена (локально)', 'success');
+            } else {
+                safeAppendSheet('PartsCatalog!A:I', [row]).then(() => {
+                    loadSheet();
+                }).catch(e => console.warn(e));
+            }
+        }
+    };
+    modal.querySelector('.cancel-btn').onclick = () => modal.remove();
+}
+
+function openFuelModal(record=null) {
+    const isEdit = !!(record && record.rowIndex);
+    let defaultDate = record?.date ? isoToDDMMYYYY(record.date) : isoToDDMMYYYY(new Date().toISOString().split('T')[0]);
+    const modal = createModal(isEdit?'✏️ Редактировать заправку':'⛽ Добавить заправку', `
+        <form id="fuel-form">
+            ${isEdit?`<input type="hidden" name="rowIndex" value="${record.rowIndex}">`:''}
+            <label>Дата (ДД-ММ-ГГГГ)</label><input type="text" name="date" placeholder="ДД-ММ-ГГГГ" pattern="\\d{2}-\\d{2}-\\d{4}" required oninput="applyDateMaskDDMMYYYY(event)" value="${escapeHtml(defaultDate)}">
+            <label>Пробег</label><input type="number" name="mileage" value="${record?.mileage || settings.currentMileage}" required>
+            <label>Литры</label><input type="number" name="liters" step="0.01" value="${record?.liters || ''}" required>
+            <label>Цена/л</label><input type="number" name="pricePerLiter" step="0.01" value="${record?.pricePerLiter || ''}">
+            <label>Полный бак? <input type="checkbox" name="fullTank" value="true" ${record?.fullTank?'checked':''}></label>
+            <label>Тип топлива</label>
+            <select name="fuelType">
+                <option value="Бензин" ${record?.fuelType==='Бензин'?'selected':''}>Бензин</option>
+                <option value="Дизель" ${record?.fuelType==='Дизель'?'selected':''}>Дизель</option>
+                <option value="Газ (ГБО)" ${record?.fuelType==='Газ (ГБО)'?'selected':''}>Газ (ГБО)</option>
+                <option value="Электричество" ${record?.fuelType==='Электричество'?'selected':''}>Электричество</option>
+            </select>
+            <label>Примечание</label><input type="text" name="notes" value="${escapeHtml(record?.notes || '')}">
+            <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
+        </form>
+    `);
+    const form = modal.querySelector('#fuel-form');
+    form.onsubmit = (e) => { 
+        e.preventDefault(); 
+        const d = Object.fromEntries(new FormData(form));
+        const dateISO = ddmmYYYYtoISO(d.date);
+        const mileage = parseFloat(d.mileage);
+        const rowIndex = isEdit ? d.rowIndex : null;
+        const conflict = checkFuelOrderConflicts(dateISO, mileage, rowIndex);
+        if (conflict.hasConflict) {
+            if (!confirm(conflict.message + '\n\nСохранить, несмотря на нарушение порядка?')) {
+                return;
+            }
+        }
+        modal.remove();
+        const rowData = [dateISO, d.mileage, d.liters, d.pricePerLiter, d.fullTank||'', d.fuelType, d.notes||''];
+        if (isEdit) {
+            if (accessToken) safeWriteSheet(`FuelLog!A${d.rowIndex}:G${d.rowIndex}`, [rowData]);
+            const idx = fuelLog.findIndex(f => f.rowIndex == d.rowIndex);
+            if (idx !== -1) fuelLog[idx] = { date: dateISO, mileage: +d.mileage, liters: +d.liters, pricePerLiter: +d.pricePerLiter, fullTank: d.fullTank||'', fuelType: d.fuelType, notes: d.notes||'' };
+        } else {
+            if (accessToken) safeAppendSheet('FuelLog!A:G', [rowData]);
+            else fuelLog.push({ date: dateISO, mileage: +d.mileage, liters: +d.liters, pricePerLiter: +d.pricePerLiter, fullTank: d.fullTank||'', fuelType: d.fuelType, notes: d.notes||'' });
+        }
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ operations, settings, parts, fuelLog, tireLog, workCosts }));
+        renderAll();
+        if (accessToken) loadSheet();
+        showToast(isEdit ? 'Заправка обновлена' : 'Заправка добавлена', 'success');
+    };
+    modal.querySelector('.cancel-btn').onclick = () => modal.remove();
+}
+
+function openTireModal(record=null) {
+    const isEdit = !!record;
+    const defaultDate = record ? isoToDDMMYYYY(record.date) : isoToDDMMYYYY(new Date().toISOString().split('T')[0]);
+    const typeValue = record?.type || 'Лето';
+    const isNewSet = record ? (record.mileage===0 && record.purchaseCost) : false;
+    const modal = createModal(isEdit?'✏️ Редактировать запись шин':'🛞 Сменить резину', `
+        <form id="tire-form">
+            ${isEdit?`<input type="hidden" name="rowIndex" value="${record.rowIndex}">`:''}
+            <label>Дата (ДД-ММ-ГГГГ)</label><input type="text" name="date" placeholder="ДД-ММ-ГГГГ" pattern="\\d{2}-\\d{2}-\\d{4}" required oninput="applyDateMaskDDMMYYYY(event)" value="${escapeHtml(defaultDate)}">
+            <label>Тип</label><select name="type"><option value="Лето" ${typeValue==='Лето'?'selected':''}>Лето</option><option value="Зима" ${typeValue==='Зима'?'selected':''}>Зима</option></select>
+            <label><input type="checkbox" name="isNewSet" id="isNewSetCheckbox" ${isNewSet?'checked':''}> Новый комплект</label>
+            <div id="newSetFields" style="display:${isNewSet?'block':'none'};"><label>Название модели</label><input type="text" name="model" value="${escapeHtml(record?.model||'')}"><label>Размерность</label><input type="text" name="size" value="${escapeHtml(record?.size||'')}"><label>Стоимость покупки (₽)</label><input type="number" name="purchaseCost" step="0.01" value="${record?.purchaseCost||''}"></div>
+            <div id="mountFields" style="display:${isNewSet?'none':'block'};"><label>Текущий пробег (км)</label><input type="number" name="currentMileage" value="${isNewSet?0:settings.currentMileage}" required><label>Стоимость шиномонтажа (₽)</label><input type="number" name="mountCost" step="0.01" value="${record?.mountCost||''}"><label><input type="checkbox" name="isDIY" value="true" ${record?.isDIY?'checked':''}> Сделал сам</label></div>
+            <label>Износ / Остаток шипов (${typeValue==='Зима'?'%':'мм'})</label><input type="number" name="wear" step="0.1" value="${record?.wear||''}">
+            <label>Примечание</label><input type="text" name="notes" value="${escapeHtml(record?.notes||'')}">
+            <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
+        </form>
+    `);
+    modal.querySelector('#isNewSetCheckbox').addEventListener('change', e => {
+        modal.querySelector('#newSetFields').style.display = e.target.checked ? 'block' : 'none';
+        modal.querySelector('#mountFields').style.display = e.target.checked ? 'none' : 'block';
+    });
+    const form = modal.querySelector('#tire-form');
+    form.onsubmit = (e) => { 
+        e.preventDefault(); 
+        const d = Object.fromEntries(new FormData(form)); 
+        modal.remove();
+        const isNew = d.isNewSet === 'on';
+        let setMileage = isNew ? 0 : (parseFloat(d.currentMileage) || settings.currentMileage);
+        if (!isNew) {
+            setMileage = parseFloat(d.currentMileage) || settings.currentMileage;
+        }
+        const rowData = [ddmmYYYYtoISO(d.date), d.type, setMileage, d.model||'', d.size||'', d.wear||'', d.notes||'', isNew?(d.purchaseCost||''):'', isNew?'':(d.mountCost||''), d.isDIY==='true'];
+        if (isEdit) {
+            if (accessToken) safeWriteSheet(`Tires!A${d.rowIndex}:J${d.rowIndex}`, [rowData]);
+            const idx = tireLog.findIndex(t => t.rowIndex == d.rowIndex);
+            if (idx !== -1) tireLog[idx] = { date: ddmmYYYYtoISO(d.date), type: d.type, mileage: setMileage, model: d.model||'', size: d.size||'', wear: d.wear||'', notes: d.notes||'', purchaseCost: isNew?(d.purchaseCost||0):0, mountCost: isNew?0:(d.mountCost||0), isDIY: d.isDIY==='true' };
+        } else {
+            if (accessToken) safeAppendSheet('Tires!A:J', [rowData]);
+            else tireLog.push({ date: ddmmYYYYtoISO(d.date), type: d.type, mileage: setMileage, model: d.model||'', size: d.size||'', wear: d.wear||'', notes: d.notes||'', purchaseCost: isNew?(d.purchaseCost||0):0, mountCost: isNew?0:(d.mountCost||0), isDIY: d.isDIY==='true' });
+        }
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ operations, settings, parts, fuelLog, tireLog, workCosts }));
+        renderAll();
+        if (accessToken) loadSheet();
+        showToast(isEdit ? 'Запись о шинах обновлена' : 'Резина добавлена', 'success');
+    };
+    modal.querySelector('.cancel-btn').onclick = () => modal.remove();
+}
+
+function openCarSelectModal() {
+    loadProfiles();
+    let optionsHtml = '';
+    carProfiles.forEach((p, i) => {
+        optionsHtml += `
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+                <input type="radio" name="carProfile" value="${escapeHtml(p.id)}" id="profile_${i}" ${p.id===currentProfileId?'checked':''}>
+                <input type="text" id="name_${i}" value="${escapeHtml(p.name)}" style="flex:1; min-width:150px" placeholder="Имя авто">
+                <button type="button" class="icon-btn delete-profile-btn" data-id="${escapeHtml(p.id)}"><i data-lucide="trash-2"></i></button>
+            </div>
+        `;
+    });
+    const modal = createModal('🚗 Выбор автомобиля', `
+        <form id="car-select-form">
+            <div style="max-height:300px; overflow-y:auto; margin-bottom:16px;">${optionsHtml||'<p>Нет сохранённых автомобилей</p>'}</div>
+            <div style="border-top:1px solid var(--border); padding-top:16px;">
+                <label>Добавить новый автомобиль</label>
+                <input type="text" id="new-profile-id" placeholder="ID таблицы Google Sheets" style="margin-bottom:8px;">
+                <input type="text" id="new-profile-name" placeholder="Название (например, Vesta)" value="Мой автомобиль">
+            </div>
+            <div class="modal-actions"><button type="submit" class="primary-btn">Загрузить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
+        </form>
+    `);
+    modal.querySelectorAll('.delete-profile-btn').forEach(btn => btn.addEventListener('click', (e) => {
+        e.preventDefault(); const id = btn.dataset.id; carProfiles = carProfiles.filter(p => p.id !== id); saveProfiles(); modal.remove(); openCarSelectModal();
+    }));
+    const form = modal.querySelector('#car-select-form');
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        const selectedRadio = form.querySelector('input[name="carProfile"]:checked');
+        let selectedId;
+        if (selectedRadio) {
+            selectedId = selectedRadio.value;
+            carProfiles.forEach((p, i) => { const inp = document.getElementById(`name_${i}`); if (inp) p.name = inp.value || p.name; });
+            saveProfiles();
+        } else {
+            const newId = document.getElementById('new-profile-id').value.trim();
+            const newName = document.getElementById('new-profile-name').value.trim() || 'Мой автомобиль';
+            if (!newId) { alert('Введите ID'); return; }
+            selectedId = newId; addOrUpdateProfile(selectedId, newName);
+        }
+        modal.remove(); loadProfileById(selectedId);
+    };
+    modal.querySelector('.cancel-btn').onclick = () => modal.remove();
+}
+
+// ==================== 12. ИСТОРИЯ ====================
+async function loadHistory() {
+    if (!spreadsheetId) return;
+    try {
+        const raw = await readSheet('История!A2:J'); const validRows=[], hData=[];
+        raw.forEach((r,i)=>{ if(r.some(c=>c!==''&&c!=null)){ hData.push(r); validRows.push(i+2); } });
+        serviceRecords = hData.map((row, idx) => ({
+            rowIndex: validRows[idx],
+            operation_id: row[0],
+            date: typeof row[1]==='number'?excelDateToISO(row[1]):row[1],
+            mileage: row[2],
+            motohours: row[3],
+            parts_cost: row[4],
+            work_cost: row[5],
+            is_diy: row[6],
+            notes: row[7],
+            photo_url: row[8],
+            timestamp: row[9]
+        }));
+        populateHistoryOperationFilter();
+        renderHistoryWithFilters();
+    } catch(e) { console.warn(e); }
+}
+
+function populateHistoryOperationFilter() {
+    const select = document.getElementById('history-operation-filter');
+    if (!select) return;
+    const currentValue = select.value;
+    select.innerHTML = '<option value="">Все операции</option>';
+    const uniqueOps = [...new Map(operations.map(op => [op.name, { name: op.name, category: op.category }])).values()];
+    uniqueOps.sort((a,b) => a.name.localeCompare(b.name));
+    uniqueOps.forEach(op => {
+        const option = document.createElement('option');
+        option.value = op.name;
+        option.textContent = `${op.name} (${op.category})`;
+        select.appendChild(option);
+    });
+    if (currentValue) select.value = currentValue;
+}
+
+function getFilteredHistory() {
+    const period = document.getElementById('history-period-select')?.value || 'all';
+    const opFilter = document.getElementById('history-operation-filter')?.value || '';
+    const searchText = (document.getElementById('history-search')?.value || '').toLowerCase();
+    const diyOnly = document.getElementById('history-diy-only')?.checked || false;
+    const costMin = parseFloat(document.getElementById('history-cost-min')?.value) || 0;
+    const costMax = parseFloat(document.getElementById('history-cost-max')?.value) || Infinity;
+    let filtered = [...serviceRecords];
+    if (period !== 'all') {
+        const startDate = getStartDateForPeriod(period);
+        if (startDate) {
+            filtered = filtered.filter(r => {
+                const d = r.date ? new Date(r.date) : null;
+                return d && d >= startDate;
+            });
+        }
+    }
+    if (opFilter) {
+        filtered = filtered.filter(r => {
+            const op = operations.find(o => o.id == r.operation_id);
+            return op && op.name === opFilter;
+        });
+    }
+    if (searchText) {
+        filtered = filtered.filter(r => {
+            const op = operations.find(o => o.id == r.operation_id);
+            const opName = op ? op.name.toLowerCase() : '';
+            const notes = (r.notes || '').toLowerCase();
+            return opName.includes(searchText) || notes.includes(searchText);
+        });
+    }
+    if (diyOnly) {
+        filtered = filtered.filter(r => r.is_diy === true || r.is_diy === 'TRUE');
+    }
+    filtered = filtered.filter(r => {
+        const cost = (Number(r.parts_cost) || 0) + (Number(r.work_cost) || 0);
+        return cost >= costMin && cost <= costMax;
+    });
+    return filtered;
+}
+
+function renderHistoryWithFilters() {
+    const tbody = historyBody;
+    if (!tbody) return;
+    const filtered = getFilteredHistory();
+    tbody.innerHTML = '';
+    filtered.sort((a, b) => (b.date || '').localeCompare(a.date || '')).forEach(record => {
+        const tr = document.createElement('tr');
+        const op = operations.find(o => o.id == record.operation_id) || { name: 'Неизвестно' };
+        const diyFlag = record.is_diy === 'TRUE' || record.is_diy === true;
+        tr.innerHTML = `
+            <td>${record.date || ''}</td>
+            <td>${escapeHtml(op.name)}</td>
+            <td>${record.mileage || ''}</td>
+            <td>${record.motohours || ''}</td>
+            <td>${record.parts_cost || ''}</td>
+            <td>${record.work_cost || ''}</td>
+            <td>${escapeHtml(record.notes || '')}</td>
+            <td style="text-align:center;">${diyFlag ? '<i data-lucide="check"></i>' : '—'}</td>
+            <td>
+                <button class="icon-btn" data-action="edit-history" data-row="${record.rowIndex}"><i data-lucide="pencil"></i></button>
+                <button class="icon-btn" data-action="delete-history" data-row="${record.rowIndex}"><i data-lucide="trash-2"></i></button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+    initIcons();
+}
+
+function openHistoryEdit(rowIndex) {
+    const record = serviceRecords.find(r => r.rowIndex == rowIndex);
+    if (!record) return;
+    const op = operations.find(o => o.id == record.operation_id);
+    const modal = createModal('✏️ Редактировать запись истории', `
+        <form id="history-edit-form">
+            <input type="hidden" name="rowIndex" value="${rowIndex}">
+            <label>Дата (ГГГГ-ММ-ДД)</label>
+            <input type="text" name="date" value="${record.date || ''}" placeholder="ГГГГ-ММ-ДД" pattern="\\d{4}-\\d{2}-\\d{2}" required oninput="applyDateMaskISO(event)">
+            <label>Пробег, км</label><input type="number" name="mileage" value="${record.mileage || ''}">
+            <label>Моточасы</label><input type="text" name="motohours" value="${record.motohours || ''}">
+            <label>Запчасти, ₽</label><input type="number" name="partsCost" value="${record.parts_cost || ''}" step="0.01">
+            <label>Работа, ₽</label><input type="number" name="workCost" value="${record.work_cost || ''}" step="0.01">
+            <label><input type="checkbox" name="isDIY" value="true" ${record.is_diy === true || record.is_diy === 'TRUE' ? 'checked' : ''}> Сделал сам</label>
+            <label>Примечание</label><input type="text" name="notes" value="${escapeHtml(record.notes || '')}">
+            <div class="modal-actions"><button type="submit" class="primary-btn">Сохранить</button><button type="button" class="cancel-btn secondary-btn">Отмена</button></div>
+        </form>
+    `);
+    const form = modal.querySelector('#history-edit-form');
+    form.onsubmit = (ev) => {
+        ev.preventDefault();
+        const data = new FormData(form);
+        const newValues = [record.operation_id, data.get('date'), data.get('mileage'), data.get('motohours'), data.get('partsCost'), data.get('workCost'), data.get('isDIY') === 'true', data.get('notes'), record.photo_url, new Date().toISOString()];
+        modal.remove();
+        writeSheet(`История!A${rowIndex}:J${rowIndex}`, [newValues])
+            .then(() => { loadHistory(); loadSheet(); })
+            .catch(e => { console.error('Ошибка сохранения:', e); alert('Не удалось сохранить'); });
+        showToast('Запись истории обновлена', 'success');
+    };
+    modal.querySelector('.cancel-btn').onclick = () => modal.remove();
+}
+
+async function deleteHistoryEntry(rowIndex) {
+    if (!confirm('Удалить запись из истории? Это действие нельзя отменить.')) return;
+    await writeSheet(`История!A${rowIndex}:J${rowIndex}`, [['','','','','','','','','','']]);
+    loadHistory();
+    showToast('Запись удалена', 'success');
+}
+
+// ==================== 13. ДАШБОРД ====================
+function renderDashboard() {
+    if (!dataPanel || dataPanel.style.display !== 'block') return;
+    const stats = calculateStatistics('6months');
+    document.getElementById('dash-mileage').textContent = settings.currentMileage.toLocaleString();
+    document.getElementById('dash-motohours').textContent = settings.currentMotohours.toLocaleString();
+    document.getElementById('dash-avg-consumption').textContent = stats.avgFuelConsumption.toFixed(1);
+    document.getElementById('dash-cost-km').textContent = stats.costPerKm.toFixed(2);
+
+    const mode = getDrivingMode();
+    document.getElementById('dash-driving-mode').textContent = mode.text;
+    document.getElementById('dash-driving-hint').textContent = mode.hint;
+
+    renderTop5Widget();
+    const top5Container = document.getElementById('top5-container');
+    const dashUpcoming = document.getElementById('dash-upcoming-container');
+    if (top5Container && dashUpcoming) {
+        dashUpcoming.innerHTML = top5Container.innerHTML;
+        const items = dashUpcoming.querySelectorAll('.top5-item');
+        items.forEach(item => {
+            const nameEl = item.querySelector('.top5-name');
+            if (!nameEl) return;
+            const opName = nameEl.textContent;
+            const op = operations.find(o => o.name === opName);
+            if (!op) return;
+            const btn = document.createElement('button');
+            btn.className = 'icon-btn execute-dash-btn';
+            btn.innerHTML = '<i data-lucide="check-circle"></i>';
+            btn.title = 'Выполнить';
+            btn.addEventListener('click', () => openServiceModal(op.id, op.name));
+            item.appendChild(btn);
+        });
+    }
+    renderMiniFuelConsumptionChart();
+    renderMiniCostsChart();
+    renderMiniExpensePieChart();
+    renderTireWear();
+    const tireWear = document.getElementById('tire-wear-container');
+    const dashTire = document.getElementById('dash-tire-wear-container');
+    if (tireWear && dashTire) dashTire.innerHTML = tireWear.innerHTML;
+    initIcons();
+}
+
+// ==================== 14. СТАТИСТИКА И ГРАФИКИ ====================
+let activeCharts = {};
+function destroyChart(canvasId) {
+    if (activeCharts[canvasId]) {
+        activeCharts[canvasId].destroy();
+        delete activeCharts[canvasId];
+    }
+}
+
+function getStartDateForPeriod(period) {
+    const now = new Date();
+    switch (period) {
+        case 'week': return new Date(now.setDate(now.getDate()-7));
+        case 'month': return new Date(now.setMonth(now.getMonth()-1));
+        case 'quarter': return new Date(now.setMonth(now.getMonth()-3));
+        case '6months': return new Date(now.setMonth(now.getMonth()-6));
+        case 'year': return new Date(now.setFullYear(now.getFullYear()-1));
+        default: return null;
+    }
+}
+
+function filterByPeriod(records, period, dateField='date') {
+    if (period === 'all') return records;
+    const start = getStartDateForPeriod(period); if (!start) return records;
+    return records.filter(r => { const d = r[dateField] ? new Date(r[dateField]) : null; return d && d >= start; });
+}
+
+function calculateStatistics(period='all') {
+    const fServ = filterByPeriod(serviceRecords, period);
+    const fFuel = filterByPeriod(fuelLog, period);
+    const fMile = filterByPeriod(mileageHistory, period);
+    const totalMaint = fServ.reduce((s,r)=>s+(+r.parts_cost||0)+(+r.work_cost||0),0);
+    const totalFuel = fFuel.reduce((s,f)=>s+((+f.liters||0)*(+f.pricePerLiter||0)),0);
+    let periodMileage=0, periodDays=1, periodMotohours=0;
+    if (fMile.length>=2) {
+        const first=fMile[0], last=fMile[fMile.length-1]; periodMileage=last.mileage-first.mileage;
+        periodDays=Math.ceil((new Date(last.date)-new Date(first.date))/86400000)||1;
+        periodMotohours=(last.motohours||0)-(first.motohours||0);
+    } else if (fMile.length===1) {
+        const r=fMile[0]; periodMileage=settings.currentMileage-(baseMileage||r.mileage);
+        periodDays=ownershipDays||1; periodMotohours=settings.currentMotohours-(baseMotohours||r.motohours);
+    } else { periodMileage=settings.currentMileage-(baseMileage||0); periodDays=ownershipDays||1; periodMotohours=settings.currentMotohours-(baseMotohours||0); }
+    const totalCost = totalMaint+totalFuel, costPerKm = periodMileage>0 ? totalCost/periodMileage : 0;
+    const totalLiters = fFuel.reduce((s,f)=>s+(+f.liters||0),0), avgCons = periodMileage>0 ? (totalLiters/periodMileage)*100 : 0;
+    let avgMileageDay=0, avgMotoDay=0;
+    if (fMile.length>=2) { const first=fMile[0], last=fMile[fMile.length-1]; const days=Math.ceil((new Date(last.date)-new Date(first.date))/86400000)||1; avgMileageDay=(last.mileage-first.mileage)/days; avgMotoDay=((last.motohours||0)-(first.motohours||0))/days; }
+    else { avgMileageDay=periodMileage/periodDays; avgMotoDay=periodMotohours/periodDays; }
+    return { totalMaintenanceCost:Number(totalMaint), totalFuelCost:Number(totalFuel), costPerKm:Number(costPerKm), avgFuelConsumption:Number(avgCons), avgMileagePerDay:Number(avgMileageDay), avgMotohoursPerDay:Number(avgMotoDay) };
+}
+
+function renderStats() {
+    if (!dataPanel || dataPanel.style.display !== 'block') return;
+    const periodSelect = document.getElementById('stats-period-select'), period = periodSelect ? periodSelect.value : 'all';
+    const stats = calculateStatistics(period);
+    if (stats) {
+        if (totalMaintenanceCostEl) totalMaintenanceCostEl.textContent = (stats.totalMaintenanceCost??0).toFixed(0);
+        if (totalFuelCostEl) totalFuelCostEl.textContent = (stats.totalFuelCost??0).toFixed(0);
+        if (costPerKmEl) costPerKmEl.textContent = (stats.costPerKm??0).toFixed(2);
+        if (avgFuelConsumptionEl) avgFuelConsumptionEl.textContent = (stats.avgFuelConsumption??0).toFixed(1);
+        if (avgMileagePerDayEl) avgMileagePerDayEl.textContent = (stats.avgMileagePerDay??0).toFixed(1);
+        if (avgMotohoursPerDayEl) avgMotohoursPerDayEl.textContent = (stats.avgMotohoursPerDay??0).toFixed(2);
+        updateOwnershipDisplay();
+    }
+    if (document.getElementById('tab-stats')?.classList.contains('active')) {
+        const oilOp = operations.find(op => op.name.includes('Масло') && op.category.includes('ДВС'));
+        if (oilOp) {
+            const plan = calculatePlan(oilOp);
+            const canvas = oilChart;
+            if (canvas && typeof Chart !== 'undefined') {
+                destroyChart('oilChart');
+                const ctx = canvas.getContext('2d');
+                const current = settings.currentMileage;
+                const last = oilOp.lastMileage || 0;
+                const next = plan.planMileage;
+                const percent = Math.min(100, Math.max(0, Math.round((current - last) / (next - last) * 100)));
+                const newChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['Пройдено', 'Осталось'], datasets: [{ data: [percent, 100 - percent], backgroundColor: ['#2ecc71', '#e0e0e0'] }] }, options: { cutout: '70%', plugins: { legend: { display: false } } } });
+                activeCharts['oilChart'] = newChart;
+            }
+        }
+    }
+    initIcons();
+}
+
+function groupFuelByMonth() {
+    const sorted = [...fuelLog].filter(r => r.date && r.mileage).sort((a,b) => new Date(a.date) - new Date(b.date));
+    const monthlyConsumption = {};
+    for (let i = 1; i < sorted.length; i++) {
+        const prev = sorted[i-1];
+        const curr = sorted[i];
+        const mileageDiff = curr.mileage - prev.mileage;
+        if (mileageDiff <= 0) continue;
+        const consumption = (curr.liters / mileageDiff) * 100;
+        if (!isFinite(consumption)) continue;
+        const date = new Date(curr.date);
+        const yearMonth = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+        if (!monthlyConsumption[yearMonth]) monthlyConsumption[yearMonth] = { values: [], totalPrice: 0, count: 0 };
+        monthlyConsumption[yearMonth].values.push(consumption);
+        monthlyConsumption[yearMonth].totalPrice += curr.liters * curr.pricePerLiter;
+        monthlyConsumption[yearMonth].count++;
+    }
+    const monthlyPrice = {};
+    sorted.forEach(r => {
+        if (!r.liters || !r.pricePerLiter) return;
+        const date = new Date(r.date);
+        const yearMonth = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+        if (!monthlyPrice[yearMonth]) monthlyPrice[yearMonth] = { totalCost: 0, totalLiters: 0 };
+        monthlyPrice[yearMonth].totalCost += r.liters * r.pricePerLiter;
+        monthlyPrice[yearMonth].totalLiters += r.liters;
+    });
+    const allMonths = new Set([...Object.keys(monthlyConsumption), ...Object.keys(monthlyPrice)]);
+    const result = [];
+    for (const month of allMonths) {
+        const consVals = monthlyConsumption[month]?.values || [];
+        const avgCons = consVals.length ? consVals.reduce((a,b)=>a+b,0)/consVals.length : null;
+        const priceData = monthlyPrice[month];
+        const avgPrice = priceData && priceData.totalLiters ? priceData.totalCost / priceData.totalLiters : null;
+        result.push({ yearMonth: month, avgConsumption: avgCons, avgPrice: avgPrice });
+    }
+    return result.sort((a,b) => a.yearMonth.localeCompare(b.yearMonth));
+}
+
+function renderFuelConsumptionChart() {
+    destroyChart('fuelConsumptionChart');
+    const canvas = document.getElementById('fuelConsumptionChart');
+    if (!canvas) return;
+    const monthly = groupFuelByMonth();
+    const labels = monthly.map(m => m.yearMonth);
+    const data = monthly.map(m => m.avgConsumption !== null ? m.avgConsumption.toFixed(1) : null);
+    const ctx = canvas.getContext('2d');
+    if (data.filter(v => v !== null).length === 0) {
+        const newChart = new Chart(ctx, { type: 'line', data: { labels, datasets: [] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: 'л/100 км' } } } } });
+        activeCharts['fuelConsumptionChart'] = newChart;
+        return;
+    }
+    const newChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets: [{ label: 'Расход (л/100 км)', data, borderColor: '#e67e22', backgroundColor: 'rgba(230,126,34,0.1)', tension: 0.2, fill: true, pointRadius: 4, pointHoverRadius: 6 }] },
+        options: {
+            responsive: true, maintainAspectRatio: true,
+            plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.raw} л/100 км` } }, legend: { position: 'top' }, zoom: { pan: { enabled: true, mode: 'x', speed: 10 }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x', speed: 0.1, limits: { x: { min: 0.5, max: 5 } } } } },
+            scales: { y: { title: { display: true, text: 'л/100 км' }, beginAtZero: true } }
+        }
+    });
+    activeCharts['fuelConsumptionChart'] = newChart;
+    initIcons();
+}
+
+function renderFuelPriceChart() {
+    destroyChart('fuelPriceChart');
+    const canvas = document.getElementById('fuelPriceChart');
+    if (!canvas) return;
+    const monthly = groupFuelByMonth();
+    const labels = monthly.map(m => m.yearMonth);
+    const data = monthly.map(m => m.avgPrice !== null ? m.avgPrice.toFixed(2) : null);
+    const ctx = canvas.getContext('2d');
+    if (data.filter(v => v !== null).length === 0) {
+        const newChart = new Chart(ctx, { type: 'line', data: { labels, datasets: [] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: '₽/л' } } } } });
+        activeCharts['fuelPriceChart'] = newChart;
+        return;
+    }
+    const newChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets: [{ label: 'Средняя цена (₽/л)', data, borderColor: '#3498db', backgroundColor: 'rgba(52,152,219,0.1)', tension: 0.2, fill: true, pointRadius: 4, pointHoverRadius: 6 }] },
+        options: { responsive: true, maintainAspectRatio: true, plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.raw} ₽/л` } }, legend: { position: 'top' }, zoom: { pan: { enabled: true, mode: 'x', speed: 10 }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x', speed: 0.1, limits: { x: { min: 0.5, max: 5 } } } } }, scales: { y: { title: { display: true, text: '₽/л' }, beginAtZero: true } } }
+    });
+    activeCharts['fuelPriceChart'] = newChart;
+    initIcons();
+}
+
+function groupCostsByMonth(period) {
+    const filteredFuel = filterByPeriod(fuelLog, period, 'date');
+    const filteredService = filterByPeriod(serviceRecords, period, 'date');
+    const fuelByMonth = {};
+    const toByMonth = {};
+    filteredFuel.forEach(record => {
+        if (!record.date || !record.liters || !record.pricePerLiter) return;
+        const date = new Date(record.date);
+        if (isNaN(date)) return;
+        const yearMonth = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+        const cost = record.liters * record.pricePerLiter;
+        fuelByMonth[yearMonth] = (fuelByMonth[yearMonth] || 0) + cost;
+    });
+    filteredService.forEach(record => {
+        if (!record.date) return;
+        const date = new Date(record.date);
+        if (isNaN(date)) return;
+        const yearMonth = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+        const parts = Number(record.parts_cost) || 0;
+        const work = Number(record.work_cost) || 0;
+        toByMonth[yearMonth] = (toByMonth[yearMonth] || 0) + parts + work;
+    });
+    const allMonths = new Set([...Object.keys(fuelByMonth), ...Object.keys(toByMonth)]);
+    const sortedMonths = Array.from(allMonths).sort();
+    const months = sortedMonths;
+    const fuelCosts = months.map(m => fuelByMonth[m] || 0);
+    const toCosts = months.map(m => toByMonth[m] || 0);
+    return { months, fuelCosts, toCosts };
+}
+
+function renderCostsChart() {
+    destroyChart('costsChart');
+    const canvas = document.getElementById('costsChart');
+    if (!canvas) return;
+    const periodSelect = document.getElementById('stats-period-select');
+    const period = periodSelect ? periodSelect.value : 'all';
+    const { months, fuelCosts, toCosts } = groupCostsByMonth(period);
+    const ctx = canvas.getContext('2d');
+    if (months.length === 0) {
+        const newChart = new Chart(ctx, { type: 'bar', data: { labels: [], datasets: [] }, options: { plugins: { legend: { display: true }, tooltip: { callbacks: { title: () => 'Нет данных' } } }, scales: { y: { title: { display: true, text: '₽' } } } } });
+        activeCharts['costsChart'] = newChart;
+        return;
+    }
+    const newChart = new Chart(ctx, { type: 'bar', data: { labels: months, datasets: [ { label: 'Топливо (₽)', data: fuelCosts, backgroundColor: 'rgba(52, 152, 219, 0.7)', borderColor: '#2980b9', borderWidth: 1, borderRadius: 4, barPercentage: 0.7, categoryPercentage: 0.8 }, { label: 'ТО (запчасти + работы) (₽)', data: toCosts, backgroundColor: 'rgba(231, 76, 60, 0.7)', borderColor: '#c0392b', borderWidth: 1, borderRadius: 4, barPercentage: 0.7, categoryPercentage: 0.8 } ] }, options: { responsive: true, maintainAspectRatio: true, plugins: { tooltip: { callbacks: { label: (context) => `${context.dataset.label}: ${context.raw.toFixed(2)} ₽` } }, legend: { position: 'top' }, zoom: { pan: { enabled: true, mode: 'x', speed: 10 }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x', speed: 0.1, limits: { x: { min: 0.5, max: 5 } } } } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Затраты (₽)' }, ticks: { callback: (value) => value.toLocaleString() } }, x: { title: { display: true, text: 'Месяц' }, ticks: { maxRotation: 45, minRotation: 45 } } } } });
+    activeCharts['costsChart'] = newChart;
+    initIcons();
+}
+
+function renderExpensePieChart() {
+    destroyChart('expensePieChart');
+    const canvas = document.getElementById('expensePieChart');
+    if (!canvas) return;
+    const periodSelect = document.getElementById('stats-period-select');
+    const period = periodSelect ? periodSelect.value : 'all';
+    const filteredFuel = filterByPeriod(fuelLog, period, 'date');
+    const fuelCost = filteredFuel.reduce((sum, rec) => sum + (rec.liters * rec.pricePerLiter), 0);
+    const filteredService = filterByPeriod(serviceRecords, period, 'date');
+    let toCost = 0, tiresCost = 0, insuranceCost = 0;
+    filteredService.forEach(rec => {
+        const op = operations.find(o => o.id == rec.operation_id);
+        if (op && op.category === 'Документы' && op.name.includes('ОСАГО')) {
+            insuranceCost += Number(rec.parts_cost) || 0;
+        } else {
+            toCost += (Number(rec.parts_cost) || 0) + (Number(rec.work_cost) || 0);
+        }
+    });
+    const filteredTires = filterByPeriod(tireLog, period, 'date');
+    filteredTires.forEach(t => {
+        tiresCost += (t.purchaseCost || 0);
+        if (t.mileage !== 0 && t.mountCost) tiresCost += t.mountCost;
+    });
+    const categories = [], values = [], colors = [];
+    if (fuelCost > 0) { categories.push('Топливо'); values.push(fuelCost); colors.push('#3498db'); }
+    if (toCost > 0) { categories.push('ТО (запчасти+работа)'); values.push(toCost); colors.push('#e74c3c'); }
+    if (tiresCost > 0) { categories.push('Шины'); values.push(tiresCost); colors.push('#2ecc71'); }
+    if (insuranceCost > 0) { categories.push('Страховка'); values.push(insuranceCost); colors.push('#f39c12'); }
+    const ctx = canvas.getContext('2d');
+    if (values.length === 0) {
+        const newChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['Нет данных'], datasets: [{ data: [1], backgroundColor: ['#ccc'] }] }, options: { plugins: { legend: { position: 'top' }, tooltip: { callbacks: { title: () => 'Нет данных за период' } } } } });
+        activeCharts['expensePieChart'] = newChart;
+        return;
+    }
+    const newChart = new Chart(ctx, { type: 'doughnut', data: { labels: categories, datasets: [{ data: values, backgroundColor: colors, borderWidth: 0, hoverOffset: 10 }] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: (context) => { const label = context.label || ''; const value = context.raw; const total = context.dataset.data.reduce((a,b) => a + b, 0); const percent = ((value / total) * 100).toFixed(1); return `${label}: ${value.toFixed(2)} ₽ (${percent}%)`; } } } }, cutout: '50%' } });
+    activeCharts['expensePieChart'] = newChart;
+    initIcons();
+}
+
+function renderFuelAnalytics() {
+    renderFuelConsumptionChart();
+    renderFuelPriceChart();
+    renderCostsChart();
+    renderExpensePieChart();
+    updateDrivingModeIndicator();
+    initIcons();
+}
+
+function updateDrivingModeIndicator() {
+    const modeSpan = document.getElementById('driving-mode');
+    const hintSpan = document.getElementById('driving-mode-hint');
+    if (!modeSpan) return;
+    let avgSpeed = null;
+    if (settings.currentMotohours > 0 && settings.currentMileage > 0) {
+        avgSpeed = settings.currentMileage / settings.currentMotohours;
+    } else if (mileageHistory.length >= 2) {
+        const first = mileageHistory[0], last = mileageHistory[mileageHistory.length-1];
+        const mileageDiff = last.mileage - first.mileage;
+        const motoDiff = (last.motohours || 0) - (first.motohours || 0);
+        if (motoDiff > 0) avgSpeed = mileageDiff / motoDiff;
+    }
+    let mode = '—', hint = '', modeClass = '';
+    if (avgSpeed !== null) {
+        if (avgSpeed < 25) { mode = 'Городской'; hint = 'Интервал масла: 200 м/ч'; modeClass = 'city'; }
+        else if (avgSpeed >= 25 && avgSpeed <= 45) { mode = 'Смешанный'; hint = 'Интервал масла: 225 м/ч'; modeClass = 'mixed'; }
+        else { mode = 'Трассовый'; hint = 'Интервал масла: 250 м/ч'; modeClass = 'highway'; }
+        modeSpan.textContent = `${mode} (${avgSpeed.toFixed(1)} км/ч)`;
+        hintSpan.textContent = hint;
+    } else {
+        modeSpan.textContent = 'Нет данных';
+        hintSpan.textContent = 'Добавьте моточасы';
+        modeClass = '';
+    }
+    const container = document.getElementById('driving-mode-indicator');
+    if (container) { container.classList.remove('city', 'highway', 'mixed'); if (modeClass) container.classList.add(modeClass); }
+}
+
+function getDrivingMode() {
+    let avgSpeed = null;
+    if (settings.currentMotohours > 0 && settings.currentMileage > 0) {
+        avgSpeed = settings.currentMileage / settings.currentMotohours;
+    } else if (mileageHistory.length >= 2) {
+        const first = mileageHistory[0];
+        const last = mileageHistory[mileageHistory.length-1];
+        const mDiff = last.mileage - first.mileage;
+        const hDiff = (last.motohours || 0) - (first.motohours || 0);
+        if (hDiff > 0) avgSpeed = mDiff / hDiff;
+    }
+    if (avgSpeed === null) return { text: 'Нет данных', hint: '' };
+    if (avgSpeed < 25) return { text: `Городской (${avgSpeed.toFixed(1)} км/ч)`, hint: 'Интервал масла: 200 м/ч' };
+    if (avgSpeed <= 45) return { text: `Смешанный (${avgSpeed.toFixed(1)} км/ч)`, hint: 'Интервал масла: 225 м/ч' };
+    return { text: `Трассовый (${avgSpeed.toFixed(1)} км/ч)`, hint: 'Интервал масла: 250 м/ч' };
+}
+
+function renderMiniFuelConsumptionChart() {
+    const canvas = document.getElementById('dash-fuel-consumption-chart');
+    if (!canvas) return;
+    if (window.dashFuelChart) window.dashFuelChart.destroy();
+    const monthly = groupFuelByMonth().slice(-6);
+    const labels = monthly.map(m => m.yearMonth);
+    const data = monthly.map(m => m.avgConsumption);
+    const ctx = canvas.getContext('2d');
+    window.dashFuelChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets: [{ data, borderColor: '#e67e22', tension: 0.2, pointRadius: 2 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `${ctx.raw} л/100 км` } } }, scales: { y: { beginAtZero: true } } }
+    });
+}
+
+function renderMiniCostsChart() {
+    const canvas = document.getElementById('dash-costs-chart');
+    if (!canvas) return;
+    if (window.dashCostsChart) window.dashCostsChart.destroy();
+    const { months, fuelCosts, toCosts } = groupCostsByMonth('6months');
+    const ctx = canvas.getContext('2d');
+    window.dashCostsChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: months,
+            datasets: [
+                { label: 'Топливо', data: fuelCosts, backgroundColor: '#3498db' },
+                { label: 'ТО', data: toCosts, backgroundColor: '#e74c3c' }
+            ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: (ctx) => `${ctx.raw} ₽` } } }, scales: { y: { beginAtZero: true, ticks: { callback: v => v + ' ₽' } } } }
+    });
+}
+
+function renderMiniExpensePieChart() {
+    const canvas = document.getElementById('dash-expense-pie-chart');
+    if (!canvas) return;
+    if (window.dashPieChart) window.dashPieChart.destroy();
+    const stats = calculateExpenseStructure('6months');
+    const ctx = canvas.getContext('2d');
+    window.dashPieChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels: stats.labels, datasets: [{ data: stats.values, backgroundColor: stats.colors }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    });
+}
+
+function calculateExpenseStructure(period) {
+    const filteredFuel = filterByPeriod(fuelLog, period, 'date');
+    const fuelCost = filteredFuel.reduce((s, r) => s + (r.liters * r.pricePerLiter), 0);
+    const filteredService = filterByPeriod(serviceRecords, period, 'date');
+    let toCost = 0, tiresCost = 0, insuranceCost = 0;
+    filteredService.forEach(rec => {
+        const op = operations.find(o => o.id == rec.operation_id);
+        if (op && op.category === 'Документы' && op.name.includes('ОСАГО')) {
+            insuranceCost += Number(rec.parts_cost) || 0;
+        } else {
+            toCost += (Number(rec.parts_cost) || 0) + (Number(rec.work_cost) || 0);
+        }
+    });
+    const filteredTires = filterByPeriod(tireLog, period, 'date');
+    filteredTires.forEach(t => {
+        tiresCost += (t.purchaseCost || 0);
+        if (t.mileage !== 0 && t.mountCost) tiresCost += t.mountCost;
+    });
+    const labels = [], values = [], colors = [];
+    if (fuelCost > 0) { labels.push('Топливо'); values.push(fuelCost); colors.push('#3498db'); }
+    if (toCost > 0) { labels.push('ТО'); values.push(toCost); colors.push('#e74c3c'); }
+    if (tiresCost > 0) { labels.push('Шины'); values.push(tiresCost); colors.push('#2ecc71'); }
+    if (insuranceCost > 0) { labels.push('ОСАГО'); values.push(insuranceCost); colors.push('#f39c12'); }
+    return { labels, values, colors };
+}
+
+// ==================== 15. ШИНЫ ====================
+function renderTireWear() {
+    const container = document.getElementById('tire-wear-container');
+    if (!container) return;
+    const summerTires = tireLog.filter(t => t.type === 'Лето').sort((a,b) => new Date(b.date) - new Date(a.date));
+    const winterTires = tireLog.filter(t => t.type === 'Зима').sort((a,b) => new Date(b.date) - new Date(a.date));
+    const summerLast = summerTires[0];
+    const winterLast = winterTires[0];
+    function buildWearCard(tire, type) {
+        if (!tire) return `<div class="wear-card-item"><h4>${type}</h4><p class="hint">Нет данных</p></div>`;
+        let wearPercent = 0;
+        let wearValue = tire.wear ? parseFloat(tire.wear) : 0;
+        if (type === 'Лето') {
+            const minWear = 1.6;
+            const maxDepth = 8;
+            let currentDepth = Math.min(maxDepth, Math.max(minWear, wearValue));
+            wearPercent = ((maxDepth - currentDepth) / (maxDepth - minWear)) * 100;
+            wearPercent = Math.min(100, Math.max(0, wearPercent));
+        } else {
+            wearPercent = Math.min(100, Math.max(0, 100 - wearValue));
+        }
+        const statusColor = wearPercent < 50 ? '#2ecc71' : (wearPercent < 80 ? '#f39c12' : '#e74c3c');
+        return `
+            <div class="wear-card-item" style="flex:1; min-width:200px; background:var(--card-bg); padding:12px; border-radius:12px;">
+                <h4>${type} шины</h4>
+                <p>Модель: ${escapeHtml(tire.model || '—')}<br>Размер: ${escapeHtml(tire.size || '—')}<br>Пробег на установке: ${tire.mileage || 0} км</p>
+                <div style="margin-top:12px;">
+                    <div style="display:flex; justify-content:space-between;"><span>Износ:</span><span>${wearPercent.toFixed(0)}%</span></div>
+                    <div class="progress-bar-container" style="height:12px;"><div class="progress-bar" style="width:${wearPercent}%; background:${statusColor};"></div></div>
+                    <p class="hint">${type === 'Лето' ? `Остаток протектора: ${wearValue} мм (мин. 1.6 мм)` : `Остаток шипов: ${100 - wearValue}%`}</p>
+                </div>
+            </div>
+        `;
+    }
+    container.innerHTML = buildWearCard(summerLast, 'Лето') + buildWearCard(winterLast, 'Зима');
+    initIcons();
+}
+
+function parseTireSize(sizeStr) {
+    const match = sizeStr.match(/(\d+)[\/\-](\d+)[\/\-R](\d+)/i);
+    if (!match) return null;
+    return {
+        width: parseInt(match[1]),
+        aspect: parseInt(match[2]),
+        diameter: parseInt(match[3])
+    };
+}
+
+function calculateTireDiameter(width, aspect, diameter) {
+    const sidewallHeight = (width * aspect) / 100;
+    const diameterMm = diameter * 25.4;
+    return diameterMm + sidewallHeight * 2;
+}
+
+function formatTireInput(inputElement) {
+    let val = inputElement.value.replace(/\D/g, '');
+    if (val.length === 0) return '';
+    let formatted = '';
+    if (val.length <= 3) {
+        formatted = val;
+    } else if (val.length <= 5) {
+        formatted = val.slice(0, 3) + '/' + val.slice(3);
+    } else {
+        formatted = val.slice(0, 3) + '/' + val.slice(3, 5) + 'R' + val.slice(5, 7);
+    }
+    inputElement.value = formatted;
+}
+
+function initTireInputs() {
+    if (tireInputsInitialized) return;
+    const oldInput = document.getElementById('old-tire-size');
+    const newInput = document.getElementById('new-tire-size');
+    if (!oldInput || !newInput) return;
+    const formatHandler = (e) => formatTireInput(e.target);
+    oldInput.addEventListener('input', formatHandler);
+    newInput.addEventListener('input', formatHandler);
+    tireInputsInitialized = true;
+}
+
+function renderTireCalculator() {
+    const oldInput = document.getElementById('old-tire-size');
+    const newInput = document.getElementById('new-tire-size');
+    const calcBtn = document.getElementById('calc-tire-btn');
+    const resultDiv = document.getElementById('tire-calc-result');
+    if (!calcBtn) return;
+    initTireInputs();
+    const newBtn = calcBtn.cloneNode(true);
+    calcBtn.parentNode.replaceChild(newBtn, calcBtn);
+    newBtn.addEventListener('click', () => {
+        let oldSize = oldInput.value.trim();
+        let newSize = newInput.value.trim();
+        if (!oldSize || !newSize) {
+            resultDiv.innerHTML = '<i data-lucide="alert-triangle"></i> Введите оба размера (пример: 205/55R16)';
+            initIcons();
+            return;
+        }
+        oldSize = oldSize.replace(/\s/g, '');
+        newSize = newSize.replace(/\s/g, '');
+        const oldParsed = parseTireSize(oldSize);
+        const newParsed = parseTireSize(newSize);
+        if (!oldParsed || !newParsed) {
+            resultDiv.innerHTML = '<i data-lucide="alert-circle"></i> Неверный формат. Используйте: Ширина/ПрофильRДиаметр (205/55R16)';
+            initIcons();
+            return;
+        }
+        const oldDiameter = calculateTireDiameter(oldParsed.width, oldParsed.aspect, oldParsed.diameter);
+        const newDiameter = calculateTireDiameter(newParsed.width, newParsed.aspect, newParsed.diameter);
+        const diffPercent = ((newDiameter - oldDiameter) / oldDiameter) * 100;
+        const recommendation = Math.abs(diffPercent) > 2.5 
+            ? '<i data-lucide="alert-triangle"></i> Отклонение более 2.5% — не рекомендуется, спидометр будет врать.'
+            : '<i data-lucide="check-circle"></i> Отклонение в пределах нормы (до 2.5%).';
+        resultDiv.innerHTML = `
+            <i data-lucide="ruler"></i> Диаметр старой шины: ${oldDiameter.toFixed(1)} мм<br>
+            <i data-lucide="ruler"></i> Диаметр новой шины: ${newDiameter.toFixed(1)} мм<br>
+            <i data-lucide="bar-chart-2"></i> Разница: ${diffPercent.toFixed(2)}%<br>
+            <i data-lucide="car"></i> При реальной скорости 100 км/ч спидометр будет показывать ${(100 / (1 + diffPercent/100)).toFixed(1)} км/ч<br>
+            ${recommendation}
+        `;
+        initIcons();
+    });
+}
+
+// ==================== 16. ПРОГНОЗЫ И ПЛАНЫ ====================
+function predictMileageDate(targetMileage) {
+    if (mileageHistory.length < 2) return null;
+    const dates = mileageHistory.map(entry => new Date(entry.date).getTime());
+    const mileages = mileageHistory.map(entry => entry.mileage);
+    const minDate = Math.min(...dates);
+    const x = dates.map(d => (d - minDate) / (1000 * 3600 * 24));
+    const y = mileages;
+    const n = x.length;
+    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+    for (let i = 0; i < n; i++) {
+        sumX += x[i];
+        sumY += y[i];
+        sumXY += x[i] * y[i];
+        sumX2 += x[i] * x[i];
+    }
+    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+    const predictedDay = (targetMileage - intercept) / slope;
+    if (predictedDay < 0) return null;
+    const predictedDate = new Date(minDate + predictedDay * 86400000);
+    return predictedDate;
+}
+
+function renderMileagePrediction() {
+    const targetInput = document.getElementById('prediction-target');
+    const resultSpan = document.getElementById('prediction-result');
+    if (!targetInput || !resultSpan) return;
+    const target = parseInt(targetInput.value);
+    if (isNaN(target) || target <= 0) {
+        resultSpan.textContent = 'Введите целевой пробег';
+        initIcons();
+        return;
+    }
+    const predicted = predictMileageDate(target);
+    if (!predicted) {
+        resultSpan.textContent = 'Недостаточно данных для прогноза (нужно минимум 2 записи).';
+    } else {
+        const options = { year: 'numeric', month: 'long', day: 'numeric' };
+        resultSpan.textContent = `Ожидаемая дата достижения ${target.toLocaleString()} км: ${predicted.toLocaleDateString('ru-RU', options)}`;
+    }
+    initIcons();
+}
+
+function getPlanPeriodDates(period) {
+    const now = new Date();
+    const start = new Date(now);
+    start.setHours(0,0,0,0);
+    let end = new Date(now);
+    switch (period) {
+        case 'month':
+            end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            break;
+        case 'quarter':
+            const quarterEndMonth = Math.ceil((now.getMonth() + 1) / 3) * 3;
+            end = new Date(now.getFullYear(), quarterEndMonth, 0);
+            break;
+        case '6months':
+            end = new Date(now.getFullYear(), now.getMonth() + 6, 0);
+            break;
+        case 'year':
+            end = new Date(now.getFullYear(), 11, 31);
+            break;
+        default:
+            end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    }
+    end.setHours(23,59,59,999);
+    return { start, end };
+}
+
+function generateMaintenancePlan() {
+    const period = document.getElementById('plan-period-select').value;
+    const { start, end } = getPlanPeriodDates(period);
+    const plan = operations.filter(op => {
+        const planDateStr = calculatePlan(op).planDate;
+        if (!planDateStr) return false;
+        const planDate = new Date(planDateStr);
+        return planDate >= start && planDate <= end;
+    }).sort((a,b) => new Date(calculatePlan(a).planDate) - new Date(calculatePlan(b).planDate));
+    return plan;
+}
+
+function renderMaintenancePlan() {
+    const container = document.getElementById('plan-container');
+    if (!container) return;
+    const plan = generateMaintenancePlan();
+    if (plan.length === 0) {
+        container.innerHTML = '<p class="hint">Нет запланированных операций на выбранный период.</p>';
+        initIcons();
+        return;
+    }
+    let html = '<table class="plan-table" style="width:100%; border-collapse:collapse;">';
+    html += `<thead><tr><th>Операция</th><th>Категория</th><th>Плановая дата</th><th>Плановый пробег</th><th></th></tr></thead><tbody>`;
+    plan.forEach(op => {
+        const planData = calculatePlan(op);
+        const formattedDate = planData.planDate.split('-').reverse().join('.');
+        html += `
+            <tr>
+                <td><strong>${escapeHtml(op.name)}</strong></td>
+                <td>${escapeHtml(op.category)}</td>
+                <td>${formattedDate}</td>
+                <td>${planData.planMileage.toLocaleString()} км</td>
+                <td><button class="icon-btn" data-action="execute-plan" data-op-id="${op.id}" data-op-name="${escapeHtml(op.name)}"><i data-lucide="check-circle"></i> Выполнить</button></td>
+            </tr>
+        `;
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+    const planToCalendarBtn = document.getElementById('plan-to-calendar-btn');
+    if (planToCalendarBtn) planToCalendarBtn.style.display = 'inline-flex';
+    initIcons();
+}
+
+async function addPlanToCalendar() {
+    const plan = generateMaintenancePlan();
+    if (plan.length === 0) return;
+    for (const op of plan) {
+        const planData = calculatePlan(op);
+        if (planData.planDate) {
+            await addToCalendar(op.name, planData.planDate, planData.planMileage);
+            await new Promise(r => setTimeout(r, 500));
+        }
+    }
+    showToast('Все операции добавлены в календарь', 'success');
+}
+
+// ==================== 17. ТОП-5 ВИДЖЕТ ====================
+const LINKED_PAIRS = [
+    { main: 'Масло', linked: 'Масляный фильтр', combinedName: 'Масло + фильтр' },
+    { main: 'Масло CVT (частичная)', linked: 'Фильтр вариатора', combinedName: 'Масло CVT + фильтр' }
+];
+
+function renderTop5Widget() {
+    const container = document.getElementById('top5-container');
+    if (!container) return;
+    let candidates = operations.filter(op => {
+        if (!op.intervalKm && !op.intervalMonths && !op.intervalMotohours) return false;
+        const plan = calculatePlan(op);
+        return plan.daysLeft !== null && isFinite(plan.daysLeft) && plan.planDate;
+    });
+    if (candidates.length === 0) {
+        container.innerHTML = '<p class="hint">Нет данных для отображения</p>';
+        return;
+    }
+    const groupedOps = [];
+    const usedIds = new Set();
+    for (const op of candidates) {
+        if (usedIds.has(op.id)) continue;
+        let isMainOfPair = false, pair = null;
+        for (const p of LINKED_PAIRS) { if (op.name === p.main) { isMainOfPair = true; pair = p; break; } }
+        if (isMainOfPair) {
+            const linkedOp = candidates.find(o => o.name === pair.linked && !usedIds.has(o.id));
+            if (linkedOp) {
+                const mainPlan = calculatePlan(op);
+                const linkedPlan = calculatePlan(linkedOp);
+                const primaryPlan = mainPlan.daysLeft <= linkedPlan.daysLeft ? mainPlan : linkedPlan;
+                const primaryOp = mainPlan.daysLeft <= linkedPlan.daysLeft ? op : linkedOp;
+                groupedOps.push({ name: pair.combinedName, op: primaryOp, plan: primaryPlan, isGroup: true });
+                usedIds.add(op.id); usedIds.add(linkedOp.id);
+                continue;
+            }
+        }
+        let isLinkedInPair = false;
+        for (const p of LINKED_PAIRS) { if (op.name === p.linked) { isLinkedInPair = true; break; } }
+        if (isLinkedInPair) { const mainOp = candidates.find(o => o.name === LINKED_PAIRS.find(p => p.linked === op.name)?.main); if (mainOp && !usedIds.has(mainOp.id)) continue; }
+        if (!usedIds.has(op.id)) { groupedOps.push({ name: op.name, op: op, plan: calculatePlan(op), isGroup: false }); usedIds.add(op.id); }
+    }
+    const sorted = groupedOps.sort((a, b) => a.plan.daysLeft - b.plan.daysLeft);
+    const top5 = sorted.slice(0, 5);
+    let html = '';
+    top5.forEach(item => {
+        const op = item.op, plan = item.plan;
+        let motoFresh = true;
+        if (op.name.includes('Масло') && op.category.includes('ДВС') && mileageHistory.length >= 1) {
+            const lastEntry = mileageHistory[mileageHistory.length-1];
+            if ((settings.currentMotohours - lastEntry.motohours) > 20 || (settings.currentMileage - lastEntry.mileage) > 500) motoFresh = false;
+        }
+        let percent = 0;
+        if (op.intervalKm && plan.planMileage > (op.lastMileage || 0)) percent = Math.min(100, Math.round((settings.currentMileage - (op.lastMileage || 0)) / (plan.planMileage - (op.lastMileage || 0)) * 100));
+        else if (op.intervalMotohours && motoFresh && plan.recMotohours > (op.lastMotohours || 0)) percent = Math.min(100, Math.round((settings.currentMotohours - (op.lastMotohours || 0)) / (plan.recMotohours - (op.lastMotohours || 0)) * 100));
+        else if (op.intervalMonths) { const lastDate = op.lastDate ? new Date(op.lastDate) : new Date(); const totalDays = op.intervalMonths * 30; const elapsed = Math.floor((new Date() - lastDate) / 86400000); percent = Math.min(100, Math.round((elapsed / totalDays) * 100)); }
+        if (percent < 0) percent = 0;
+        const daysLeft = plan.daysLeft, mileageLeft = plan.planMileage - settings.currentMileage, motoLeft = plan.recMotohours ? (plan.recMotohours - settings.currentMotohours) : null;
+        let statusText = daysLeft < 0 ? `⚠️ просрочено на ${Math.abs(daysLeft)} дн.` : `осталось ${daysLeft} дн.`;
+        if (mileageLeft > 0 && op.intervalKm) statusText += ` / ${mileageLeft} км`;
+        else if (motoLeft > 0 && op.intervalMotohours && motoFresh) statusText += ` / ${motoLeft.toFixed(0)} м/ч`;
+        html += `<div class="top5-item"><div class="top5-header"><span class="top5-name">${item.name}</span><span class="top5-stats">${statusText}</span></div><div class="top5-progress-container"><div class="top5-progress-bar" style="width: ${percent}%;"></div></div></div>`;
+    });
+    container.innerHTML = html;
+    initIcons();
+}
+
+// ==================== 18. ДРУГИЕ УТИЛИТЫ ====================
+function excelDateToISO(serial) { if (!serial || typeof serial!=='number') return ''; const d = new Date((serial-25569)*86400000); return d.toISOString().split('T')[0]; }
+
+function checkFuelOrderConflicts(dateISO, mileage, excludeRowIndex = null) {
+    const sorted = [...fuelLog]
+        .filter((_, idx) => idx+2 !== excludeRowIndex)
+        .sort((a,b) => {
+            if (a.date === b.date) return a.mileage - b.mileage;
+            return (a.date || '').localeCompare(b.date || '');
+        });
+    let prev = null, next = null;
+    for (let i = 0; i < sorted.length; i++) {
+        const r = sorted[i];
+        if (!r.date) continue;
+        if (r.date < dateISO) {
+            prev = r;
+        } else if (r.date === dateISO && r.mileage <= mileage) {
+            prev = r;
+        } else {
+            next = r;
+            break;
+        }
+    }
+    let conflict = false;
+    let message = '';
+    if (prev && prev.mileage > mileage) {
+        conflict = true;
+        message += `⚠️ Пробег (${mileage} км) меньше предыдущей заправки от ${prev.date} (${prev.mileage} км). `;
+    }
+    if (next && next.mileage < mileage) {
+        conflict = true;
+        message += `⚠️ Пробег (${mileage} км) больше следующей заправки от ${next.date} (${next.mileage} км). `;
+    }
+    if (prev && prev.date > dateISO) {
+        conflict = true;
+        message += `⚠️ Дата (${dateISO}) раньше предыдущей заправки от ${prev.date}. `;
+    }
+    if (next && next.date < dateISO) {
+        conflict = true;
+        message += `⚠️ Дата (${dateISO}) позже следующей заправки от ${next.date}. `;
+    }
+    return { hasConflict: conflict, message, prevRecord: prev, nextRecord: next };
+}
+
+function updateMileageAndAverages() {
+    const m = document.getElementById('new-mileage'), h = document.getElementById('new-motohours');
+    if (!m||!h){ alert('Поля не найдены'); return; }
+    const newM = parseFloat(m.value), newH = parseFloat(h.value);
+    if (isNaN(newM)||isNaN(newH)){ alert('Введите числа'); return; }
+    const today = new Date().toISOString().split('T')[0];
+    safeAppendSheet('MileageLog!A:C', [[today, newM, newH]]);
+    mileageHistory.push({ date:today, mileage:newM, motohours:newH });
+    mileageHistory.sort((a,b)=>new Date(a.date)-new Date(b.date));
+    if (mileageHistory.length>=2){
+        const l=mileageHistory.at(-1), p=mileageHistory.at(-2);
+        const days=(new Date(l.date)-new Date(p.date))/86400000;
+        if (days>0){
+            settings.avgDailyMileage=(l.mileage-p.mileage)/days;
+            settings.avgDailyMotohours=(l.motohours-p.motohours)/days;
+        }
+    } else {
+        settings.avgDailyMileage=baseMileage>0?(newM-baseMileage)/30:20;
+        settings.avgDailyMotohours=baseMotohours>0?(newH-baseMotohours)/30:1.65;
+    }
+    settings.currentMileage=newM; settings.currentMotohours=newH;
+    safeWriteSheet('Журнал ТО!Q1:Q4', [[settings.currentMileage],[settings.currentMotohours],[settings.avgDailyMileage],[settings.avgDailyMotohours]]);
+    renderAll(); renderTop5Widget();
+    showToast('Пробег и моточасы обновлены', 'success');
+}
+
+function updateOwnershipDisplay() {
+    if (!ownershipDisplay||!ownershipUnit) return;
+    ownershipDisplay.textContent = ownershipDisplayMode==='days' ? ownershipDays : (ownershipDays/365.25).toFixed(1);
+    ownershipUnit.textContent = ownershipDisplayMode==='days' ? 'дней' : 'лет';
+}
+
+function calculateOwnershipDays() {
+    const inp = document.getElementById('ownership-days');
+    if (!purchaseDate){
+        ownershipDays=0;
+        if (inp) inp.value='';
+        updateOwnershipDisplay();
+        return;
+    }
+    const d=new Date(), p=new Date(purchaseDate);
+    ownershipDays=Math.floor(Math.abs(d-p)/86400000);
+    if (inp) inp.value=ownershipDays;
+    updateOwnershipDisplay();
+}
+
+function savePriceHistory() {
+    const historyData = {};
+    parts.forEach(part => {
+        if (part.priceHistory && part.priceHistory.length) {
+            historyData[part.id] = part.priceHistory;
+        }
+    });
+    localStorage.setItem('vesta_price_history', JSON.stringify(historyData));
+}
+
+function loadPriceHistory() {
+    const stored = localStorage.getItem('vesta_price_history');
+    if (!stored) return;
+    const historyData = JSON.parse(stored);
+    parts.forEach(part => {
+        if (historyData[part.id]) {
+            part.priceHistory = historyData[part.id];
+        }
+    });
+}
+
+function showPriceHistoryChart(part) {
+    const history = part.priceHistory;
+    if (!history || history.length < 2) {
+        showToast('Недостаточно данных для графика (нужно минимум 2 записи)', 'warning');
+        return;
+    }
+    const sorted = [...history].sort((a,b) => new Date(a.date) - new Date(b.date));
+    const labels = sorted.map(h => h.date);
+    const prices = sorted.map(h => h.price);
+    const modal = createModal(`История цен: ${part.operation} (${part.oem || part.analog})`, `
+        <div style="width:100%; height:300px;">
+            <canvas id="priceHistoryChart" style="width:100%; height:100%;"></canvas>
+        </div>
+        <p class="hint">Изменение цены во времени. Данные сохраняются локально.</p>
+    `);
+    setTimeout(() => {
+        const canvas = document.getElementById('priceHistoryChart');
+        if (canvas && typeof Chart !== 'undefined') {
+            const ctx = canvas.getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Цена (₽)',
+                        data: prices,
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52,152,219,0.1)',
+                        fill: true,
+                        tension: 0.2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        tooltip: { callbacks: { label: (ctx) => `${ctx.raw} ₽` } },
+                        legend: { position: 'top' }
+                    },
+                    scales: { y: { title: { display: true, text: 'Цена (₽)' }, beginAtZero: false } }
+                }
+            });
+        }
+        initIcons();
+    }, 50);
+}
+
+function generateShoppingList(opId) {
+    const op = operations.find(o => o.id == opId);
+    if (!op) return;
+    const items = parts.filter(p => p.operation === op.name || p.operation === op.category);
+    if (!items.length) { alert('Нет запчастей для этой операции'); return; }
+    let list = `🛒 ${op.name}:\n`;
+    items.forEach(p => {
+        const stock = p.inStock || 0;
+        const location = p.location ? ` (${p.location})` : '';
+        if (stock > 0) {
+            list += `- ${p.oem || p.analog} ${p.price ? p.price+'₽' : ''} — ✅ есть на складе: ${stock} шт.${location}\n`;
+        } else {
+            list += `- ${p.oem || p.analog} ${p.price ? p.price+'₽' : ''} — ❌ нужно купить\n`;
+        }
+    });
+    alert(list);
+}
+
+async function getOrCreatePhotoFolder() {
+    const query = encodeURIComponent("name='Vesta_TO_Photos' and mimeType='application/vnd.google-apps.folder' and trashed=false");
+    const res = await apiCall(`https://www.googleapis.com/drive/v3/files?q=${query}`);
+    if (res.files.length) return res.files[0].id;
+    const metadata = { name: 'Vesta_TO_Photos', mimeType: 'application/vnd.google-apps.folder' };
+    const createRes = await apiCall('https://www.googleapis.com/drive/v3/files', { method:'POST', body:JSON.stringify(metadata) });
+    return createRes.id;
+}
+
+async function uploadPhoto(file) {
+    const metadata = { name: `${new Date().toISOString()}_${file.name}`, mimeType: file.type, parents: [driveFolderId] };
+    const form = new FormData(); form.append('metadata', new Blob([JSON.stringify(metadata)], {type:'application/json'})); form.append('file', file);
+    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', { method:'POST', headers:{Authorization:`Bearer ${accessToken}`}, body:form });
+    const data = await res.json(); return `https://drive.google.com/file/d/${data.id}/view`;
+}
+
+async function sendNotification(title, body, tag=null) {
+    if (settings.notificationMethod==='telegram'||settings.notificationMethod==='both') await sendTelegramMessage(`${title}\n${body}`);
+    if (settings.notificationMethod==='push'||settings.notificationMethod==='both') await sendPushNotification(title, body, tag);
+}
+
+async function sendTelegramMessage(text) {
+    if (!settings.telegramToken || !settings.telegramChatId) return;
+    try { await fetch(`https://api.telegram.org/bot${settings.telegramToken}/sendMessage`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ chat_id:settings.telegramChatId, text }) }); } catch(e){}
+}
+
+async function sendPushNotification(title, body, tag) {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    const reg = await navigator.serviceWorker.ready; await reg.showNotification(title, { body, tag, icon:'icon-192.png' });
+}
+
+async function subscribeToPush() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) { alert('Push не поддерживается'); return; }
+    const perm = await Notification.requestPermission(); if (perm!=='granted') { alert('Нет разрешения'); return; }
+    localStorage.setItem('push_subscribed','true'); pushStatus.textContent = '✅ Push активны';
+}
+
+async function saveSettings() {
+    settings.currentMileage = +setMileage?.value || settings.currentMileage;
+    settings.currentMotohours = +setMotohours?.value || settings.currentMotohours;
+    settings.telegramToken = telegramTokenInput.value;
+    settings.telegramChatId = telegramChatIdInput.value;
+    settings.notificationMethod = notificationMethodSelect.value;
+    localStorage.setItem('notificationMethod', settings.notificationMethod);
+    baseMileage = +document.getElementById('set-base-mileage').value || 0;
+    baseMotohours = +document.getElementById('set-base-motohours').value || 0;
+    purchaseDate = document.getElementById('purchase-date').value;
+    calculateOwnershipDays();
+    await safeWriteSheet('Журнал ТО!Q1:Q12', [[settings.currentMileage],[settings.currentMotohours],[settings.avgDailyMileage],[settings.avgDailyMotohours],[],[],[settings.telegramToken],[settings.telegramChatId],[baseMileage],[baseMotohours],[purchaseDate],[]]);
+    document.getElementById('settings-result').textContent = '✅ Сохранено';
+    showToast('Настройки сохранены', 'success');
+}
+
+function exportData() {
+    const data = { operations, settings, parts, fuelLog, tireLog, workCosts };
+    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `vesta_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    showToast('Экспорт JSON выполнен', 'success');
+}
+
+function importData(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+        try {
+            const d = JSON.parse(ev.target.result);
+            operations = d.operations; settings = d.settings; parts = d.parts || [];
+            fuelLog = d.fuelLog || []; tireLog = d.tireLog || []; workCosts = d.workCosts || [];
+            renderAll();
+            if (isOnline) await syncAllToSheet();
+            showToast('Импорт выполнен', 'success');
+        } catch (err) { showToast('Ошибка импорта', 'error'); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+}
+
+async function syncAllToSheet() {
+    const opsRows = operations.map(o => [o.category, o.name, o.lastDate||'', o.lastMileage||'', o.lastMotohours||'', o.intervalKm, o.intervalMonths, o.intervalMotohours||'']);
+    await safeWriteSheet('Журнал ТО!A2:H', opsRows);
+    await safeWriteSheet('Журнал ТО!Q1:Q12', [[settings.currentMileage],[settings.currentMotohours],[settings.avgDailyMileage],[settings.avgDailyMotohours],[],[],[settings.telegramToken],[settings.telegramChatId],[baseMileage],[baseMotohours],[purchaseDate],[]]);
+}
+
+// ==================== ФУНКЦИИ ЭКСПОРТА ====================
+function getExportData(type) {
+    switch (type) {
+        case 'to':
+            return {
+                data: operations.map(op => [op.category, op.name, op.lastDate||'', op.lastMileage||'', op.lastMotohours||'', op.intervalKm, op.intervalMonths, op.intervalMotohours??'']),
+                headers: ['Категория', 'Операция', 'Последняя дата', 'Последний пробег', 'Последние моточасы', 'Интервал км', 'Интервал мес', 'Интервал м/ч'],
+                filename: 'vesta_operations'
+            };
+        case 'fuel':
+            return {
+                data: fuelLog.map(f => [f.date, f.mileage, f.liters, f.pricePerLiter, (f.fullTank==='TRUE'||f.fullTank===true)?'Да':'Нет', f.fuelType, f.notes||'']),
+                headers: ['Дата', 'Пробег', 'Литры', 'Цена/л', 'Полный бак', 'Тип топлива', 'Примечание'],
+                filename: 'vesta_fuel'
+            };
+        case 'tires':
+            return {
+                data: tireLog.map(t => [t.date, t.type, t.mileage, t.model||'', t.size||'', t.wear||'', t.notes||'', t.purchaseCost||'', t.mountCost||'', t.isDIY?'Да':'Нет']),
+                headers: ['Дата', 'Тип', 'Пробег', 'Модель', 'Размер', 'Износ', 'Примечание', 'Стоимость покупки', 'Стоимость монтажа', 'DIY'],
+                filename: 'vesta_tires'
+            };
+        case 'parts':
+            return {
+                data: parts.map(p => [p.operation, p.oem, p.analog, p.price, p.supplier, p.link, p.comment, p.inStock||0, p.location||'']),
+                headers: ['Операция', 'OEM', 'Аналог', 'Цена', 'Поставщик', 'Ссылка', 'Комментарий', 'В наличии (шт.)', 'Место хранения'],
+                filename: 'vesta_parts'
+            };
+        case 'history':
+            const filtered = getFilteredHistory();
+            return {
+                data: filtered.map(record => {
+                    const op = operations.find(o=>o.id==record.operation_id);
+                    const opName = op ? op.name : 'Неизвестно';
+                    return [record.date||'', opName, record.mileage||'', record.motohours||'', record.parts_cost||'', record.work_cost||'', record.notes||'', (record.is_diy==='TRUE'||record.is_diy===true)?'Да':'Нет'];
+                }),
+                headers: ['Дата', 'Операция', 'Пробег', 'Моточасы', 'Запчасти (₽)', 'Работа (₽)', 'Примечание', 'DIY'],
+                filename: 'vesta_history'
+            };
+        case 'all':
+            showToast('Функция "Все данные" скачает несколько файлов по очереди.', 'info');
+            const types = ['to', 'fuel', 'tires', 'parts', 'history'];
+            for (const t of types) {
+                const { data, headers, filename } = getExportData(t);
+                if (data && data.length) exportToCSV(data, filename, headers);
+            }
+            return null;
+        default: return null;
+    }
+}
+
+function exportToCSV(data, filename, headers) {
+    if (!data || data.length === 0) {
+        showToast('Нет данных для экспорта', 'warning');
+        return;
+    }
+    let csvRows = [];
+    if (headers) csvRows.push(headers.join(';'));
+    for (const row of data) {
+        const values = row.map(cell => {
+            const cellStr = String(cell ?? '').replace(/"/g, '""');
+            if (cellStr.includes(';') || cellStr.includes('\n') || cellStr.includes('"')) return `"${cellStr}"`;
+            return cellStr;
+        });
+        csvRows.push(values.join(';'));
+    }
+    const blob = new Blob(["\uFEFF" + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', `${filename}_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast('Экспорт CSV выполнен', 'success');
+}
+
+function exportToExcelForType(type) {
+    let wsData, sheetName;
+    switch (type) {
+        case 'to':
+            wsData = XLSX.utils.json_to_sheet(operations.map(op => ({
+                'Категория': op.category,
+                'Операция': op.name,
+                'Последняя дата': op.lastDate || '',
+                'Последний пробег': op.lastMileage || '',
+                'Последние моточасы': op.lastMotohours || '',
+                'Интервал км': op.intervalKm || '',
+                'Интервал мес': op.intervalMonths || '',
+                'Интервал м/ч': op.intervalMotohours || ''
+            })));
+            sheetName = 'Журнал ТО';
+            break;
+        case 'fuel':
+            wsData = XLSX.utils.json_to_sheet(fuelLog.map(f => ({
+                'Дата': f.date,
+                'Пробег': f.mileage,
+                'Литры': f.liters,
+                'Цена/л': f.pricePerLiter,
+                'Полный бак': (f.fullTank === 'TRUE' || f.fullTank === true) ? 'Да' : 'Нет',
+                'Тип топлива': f.fuelType || 'Бензин',
+                'Примечание': f.notes || ''
+            })));
+            sheetName = 'Топливо';
+            break;
+        case 'tires':
+            wsData = XLSX.utils.json_to_sheet(tireLog.map(t => ({
+                'Дата': t.date,
+                'Тип': t.type,
+                'Пробег': t.mileage,
+                'Модель': t.model || '',
+                'Размер': t.size || '',
+                'Износ': t.wear || '',
+                'Примечание': t.notes || '',
+                'Стоимость покупки': t.purchaseCost || '',
+                'Стоимость монтажа': t.mountCost || '',
+                'DIY': t.isDIY ? 'Да' : 'Нет'
+            })));
+            sheetName = 'Шины';
+            break;
+        case 'parts':
+            wsData = XLSX.utils.json_to_sheet(parts.map(p => ({
+                'Операция': p.operation,
+                'OEM': p.oem,
+                'Аналог': p.analog,
+                'Цена': p.price,
+                'Поставщик': p.supplier,
+                'Ссылка': p.link,
+                'Комментарий': p.comment,
+                'В наличии (шт.)': p.inStock || 0,
+                'Место хранения': p.location || ''
+            })));
+            sheetName = 'Запчасти';
+            break;
+        case 'history':
+            wsData = XLSX.utils.json_to_sheet(getFilteredHistory().map(record => {
+                const op = operations.find(o => o.id == record.operation_id);
+                return {
+                    'Дата': record.date || '',
+                    'Операция': op ? op.name : 'Неизвестно',
+                    'Пробег': record.mileage || '',
+                    'Моточасы': record.motohours || '',
+                    'Запчасти (₽)': record.parts_cost || '',
+                    'Работа (₽)': record.work_cost || '',
+                    'DIY': (record.is_diy === 'TRUE' || record.is_diy === true) ? 'Да' : 'Нет',
+                    'Примечание': record.notes || ''
+                };
+            }));
+            sheetName = 'История ТО';
+            break;
+        default:
+            return false;
+    }
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, wsData, sheetName);
+    const fileName = `vesta_${sheetName}_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    return true;
+}
+
+function exportToExcel() {
+    const wsOperations = XLSX.utils.json_to_sheet(operations.map(op => ({
+        'Категория': op.category,
+        'Операция': op.name,
+        'Последняя дата': op.lastDate || '',
+        'Последний пробег': op.lastMileage || '',
+        'Последние моточасы': op.lastMotohours || '',
+        'Интервал км': op.intervalKm || '',
+        'Интервал мес': op.intervalMonths || '',
+        'Интервал м/ч': op.intervalMotohours || ''
+    })));
+    const wsParts = XLSX.utils.json_to_sheet(parts.map(p => ({
+        'Операция': p.operation,
+        'OEM': p.oem,
+        'Аналог': p.analog,
+        'Цена': p.price,
+        'Поставщик': p.supplier,
+        'Ссылка': p.link,
+        'Комментарий': p.comment,
+        'В наличии (шт.)': p.inStock || 0,
+        'Место хранения': p.location || ''
+    })));
+    const wsFuel = XLSX.utils.json_to_sheet(fuelLog.map(f => ({
+        'Дата': f.date,
+        'Пробег': f.mileage,
+        'Литры': f.liters,
+        'Цена/л': f.pricePerLiter,
+        'Полный бак': (f.fullTank === 'TRUE' || f.fullTank === true) ? 'Да' : 'Нет',
+        'Тип топлива': f.fuelType || 'Бензин',
+        'Примечание': f.notes || ''
+    })));
+    const wsTires = XLSX.utils.json_to_sheet(tireLog.map(t => ({
+        'Дата': t.date,
+        'Тип': t.type,
+        'Пробег': t.mileage,
+        'Модель': t.model || '',
+        'Размер': t.size || '',
+        'Износ': t.wear || '',
+        'Примечание': t.notes || '',
+        'Стоимость покупки': t.purchaseCost || '',
+        'Стоимость монтажа': t.mountCost || '',
+        'DIY': t.isDIY ? 'Да' : 'Нет'
+    })));
+    const wsHistory = XLSX.utils.json_to_sheet(serviceRecords.map(rec => {
+        const op = operations.find(o => o.id == rec.operation_id);
+        return {
+            'Дата': rec.date || '',
+            'Операция': op ? op.name : 'Неизвестно',
+            'Пробег': rec.mileage || '',
+            'Моточасы': rec.motohours || '',
+            'Запчасти (₽)': rec.parts_cost || '',
+            'Работа (₽)': rec.work_cost || '',
+            'DIY': (rec.is_diy === 'TRUE' || rec.is_diy === true) ? 'Да' : 'Нет',
+            'Примечание': rec.notes || ''
+        };
+    }));
+    const wsMileage = XLSX.utils.json_to_sheet(mileageHistory.map(m => ({
+        'Дата': m.date,
+        'Пробег': m.mileage,
+        'Моточасы': m.motohours || ''
+    })));
+    const wsSettings = XLSX.utils.json_to_sheet([{
+        'Пробег': settings.currentMileage,
+        'Моточасы': settings.currentMotohours,
+        'Ср. пробег/день': settings.avgDailyMileage,
+        'Ср. моточасы/день': settings.avgDailyMotohours,
+        'Telegram Token': settings.telegramToken || '',
+        'Telegram Chat ID': settings.telegramChatId || '',
+        'Способ уведомлений': settings.notificationMethod || 'telegram',
+        'Базовый пробег': baseMileage,
+        'Базовые моточасы': baseMotohours,
+        'Дата покупки': purchaseDate
+    }]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, wsOperations, 'Журнал ТО');
+    XLSX.utils.book_append_sheet(wb, wsParts, 'Запчасти');
+    XLSX.utils.book_append_sheet(wb, wsFuel, 'Топливо');
+    XLSX.utils.book_append_sheet(wb, wsTires, 'Шины');
+    XLSX.utils.book_append_sheet(wb, wsHistory, 'История');
+    XLSX.utils.book_append_sheet(wb, wsMileage, 'Пробег');
+    XLSX.utils.book_append_sheet(wb, wsSettings, 'Настройки');
+    const fileName = `vesta_backup_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    showToast('Экспорт в Excel выполнен', 'success');
+}
+
+async function generateServiceReport() {
+    const totalMaintenance = serviceRecords.reduce((sum, r) => sum + (Number(r.parts_cost) || 0) + (Number(r.work_cost) || 0), 0);
+    const totalFuel = fuelLog.reduce((sum, f) => sum + (f.liters * f.pricePerLiter), 0);
+    const totalCost = totalMaintenance + totalFuel;
+    const avgCostPerKm = settings.currentMileage ? totalCost / settings.currentMileage : 0;
+    const reportHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Сервисная история автомобиля</title>
+            <style>
+                body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; }
+                h1 { color: #3498db; }
+                h2 { color: #2c3e50; border-bottom: 1px solid #ccc; margin-top: 20px; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                .stat-card { display: inline-block; background: #f9f9f9; padding: 10px; margin: 5px; border-radius: 8px; }
+                .footer { margin-top: 30px; font-size: 0.8em; color: #777; text-align: center; }
+            </style>
+        </head>
+        <body>
+            <h1>📄 Сервисная история автомобиля</h1>
+            <p><strong>Дата отчёта:</strong> ${new Date().toLocaleDateString('ru-RU')}</p>
+            <p><strong>Пробег на момент отчёта:</strong> ${settings.currentMileage.toLocaleString()} км</p>
+            <p><strong>Моточасы:</strong> ${settings.currentMotohours.toLocaleString()} ч</p>
+            <p><strong>Дата приобретения:</strong> ${purchaseDate || 'не указана'}</p>
+            <h2>💰 Общая статистика расходов</h2>
+            <div class="stat-card">Всего на ТО: ${totalMaintenance.toFixed(2)} ₽</div>
+            <div class="stat-card">Всего на топливо: ${totalFuel.toFixed(2)} ₽</div>
+            <div class="stat-card">Общие затраты: ${totalCost.toFixed(2)} ₽</div>
+            <div class="stat-card">Стоимость 1 км: ${avgCostPerKm.toFixed(2)} ₽</div>
+            <h2>🔧 Журнал ТО (операции)</h2>
+            <table><thead><tr><th>Категория</th><th>Операция</th><th>Интервал км</th><th>Интервал мес</th><th>Последнее ТО</th><th>Последний пробег</th></tr></thead><tbody>
+                ${operations.map(op => `<tr><td>${escapeHtml(op.category)}</td><td>${escapeHtml(op.name)}</td><td>${op.intervalKm || '—'}</td><td>${op.intervalMonths || '—'}</td><td>${op.lastDate || '—'}</td><td>${op.lastMileage || '—'}</td></tr>`).join('')}
+            </tbody></table>
+            <h2>📜 История выполненных ТО</h2>
+            <table><thead><tr><th>Дата</th><th>Операция</th><th>Пробег</th><th>Запчасти (₽)</th><th>Работа (₽)</th><th>DIY</th><th>Примечание</th></tr></thead><tbody>
+                ${serviceRecords.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(rec => {
+                    const op = operations.find(o => o.id == rec.operation_id);
+                    const opName = op ? op.name : 'Неизвестно';
+                    return `<tr><td>${rec.date || ''}</td><td>${escapeHtml(opName)}</td><td>${rec.mileage || ''}</td><td>${rec.parts_cost || '0'}</td><td>${rec.work_cost || '0'}</td><td>${rec.is_diy === true ? 'Да' : 'Нет'}</td><td>${rec.notes || ''}</td></tr>`;
+                }).join('')}
+            </tbody></table>
+            <div class="footer">Отчёт сгенерирован автоматически. Данные актуальны на ${new Date().toLocaleString('ru-RU')}.</div>
+        </body>
+        </html>
+    `;
+    const element = document.createElement('div');
+    element.innerHTML = reportHtml;
+    document.body.appendChild(element);
+    try {
+        await html2pdf().from(element).set({
+            margin: [0.5, 0.5, 0.5, 0.5],
+            filename: `servisnaya_istoriya_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, letterRendering: true },
+            jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+        }).save();
+    } catch (err) {
+        console.error('PDF generation error:', err);
+        showToast('Ошибка генерации PDF', 'error');
+    }
+    document.body.removeChild(element);
+}
+
+// ==================== 19. НАВИГАЦИЯ ====================
+function switchToTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    const activeTab = document.getElementById(`tab-${tabId}`);
+    if (activeTab) activeTab.classList.add('active');
+    document.querySelectorAll('.sidebar-item, .bottom-nav-item').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.tab === tabId) btn.classList.add('active');
+    });
+    if (tabId === 'dashboard') renderDashboard();
+    if (tabId === 'history') loadHistory();
+    if (tabId === 'stats') { renderStats(); renderFuelAnalytics(); }
+    if (tabId === 'to') { renderTop5Widget(); renderMaintenancePlan(); }
+    if (tabId === 'fuel') renderFuelTable();
+    if (tabId === 'tires') renderTiresTable();
+    if (tabId === 'parts') renderPartsTable();
+    setTimeout(() => initIcons(), 100);
+}
+
+function initNewNav() {
+    const bottomNavItems = document.querySelectorAll('.bottom-nav-item');
+    const drawer = document.getElementById('drawer-menu');
+    const moreBtn = document.getElementById('more-menu-btn');
+    const overlay = drawer?.querySelector('.drawer-overlay');
+    const closeDrawer = () => { drawer.classList.add('hidden'); document.body.classList.remove('drawer-open'); };
+    const openDrawer = () => { drawer.classList.remove('hidden'); document.body.classList.add('drawer-open'); };
+    moreBtn.addEventListener('click', openDrawer);
+    if (overlay) overlay.addEventListener('click', closeDrawer);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !drawer.classList.contains('hidden')) closeDrawer(); });
+    bottomNavItems.forEach(btn => {
+        if (btn.id === 'more-menu-btn') return;
+        btn.addEventListener('click', () => { const tab = btn.dataset.tab; if (tab) switchToTab(tab); closeDrawer(); });
+    });
+    document.querySelectorAll('.drawer-item[data-tab]').forEach(item => item.addEventListener('click', () => {
+        switchToTab(item.dataset.tab);
+        closeDrawer();
+    }));
+    document.getElementById('drawer-select-car')?.addEventListener('click', () => { openCarSelectModal(); closeDrawer(); });
+    document.getElementById('drawer-theme-toggle')?.addEventListener('click', () => {
+        const isDark = document.body.classList.contains('dark');
+        applyTheme(isDark ? 'light' : 'dark');
+        closeDrawer();
+    });
+    document.getElementById('drawer-sync')?.addEventListener('click', () => {
+        document.getElementById('force-sync-btn')?.click();
+        closeDrawer();
+    });
+}
+
+function initDesktopSidebar() {
+    document.querySelectorAll('.sidebar-item').forEach(btn => btn.addEventListener('click', () => switchToTab(btn.dataset.tab)));
+    document.getElementById('sidebar-theme')?.addEventListener('click', () => applyTheme(document.body.classList.contains('dark') ? 'light' : 'dark'));
+    document.getElementById('sidebar-select-car')?.addEventListener('click', openCarSelectModal);
+    document.getElementById('sidebar-sync')?.addEventListener('click', () => document.getElementById('force-sync-btn')?.click());
+}
+
+function applyTheme(theme) {
+    if (theme === 'dark') {
+        document.body.classList.add('dark');
+        if (themeToggle) themeToggle.innerHTML = '<i data-lucide="sun"></i>';
+    } else {
+        document.body.classList.remove('dark');
+        if (themeToggle) themeToggle.innerHTML = '<i data-lucide="moon"></i>';
+    }
+    localStorage.setItem('vesta_theme', theme);
+    initIcons();
+}
+
+function loadTheme() {
+    const savedTheme = localStorage.getItem('vesta_theme');
+    if (savedTheme) {
+        applyTheme(savedTheme);
+    } else {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        applyTheme(prefersDark ? 'dark' : 'light');
+    }
+}
+
+function startVoiceInput() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { alert('Не поддерживается'); return; }
+    const rec = new SR(); rec.lang='ru-RU'; rec.interimResults=false;
+    voiceFuelBtn.classList.add('recording');
+    rec.start();
+    rec.onresult = (e) => {
+        parseFuelVoice(e.results[0][0].transcript);
+        voiceFuelBtn.classList.remove('recording');
+    };
+    rec.onerror = (e) => {
+        voiceFuelBtn.classList.remove('recording');
+        alert(e.error==='not-allowed'?'Доступ к микрофону запрещён.':'Ошибка распознавания: '+e.error);
+    };
+}
+
+function parseFuelVoice(text) {
+    const nums = text.match(/\d+(?:[.,]\d+)?/g); if (!nums||nums.length<2) { alert('Скажите пробег и литры'); return; }
+    openFuelModal({ mileage:parseInt(nums[0]), liters:parseFloat(nums[1]), pricePerLiter:nums[2]?parseFloat(nums[2]):null });
+}
+
+function showCatalogMenu(button, oem) {
+    const existingMenu = document.querySelector('.catalog-popup-menu');
+    if (existingMenu) existingMenu.remove();
+    const rect = button.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.className = 'catalog-popup-menu';
+    menu.style.cssText = 'position:fixed; background:var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:8px 0; box-shadow:0 4px 12px rgba(0,0,0,0.1); z-index:10000; min-width:150px; visibility:hidden;';
+    const catalogs = [
+        { name: 'Exist', value: 'exist' },
+        { name: 'Drive2', value: 'drive2' },
+        { name: 'CrossData', value: 'crossdata' },
+        { name: 'ZZap', value: 'zzap' }
+    ];
+    catalogs.forEach(cat => {
+        const item = document.createElement('div');
+        item.textContent = cat.name;
+        item.style.cssText = 'padding:8px 16px; cursor:pointer; white-space:nowrap; color:var(--text);';
+        item.addEventListener('mouseenter', () => item.style.background = 'var(--bg)');
+        item.addEventListener('mouseleave', () => item.style.background = 'transparent');
+        item.addEventListener('click', () => {
+            let url;
+            switch (cat.value) {
+                case 'drive2': url = `https://www.drive2.ru/search?text=${encodeURIComponent(oem)}`; break;
+                case 'crossdata': url = `https://crossdata.pro`; break;
+                case 'zzap': url = `https://www.zzap.ru`; break;
+                default: url = `https://exist.ru/price/?pcode=${encodeURIComponent(oem)}`;
+            }
+            window.open(url, '_blank');
+            menu.remove();
+        });
+        menu.appendChild(item);
+    });
+    document.body.appendChild(menu);
+    const menuRect = menu.getBoundingClientRect();
+    let top = rect.bottom + 5;
+    let left = rect.left;
+    if (left + menuRect.width > window.innerWidth - 10) left = window.innerWidth - menuRect.width - 10;
+    if (left < 10) left = 10;
+    if (top + menuRect.height > window.innerHeight - 10) top = rect.top - menuRect.height - 5;
+    if (top < 10) top = Math.max(10, (window.innerHeight - menuRect.height) / 2);
+    menu.style.top = top + 'px';
+    menu.style.left = left + 'px';
+    menu.style.visibility = 'visible';
+    setTimeout(() => {
+        const closeHandler = (e) => {
+            if (!menu.contains(e.target) && e.target !== button) {
+                menu.remove();
+                document.removeEventListener('click', closeHandler);
+            }
+        };
+        document.addEventListener('click', closeHandler);
+    }, 10);
+}
+
+// ==================== 20. ОБРАБОТЧИКИ СОБЫТИЙ (ОСНОВНЫЕ) ====================
+function initEventListeners() {
+    authBtn.addEventListener('click', e=>{ e.preventDefault(); startAuth(); });
+    recalculateBtn.onclick = ()=>{ renderTOTable(); renderTop5Widget(); };
+    exportBtn.onclick = exportData;
+    importBtn.onclick = ()=>importFile.click();
+    importFile.onchange = importData;
+    addOperationBtn.onclick = ()=>openOperationForm();
+    addPartBtn.onclick = ()=>openPartForm();
+    addFuelBtn.onclick = ()=>openFuelModal({});
+    voiceFuelBtn.onclick = startVoiceInput;
+    saveSettingsBtn.onclick = saveSettings;
+    subscribePushBtn.onclick = subscribeToPush;
+    openPhotoFolderBtn.onclick = async ()=>{ if(!driveFolderId) driveFolderId=await getOrCreatePhotoFolder(); if(driveFolderId) window.open(`https://drive.google.com/drive/folders/${driveFolderId}`,'_blank'); else alert('Папка не создана'); };
+    shareTableBtn.onclick = ()=>window.open(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`,'_blank');
+    themeToggle.onclick = () => applyTheme(document.body.classList.contains('dark') ? 'light' : 'dark');
+    document.getElementById('select-car-btn')?.addEventListener('click', openCarSelectModal);
+    addTireBtn.onclick = ()=>openTireModal();
+    document.getElementById('update-mileage-btn')?.addEventListener('click', updateMileageAndAverages);
+    const periodSelect = document.getElementById('stats-period-select');
+    if(periodSelect) { periodSelect.value = localStorage.getItem('stats_period')||'all'; periodSelect.addEventListener('change', ()=>{ localStorage.setItem('stats_period', periodSelect.value); if(document.getElementById('tab-stats').classList.contains('active')) { renderStats(); renderFuelAnalytics(); } }); }
+    if(toggleOwnershipUnitBtn) toggleOwnershipUnitBtn.addEventListener('click', ()=>{ ownershipDisplayMode = ownershipDisplayMode==='days'?'years':'days'; updateOwnershipDisplay(); });
+    const resetZoomBtn = document.getElementById('reset-all-zoom');
+    if(resetZoomBtn) resetZoomBtn.addEventListener('click', ()=>{ ['fuelConsumptionChart','fuelPriceChart','costsChart'].forEach(id=>{ const chart=Chart.getChart(id); if(chart&&typeof chart.resetZoom==='function') chart.resetZoom(); }); });
+    ['history-period-select','history-operation-filter','history-search','history-diy-only','history-cost-min','history-cost-max'].forEach(id=>{
+        const el = document.getElementById(id);
+        if(el) el.addEventListener(el.tagName==='INPUT'&&el.type==='checkbox'?'change':(el.tagName==='INPUT'?'input':'change'), renderHistoryWithFilters);
+    });
+    document.getElementById('history-reset-filters')?.addEventListener('click', ()=>{
+        ['history-period-select','history-operation-filter','history-search','history-diy-only','history-cost-min','history-cost-max'].forEach(id=>{
+            const el=document.getElementById(id); if(el){ if(el.type==='checkbox') el.checked=false; else el.value=''; }
+        });
+        renderHistoryWithFilters();
+    });
+    document.getElementById('export-data-btn')?.addEventListener('click', handleExport);
+    document.getElementById('calc-prediction-btn')?.addEventListener('click', renderMileagePrediction);
+    document.getElementById('generate-pdf-btn')?.addEventListener('click', generateServiceReport);
+    document.getElementById('generate-plan-btn')?.addEventListener('click', ()=>renderMaintenancePlan());
+    document.getElementById('plan-to-calendar-btn')?.addEventListener('click', addPlanToCalendar);
+    document.getElementById('force-sync-btn')?.addEventListener('click', async ()=>{
+        if (!accessToken) { startAuth(); return; }
+        if (!spreadsheetId) { openCarSelectModal(); return; }
+        setSyncStatus('syncing');
+        try { await syncAllToSheet(); await syncPendingActions(); showToast('Локальные данные выгружены в Google Таблицу', 'success'); setSyncStatus('synced'); }
+        catch(e) { console.error(e); showToast('Ошибка синхронизации, проверьте авторизацию', 'error'); setSyncStatus('error'); }
+    });
+    document.getElementById('dash-add-fuel-btn')?.addEventListener('click', () => openFuelModal({}));
+    document.getElementById('dash-add-service-btn')?.addEventListener('click', () => {
+        const upcoming = document.getElementById('dash-upcoming-container');
+        const firstOp = upcoming?.querySelector('.top5-name');
+        if (firstOp) {
+            const opName = firstOp.textContent;
+            const op = operations.find(o => o.name === opName);
+            if (op) openServiceModal(op.id, op.name);
+            else switchToTab('to');
+        } else {
+            switchToTab('to');
+        }
+    });
+    document.getElementById('dash-update-mileage-btn')?.addEventListener('click', () => {
+        switchToTab('to');
+        document.getElementById('new-mileage')?.focus();
+    });
+    document.getElementById('dash-predict-btn')?.addEventListener('click', () => {
+        const target = parseFloat(document.getElementById('dash-target-mileage').value);
+        const result = predictMileageDate(target);
+        const resultEl = document.getElementById('dash-prediction-result');
+        if (result) {
+            resultEl.textContent = `Ожидаемая дата: ${result.toLocaleDateString('ru-RU', {year:'numeric', month:'long', day:'numeric'})}`;
+        } else {
+            resultEl.textContent = 'Недостаточно данных или некорректный пробег.';
+        }
+        initIcons();
+    });
+}
+
+function handleExport() {
+    const type = document.getElementById('export-type-select').value;
+    const format = document.getElementById('export-format-select').value;
+    if (format === 'csv') {
+        const exportData = getExportData(type);
+        if (exportData && exportData.data) {
+            exportToCSV(exportData.data, exportData.filename, exportData.headers);
+        }
+    } else if (format === 'xlsx') {
+        if (type === 'all') {
+            exportToExcel();
+        } else {
+            exportToExcelForType(type);
+        }
+    }
+}
+
+function deletePart(partId) { safeWriteSheet(`PartsCatalog!A${partId}:I${partId}`, [['','','','','','','','','']]).then(() => loadSheet()); }
+function deleteFuelEntry(idx) { safeWriteSheet(`FuelLog!A${idx+2}:G${idx+2}`, [['','','','','','','']]).then(() => loadSheet()); }
+function deleteTireEntry(idx) { safeWriteSheet(`Tires!A${idx+2}:J${idx+2}`, [['','','','','','','','','','']]).then(() => loadSheet()); }
+
+// ==================== 21. ДЕЛЕГИРОВАНИЕ СОБЫТИЙ (ДЛЯ КНОПОК В ТАБЛИЦАХ) ====================
+function setupDelegation() {
+    document.body.addEventListener('click', (e) => {
+        const target = e.target.closest('[data-action]');
+        if (!target) return;
+        const action = target.dataset.action;
+        if (action === 'add-record') {
+            const opId = target.dataset.opId;
+            const opName = target.dataset.opName;
+            if (opId && opName) openServiceModal(parseInt(opId), opName);
+        } else if (action === 'edit-op') {
+            const opId = parseInt(target.dataset.opId);
+            const op = operations.find(o => o.id === opId);
+            if (op) openOperationForm(op);
+        } else if (action === 'calendar') {
+            const opName = target.dataset.opName;
+            const planDate = target.dataset.planDate;
+            const planMileage = target.dataset.planMileage;
+            if (opName && planDate) addToCalendar(opName, planDate, planMileage);
+        } else if (action === 'shopping-list') {
+            const opId = parseInt(target.dataset.opId);
+            generateShoppingList(opId);
+        } else if (action === 'edit-part') {
+            const partId = parseInt(target.dataset.id);
+            const part = parts.find(p => p.id === partId);
+            if (part) openPartForm(part);
+        } else if (action === 'delete-part') {
+            const partId = parseInt(target.dataset.id);
+            if (confirm('Удалить запчасть?')) deletePart(partId);
+        } else if (action === 'search-part') {
+            const oem = target.dataset.oem;
+            if (oem) showCatalogMenu(target, oem);
+        } else if (action === 'price-history') {
+            const partId = parseInt(target.dataset.id);
+            const part = parts.find(p => p.id === partId);
+            if (part) showPriceHistoryChart(part);
+        } else if (action === 'edit-fuel') {
+            const idx = parseInt(target.dataset.idx);
+            const rec = fuelLog[idx];
+            if (rec) { rec.rowIndex = idx + 2; openFuelModal(rec); }
+        } else if (action === 'delete-fuel') {
+            const idx = parseInt(target.dataset.idx);
+            if (confirm('Удалить заправку?')) deleteFuelEntry(idx);
+        } else if (action === 'edit-tire') {
+            const idx = parseInt(target.dataset.idx);
+            const rec = tireLog[idx];
+            if (rec) { rec.rowIndex = idx + 2; openTireModal(rec); }
+        } else if (action === 'delete-tire') {
+            const idx = parseInt(target.dataset.idx);
+            if (confirm('Удалить запись о шинах?')) deleteTireEntry(idx);
+        } else if (action === 'edit-history') {
+            const rowIndex = parseInt(target.dataset.row);
+            openHistoryEdit(rowIndex);
+        } else if (action === 'delete-history') {
+            const rowIndex = parseInt(target.dataset.row);
+            if (confirm('Удалить запись истории?')) deleteHistoryEntry(rowIndex);
+        } else if (action === 'execute-plan') {
+            const opId = parseInt(target.dataset.opId);
+            const opName = target.dataset.opName;
+            if (opId && opName) openServiceModal(opId, opName);
+        }
+    });
+}
+
+// ==================== 22. ЗАПУСК ====================
+pendingActions = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
+settings.notificationMethod = localStorage.getItem('notificationMethod') || 'telegram';
+loadTheme();
+initGoogleApi();
+initEventListeners();
+setupDelegation();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js');
+window.addEventListener('load', () => { setTimeout(initIcons, 200); });
+initNewNav();
+initDesktopSidebar();
+switchToTab('dashboard');
