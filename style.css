@@ -1,0 +1,854 @@
+/* ==================== Глобальные переменные ==================== */
+:root {
+    --bg: #f5f7fa;
+    --card-bg: #ffffff;
+    --text: #2c3e50;
+    --primary: #3498db;
+    --danger: #e74c3c;
+    --warning: #f39c12;
+    --success: #2ecc71;
+    --border: #e0e0e0;
+    --text-muted: #7f8c8d;
+}
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #1a1a1a;
+        --card-bg: #2d2d2d;
+        --text: #ecf0f1;
+        --border: #444;
+        --text-muted: #95a5a6;
+    }
+}
+body.dark {
+    --bg: #1a1a1a;
+    --card-bg: #2d2d2d;
+    --text: #ecf0f1;
+    --border: #444;
+    --text-muted: #95a5a6;
+}
+
+/* ==================== Сброс и база ==================== */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+body {
+    font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 12px;
+    line-height: 1.5;
+}
+.app-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+h1 {
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+/* ==================== Кнопки ==================== */
+button {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    cursor: pointer;
+    background: var(--primary);
+    color: white;
+    font-weight: 500;
+    transition: opacity 0.2s, transform 0.1s;
+    touch-action: manipulation;
+    margin: 4px;
+}
+button:active {
+    opacity: 0.7;
+    transform: scale(0.97);
+}
+.primary-btn { background: var(--primary); }
+.secondary-btn {
+    background: transparent;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+}
+.icon-btn {
+    padding: 6px;
+    background: transparent;
+    color: var(--text);
+    font-size: 1.2rem;
+    border: none;
+}
+
+/* ==================== Карточки и сетки ==================== */
+.card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.stats-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+}
+.stat-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+    position: relative;
+}
+.ownership-card {
+    position: relative;
+}
+#toggle-ownership-unit {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    padding: 2px 6px;
+    font-size: 0.8rem;
+    background: transparent;
+    color: var(--text);
+    border: none;
+    cursor: pointer;
+}
+.stat-label {
+    display: block;
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+.stat-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    display: block;
+}
+.stat-unit {
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+
+/* ==================== Дашборд ==================== */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+@media (min-width: 768px) {
+    .dashboard-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+@media (min-width: 1024px) {
+    .dashboard-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    .dash-widget-wide {
+        grid-column: span 2;
+    }
+}
+.dash-widget {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+}
+.dash-widget h3 {
+    font-size: 1rem;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.summary-values {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+.summary-values > div {
+    text-align: center;
+}
+.summary-values span {
+    display: block;
+    font-size: 1.6rem;
+    font-weight: bold;
+}
+.summary-values small {
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+.quick-actions {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 50;
+}
+.quick-actions button {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+@media (max-width: 767px) {
+    .quick-actions {
+        bottom: 90px;
+        right: 16px;
+    }
+}
+.dash-widget canvas {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 120px;
+}
+
+/* ==================== Таблицы ==================== */
+.table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 16px;
+    background: var(--card-bg);
+    margin-top: 12px;
+    border: 1px solid var(--border);
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+th {
+    background: var(--card-bg);
+    color: var(--text);
+    font-weight: 600;
+    padding: 14px 12px;
+    border-bottom: 2px solid var(--border);
+    text-align: left;
+    position: relative;
+}
+td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+}
+tbody tr:nth-child(even) {
+    background-color: rgba(0,0,0,0.02);
+}
+td:last-child {
+    text-align: center;
+    white-space: nowrap;
+}
+th .resize-handle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    cursor: col-resize;
+    user-select: none;
+    z-index: 10;
+    background: transparent;
+}
+th .resize-handle:hover,
+th.resizing .resize-handle {
+    background: var(--primary);
+    opacity: 0.3;
+}
+
+/* ==================== Табы ==================== */
+.tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+.tab-btn {
+    background: var(--card-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    flex: 1 0 auto;
+}
+.tab-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ==================== Модальные окна ==================== */
+.modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 1000;
+}
+.modal-content {
+    background: var(--card-bg);
+    border-radius: 20px;
+    padding: 24px;
+    width: 100%;
+    max-width: 450px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+.close {
+    float: right;
+    font-size: 28px;
+    cursor: pointer;
+    line-height: 1;
+}
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+/* ==================== Индикатор синхронизации ==================== */
+#sync-indicator.synced { color: var(--success); }
+#sync-indicator.syncing { color: var(--warning); animation: pulse 1s infinite; }
+#sync-indicator.local { color: var(--text-muted); opacity: 0.6; }
+#sync-indicator.error { color: var(--danger); }
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+/* ==================== Разное ==================== */
+.info-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+.stats-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.chart-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    resize: both;
+    overflow: auto;
+    min-width: 150px;
+    min-height: 150px;
+}
+.chart-card canvas {
+    width: 100%;
+    height: auto;
+    max-height: 350px;
+}
+canvas {
+    width: 100% !important;
+}
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+input, select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 1rem;
+    margin-bottom: 12px;
+}
+#settings-result {
+    margin-top: 12px;
+    font-weight: bold;
+}
+.hint {
+    font-size: 0.9rem;
+    opacity: 0.7;
+    margin-top: 5px;
+}
+
+/* ==================== Виджет Top 5 ==================== */
+.top5-item {
+    margin-bottom: 16px;
+}
+.top5-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    font-size: 0.95rem;
+}
+.top5-name {
+    font-weight: 600;
+}
+.top5-stats {
+    color: var(--text-muted);
+}
+.top5-progress-container {
+    background: var(--border);
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.top5-progress-bar {
+    background: var(--primary);
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s;
+}
+
+/* ==================== Каталог и режим вождения ==================== */
+.catalog-popup-menu div:hover {
+    background: var(--bg);
+}
+.driving-mode-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 8px 16px;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 0.9rem;
+    border: 1px solid var(--border);
+}
+.mode-label {
+    font-weight: 600;
+    opacity: 0.8;
+}
+.mode-value {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+.mode-hint {
+    font-size: 0.8rem;
+    opacity: 0.7;
+    margin-left: 8px;
+}
+.driving-mode-card.city .mode-value { color: #e67e22; }
+.driving-mode-card.highway .mode-value { color: #2ecc71; }
+.driving-mode-card.mixed .mode-value { color: #3498db; }
+
+/* ==================== Сброс зума ==================== */
+#reset-all-zoom {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    background: var(--card-bg);
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    border-radius: 30px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+#reset-all-zoom:active {
+    background: var(--primary);
+    color: white;
+}
+
+/* ==================== Графики ==================== */
+#fuelConsumptionChart, #fuelPriceChart, #costsChart {
+    height: 350px;
+    width: 100%;
+}
+@media (max-width: 768px) {
+    #fuelConsumptionChart, #fuelPriceChart, #costsChart {
+        height: 300px;
+    }
+}
+#oilChart {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto;
+    display: block;
+    min-width: 0 !important;
+}
+@media (max-width: 768px) {
+    #oilChart {
+        width: 30px;
+        height: 30px;
+    }
+}
+#expensePieChart {
+    max-height: 300px;
+    width: 100%;
+    margin: 0 auto;
+    min-width: 0 !important;
+}
+.pie-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-top: 0;
+}
+.pie-row .chart-card {
+    flex: 1;
+    min-width: 200px;
+}
+@media (max-width: 768px) {
+    .pie-row {
+        flex-direction: column;
+        gap: 16px;
+    }
+    .pie-row .chart-card {
+        min-width: auto;
+    }
+}
+
+/* ==================== Адаптивность ==================== */
+@media (min-width: 768px) {
+    .stats-summary-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+@media (min-width: 1024px) {
+    .stats-summary-grid {
+        grid-template-columns: repeat(7, 1fr);
+    }
+}
+@media (max-width: 768px) {
+    button {
+        padding: 14px 20px;
+        font-size: 1.1rem;
+        border-radius: 16px;
+        margin: 6px 0;
+    }
+    .icon-btn {
+        padding: 12px;
+        font-size: 1.5rem;
+        min-width: 48px;
+        min-height: 48px;
+    }
+    .header-controls button {
+        padding: 8px 12px;
+        font-size: 1.3rem;
+    }
+    input, select {
+        padding: 16px 14px;
+        font-size: 1.1rem;
+        border-radius: 16px;
+        margin-bottom: 16px;
+    }
+    .tab-btn {
+        padding: 14px 10px;
+        font-size: 1rem;
+        border-radius: 14px;
+    }
+    .card {
+        padding: 20px 16px;
+        border-radius: 20px;
+    }
+    table {
+        min-width: 800px;
+    }
+    td {
+        padding: 14px 8px;
+        font-size: 0.95rem;
+    }
+    th {
+        padding: 16px 8px;
+        font-size: 1rem;
+    }
+    .modal-content {
+        padding: 24px 20px;
+        border-radius: 24px;
+        width: 95%;
+    }
+    .close {
+        font-size: 32px;
+    }
+    .modal-actions button {
+        padding: 14px 20px;
+        font-size: 1.1rem;
+    }
+    .stat-card {
+        padding: 16px 10px;
+    }
+    .stat-value {
+        font-size: 2rem;
+    }
+    .action-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .action-bar button {
+        flex: 1 0 auto;
+    }
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 480px) {
+    button {
+        padding: 16px 18px;
+        width: 100%;
+        margin: 5px 0;
+    }
+    .icon-btn {
+        width: auto;
+        padding: 14px;
+    }
+    h1 {
+        font-size: 1.3rem;
+    }
+    .tabs {
+        flex-direction: column;
+    }
+    .tab-btn {
+        width: 100%;
+    }
+}
+
+/* ==================== Тост-уведомления ==================== */
+.toast {
+    background: var(--card-bg);
+    color: var(--text);
+    border-left: 4px solid var(--primary);
+    padding: 12px 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    font-size: 0.9rem;
+    animation: slideInRight 0.3s ease-out;
+    max-width: 300px;
+    pointer-events: auto;
+}
+.toast.success { border-left-color: var(--success); }
+.toast.error { border-left-color: var(--danger); }
+.toast.warning { border-left-color: var(--warning); }
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+.toast.fade-out {
+    animation: fadeOut 0.3s ease-out forwards;
+}
+@keyframes fadeOut {
+    to { opacity: 0; transform: translateX(100%); }
+}
+
+/* ==================== Десктопный сайдбар ==================== */
+.desktop-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 260px;
+    background: var(--card-bg);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease-in-out;
+}
+@media (min-width: 768px) {
+    .desktop-sidebar {
+        transform: translateX(0);
+    }
+    .app-container {
+        margin-left: 260px;
+        max-width: calc(100% - 260px);
+    }
+    .mobile-bottom-nav,
+    .mobile-only,
+    .tabs {
+        display: none;
+    }
+}
+.sidebar-logo {
+    font-size: 1.5rem;
+    font-weight: bold;
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+}
+.sidebar-nav {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 20px 12px;
+}
+.sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: none;
+    border: none;
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 1rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.2s;
+    width: 100%;
+}
+.sidebar-item i {
+    width: 1.2rem;
+    height: 1.2rem;
+}
+.sidebar-item:hover {
+    background: var(--bg);
+}
+.sidebar-item.active {
+    background: var(--primary);
+    color: white;
+}
+.sidebar-footer {
+    display: flex;
+    justify-content: space-around;
+    padding: 20px;
+    border-top: 1px solid var(--border);
+    gap: 16px;
+}
+.sidebar-footer button {
+    background: none;
+    border: none;
+    color: var(--text);
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    flex: 1;
+}
+.sidebar-footer button:hover {
+    background: var(--bg);
+}
+
+/* ==================== Мобильная навигация ==================== */
+.mobile-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--card-bg);
+    border-top: 1px solid var(--border);
+    display: none;
+    justify-content: space-around;
+    padding: 8px 0;
+    z-index: 100;
+}
+@media (max-width: 767px) {
+    .mobile-bottom-nav {
+        display: flex;
+    }
+    .tabs {
+        display: none;
+    }
+    .app-container {
+        padding-bottom: 70px;
+    }
+}
+.bottom-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    padding: 4px 0;
+}
+.bottom-nav-item.active {
+    color: var(--primary);
+}
+.bottom-nav-item i {
+    width: 24px;
+    height: 24px;
+    margin-bottom: 2px;
+}
+.drawer-menu {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    transition: transform 0.3s ease;
+}
+.drawer-menu.hidden {
+    transform: translateY(100%);
+}
+.drawer-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    pointer-events: auto;
+    z-index: -1;
+}
+.drawer-content {
+    background: var(--card-bg);
+    border-radius: 16px 16px 0 0;
+    padding: 20px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+.drawer-header {
+    font-weight: bold;
+    margin-bottom: 16px;
+    text-align: center;
+}
+.drawer-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-size: 1rem;
+    text-align: left;
+}
+.drawer-item:last-child {
+    border-bottom: none;
+}
+.drawer-divider {
+    margin: 12px 0;
+    border-color: var(--border);
+}
+
+/* Добавить в конец файла */
+
+.recording {
+    animation: pulse 1s infinite;
+    background-color: #e74c3c !important;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
