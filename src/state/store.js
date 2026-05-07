@@ -1,69 +1,27 @@
-// src/state/store.js
-window.App = window.App || {};
-
-App.store = {
-    spreadsheetId: '',
-
-    operations: [],
-    parts: [],
-    fuelLog: [],
-    tireLog: [],
-    workCosts: [],
-    serviceRecords: [],
-    mileageHistory: [],
-
-    cars: [],
-    activeCarId: null,
-
-    settings: {
-        currentMileage: 0,
-        currentMotohours: 0,
-        avgDailyMileage: 45,
-        avgDailyMotohours: 1.8,
-        telegramToken: '',
-        telegramChatId: '',
-        notificationMethod: 'telegram'
-    },
-
-    baseMileage: 0,
-    baseMotohours: 0,
-    purchaseDate: '',
-
-    ownershipDays: 0,
-    ownershipDisplayMode: 'days',
-
-    pendingActions: [],
-    calendarEventCache: new Map(),
-
-    serverTimestamps: {},
-
-    initFromLocalStorage: function() {
-    return App.indexedDB.loadAllData().then((function(data) {
+initFromLocalStorage: function() {
+    var self = this;
+    return App.indexedDB.loadAllData().then(function(data) {
         if (data) {
-            // Основные массивы
-            this.operations = data.operations || [];
-            this.parts = data.parts || [];
-            this.fuelLog = data.fuelLog || [];
-            this.tireLog = data.tireLog || [];
-            this.workCosts = data.workCosts || [];
-            this.serviceRecords = data.serviceRecords || [];
-            this.mileageHistory = data.mileageHistory || [];
-            this.cars = data.cars || [];
-            this.activeCarId = data.activeCarId || null;
-
-            // Настройки и дополнительные поля
-            this.settings = data.settings || this.settings;
-            this.baseMileage = data.baseMileage || 0;
-            this.baseMotohours = data.baseMotohours || 0;
-            this.purchaseDate = data.purchaseDate || '';
-            this.ownershipDays = data.ownershipDays || 0;
-            this.ownershipDisplayMode = data.ownershipDisplayMode || 'days';
-            this.spreadsheetId = data.spreadsheetId || '';
-            this.pendingActions = data.pendingActions || [];
-
-            // Несериализуемые поля сбрасываем
-            this.calendarEventCache = new Map();
-            this.serverTimestamps = {};
+            self.operations = data.operations || [];
+            self.settings = data.settings || App.defaults.settings;
+            self.parts = data.parts || [];
+            self.fuelLog = data.fuelLog || [];
+            self.tireLog = data.tireLog || [];
+            self.workCosts = data.workCosts || [];
+            self.serviceRecords = data.serviceRecords || [];
+            self.mileageHistory = data.mileageHistory || [];
+            self.cars = data.cars || [];
+            self.activeCarId = data.activeCarId || null;
+            self.baseMileage = data.baseMileage || 0;
+            self.baseMotohours = data.baseMotohours || 0;
+            self.purchaseDate = data.purchaseDate || '';
+            self.ownershipDays = data.ownershipDays || 0;
+            self.ownershipDisplayMode = data.ownershipDisplayMode || 'days';
+            self.spreadsheetId = data.spreadsheetId || '';
+            self.pendingActions = data.pendingActions || [];
+            // Несериализуемые объекты
+            self.calendarEventCache = new Map();
+            self.serverTimestamps = {};
         }
 
         // Миграция из старого localStorage (однократно)
@@ -72,56 +30,53 @@ App.store = {
             try {
                 var parsed = JSON.parse(oldData);
                 if (parsed) {
-                    this.operations = parsed.operations || this.operations;
-                    this.parts = parsed.parts || this.parts;
-                    this.fuelLog = parsed.fuelLog || this.fuelLog;
-                    this.tireLog = parsed.tireLog || this.tireLog;
-                    this.workCosts = parsed.workCosts || this.workCosts;
-                    this.serviceRecords = parsed.serviceRecords || this.serviceRecords;
-                    this.mileageHistory = parsed.mileageHistory || this.mileageHistory;
-                    if (parsed.settings) Object.assign(this.settings, parsed.settings);
-                    this.baseMileage = parsed.baseMileage || this.baseMileage;
-                    this.baseMotohours = parsed.baseMotohours || this.baseMotohours;
-                    this.purchaseDate = parsed.purchaseDate || this.purchaseDate;
-                    this.ownershipDays = parsed.ownershipDays || this.ownershipDays;
-                    this.ownershipDisplayMode = parsed.ownershipDisplayMode || this.ownershipDisplayMode;
-                    this.spreadsheetId = parsed.spreadsheetId || this.spreadsheetId;
-                    this.pendingActions = parsed.pendingActions || this.pendingActions;
+                    self.operations = parsed.operations || self.operations;
+                    self.settings = parsed.settings || self.settings;
+                    self.parts = parsed.parts || self.parts;
+                    self.fuelLog = parsed.fuelLog || self.fuelLog;
+                    self.tireLog = parsed.tireLog || self.tireLog;
+                    self.workCosts = parsed.workCosts || self.workCosts;
+                    self.serviceRecords = parsed.serviceRecords || self.serviceRecords;
+                    self.mileageHistory = parsed.mileageHistory || self.mileageHistory;
+                    self.baseMileage = parsed.baseMileage || self.baseMileage;
+                    self.baseMotohours = parsed.baseMotohours || self.baseMotohours;
+                    self.purchaseDate = parsed.purchaseDate || self.purchaseDate;
+                    self.ownershipDays = parsed.ownershipDays || self.ownershipDays;
+                    self.ownershipDisplayMode = parsed.ownershipDisplayMode || self.ownershipDisplayMode;
+                    self.spreadsheetId = parsed.spreadsheetId || self.spreadsheetId;
+                    self.pendingActions = parsed.pendingActions || self.pendingActions;
                 }
             } catch(e) { console.warn('Migration error:', e); }
-            // Сохраняем мигрированные данные в IndexedDB и удаляем старый ключ
-            this.saveToLocalStorage();
+            // Сохраняем в IndexedDB и удаляем старый ключ
+            self.saveToLocalStorage();
             localStorage.removeItem(App.config.CACHE_KEY);
             localStorage.setItem('indexedDB_migrated', '1');
         }
-        return data;
-    }).bind(this)).catch((function(err) {
-        console.warn('IndexedDB load error, using defaults:', err);
-    }).bind(this));
-},
 
-saveToLocalStorage: function() {
-    var data = {
-        operations: this.operations,
-        parts: this.parts,
-        fuelLog: this.fuelLog,
-        tireLog: this.tireLog,
-        workCosts: this.workCosts,
-        serviceRecords: this.serviceRecords,
-        mileageHistory: this.mileageHistory,
-        cars: this.cars,
-        activeCarId: this.activeCarId,
-        settings: this.settings,
-        baseMileage: this.baseMileage,
-        baseMotohours: this.baseMotohours,
-        purchaseDate: this.purchaseDate,
-        ownershipDays: this.ownershipDays,
-        ownershipDisplayMode: this.ownershipDisplayMode,
-        spreadsheetId: this.spreadsheetId,
-        pendingActions: this.pendingActions
-    };
-    App.indexedDB.saveAllData(data).catch(function(err) {
-        console.error('IndexedDB save error:', err);
+        // Загружаем остатки из localStorage (pending, calendar, price history и т.д.)
+        var pendingRaw = localStorage.getItem(App.config.PENDING_KEY);
+        self.pendingActions = pendingRaw ? JSON.parse(pendingRaw) : self.pendingActions;
+
+        try {
+            var calRaw = localStorage.getItem(App.config.CALENDAR_CACHE_KEY);
+            if (calRaw) {
+                var entries = JSON.parse(calRaw);
+                self.calendarEventCache = new Map(entries);
+            }
+        } catch (e) {}
+
+        var notifMethod = localStorage.getItem(App.config.NOTIFICATION_METHOD_KEY);
+        if (notifMethod) {
+            self.settings.notificationMethod = notifMethod;
+        }
+        self.loadPriceHistory();
+        self.activeCarId = localStorage.getItem('vesta_active_car_id') || self.activeCarId;
+        self.calculateOwnershipDays();
+
+        return data;
+    }).catch(function(err) {
+        console.warn('IndexedDB load error, using defaults:', err);
+        // Fallback к значениям по умолчанию уже в this
     });
 },
 
