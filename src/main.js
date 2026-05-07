@@ -379,9 +379,8 @@
                         }
                     });
 
-                    App.store.initFromLocalStorage();
-
-                    if (event === 'PASSWORD_RECOVERY') {
+                  App.store.initFromLocalStorage().then(function() {
+        if (event === 'PASSWORD_RECOVERY') { ... }
                         var newPassword = prompt('Введите новый пароль (минимум 6 символов):');
                         if (newPassword && newPassword.length >= 6) {
                             App.supabase.auth.updateUser({ password: newPassword }).then(function({ error }) {
