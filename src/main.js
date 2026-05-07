@@ -451,8 +451,8 @@
             });
 
             App.supabase.auth.getSession().then(function({ data: { session } }) {
-                if (session) {
-                    isLoggedIn = true;
+    if (session) {
+        isLoggedIn = true;
                     setInstallButtonVisible(true);
                     if (authPanel) authPanel.style.display = 'none';
                     var dp = document.getElementById('data-panel');
