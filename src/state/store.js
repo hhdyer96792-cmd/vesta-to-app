@@ -38,51 +38,110 @@ App.store = {
     serverTimestamps: {},
 
     initFromLocalStorage: function() {
-        var cached = localStorage.getItem(App.config.CACHE_KEY);
-        if (cached) {
-            var d = JSON.parse(cached);
-            this.operations = d.operations || [];
-            this.settings = d.settings || App.defaults.settings;
-            this.parts = d.parts || [];
-            this.fuelLog = d.fuelLog || [];
-            this.tireLog = d.tireLog || [];
-            this.workCosts = d.workCosts || [];
-            this.baseMileage = d.baseMileage || 0;
-            this.baseMotohours = d.baseMotohours || 0;
-            this.purchaseDate = d.purchaseDate || '';
+    var self = this;
+    return App.indexedDB.loadAllData().then(function(data) {
+        if (data) {
+            self.operations = data.operations || [];
+            self.settings = data.settings || App.defaults.settings;
+            self.parts = data.parts || [];
+            self.fuelLog = data.fuelLog || [];
+            self.tireLog = data.tireLog || [];
+            self.workCosts = data.workCosts || [];
+            self.serviceRecords = data.serviceRecords || [];
+            self.mileageHistory = data.mileageHistory || [];
+            self.cars = data.cars || [];
+            self.activeCarId = data.activeCarId || null;
+            self.baseMileage = data.baseMileage || 0;
+            self.baseMotohours = data.baseMotohours || 0;
+            self.purchaseDate = data.purchaseDate || '';
+            self.ownershipDays = data.ownershipDays || 0;
+            self.ownershipDisplayMode = data.ownershipDisplayMode || 'days';
+            self.spreadsheetId = data.spreadsheetId || '';
+            self.pendingActions = data.pendingActions || [];
+            // Несериализуемые объекты
+            self.calendarEventCache = new Map();
+            self.serverTimestamps = {};
         }
+
+        // Миграция из старого localStorage (однократно)
+        var oldData = localStorage.getItem(App.config.CACHE_KEY);
+        if (oldData && !localStorage.getItem('indexedDB_migrated')) {
+            try {
+                var parsed = JSON.parse(oldData);
+                if (parsed) {
+                    self.operations = parsed.operations || self.operations;
+                    self.settings = parsed.settings || self.settings;
+                    self.parts = parsed.parts || self.parts;
+                    self.fuelLog = parsed.fuelLog || self.fuelLog;
+                    self.tireLog = parsed.tireLog || self.tireLog;
+                    self.workCosts = parsed.workCosts || self.workCosts;
+                    self.serviceRecords = parsed.serviceRecords || self.serviceRecords;
+                    self.mileageHistory = parsed.mileageHistory || self.mileageHistory;
+                    self.baseMileage = parsed.baseMileage || self.baseMileage;
+                    self.baseMotohours = parsed.baseMotohours || self.baseMotohours;
+                    self.purchaseDate = parsed.purchaseDate || self.purchaseDate;
+                    self.ownershipDays = parsed.ownershipDays || self.ownershipDays;
+                    self.ownershipDisplayMode = parsed.ownershipDisplayMode || self.ownershipDisplayMode;
+                    self.spreadsheetId = parsed.spreadsheetId || self.spreadsheetId;
+                    self.pendingActions = parsed.pendingActions || self.pendingActions;
+                }
+            } catch(e) { console.warn('Migration error:', e); }
+            // Сохраняем в IndexedDB и удаляем старый ключ
+            self.saveToLocalStorage();
+            localStorage.removeItem(App.config.CACHE_KEY);
+            localStorage.setItem('indexedDB_migrated', '1');
+        }
+
+        // Загружаем остатки из localStorage (pending, calendar, price history и т.д.)
         var pendingRaw = localStorage.getItem(App.config.PENDING_KEY);
-        this.pendingActions = pendingRaw ? JSON.parse(pendingRaw) : [];
+        self.pendingActions = pendingRaw ? JSON.parse(pendingRaw) : self.pendingActions;
+
         try {
             var calRaw = localStorage.getItem(App.config.CALENDAR_CACHE_KEY);
             if (calRaw) {
                 var entries = JSON.parse(calRaw);
-                this.calendarEventCache = new Map(entries);
+                self.calendarEventCache = new Map(entries);
             }
         } catch (e) {}
+
         var notifMethod = localStorage.getItem(App.config.NOTIFICATION_METHOD_KEY);
         if (notifMethod) {
-            this.settings.notificationMethod = notifMethod;
+            self.settings.notificationMethod = notifMethod;
         }
-        this.loadPriceHistory();
-        this.activeCarId = localStorage.getItem('vesta_active_car_id') || null;
+        self.loadPriceHistory();
+        self.activeCarId = localStorage.getItem('vesta_active_car_id') || self.activeCarId;
+        self.calculateOwnershipDays();
 
-        this.calculateOwnershipDays();
-    },
+        return data;
+    }).catch(function(err) {
+        console.warn('IndexedDB load error, using defaults:', err);
+        // Fallback к значениям по умолчанию уже в this
+    });
+},
 
-    saveToLocalStorage: function() {
-        localStorage.setItem(App.config.CACHE_KEY, JSON.stringify({
-            operations: this.operations,
-            settings: this.settings,
-            parts: this.parts,
-            fuelLog: this.fuelLog,
-            tireLog: this.tireLog,
-            workCosts: this.workCosts,
-            baseMileage: this.baseMileage,
-            baseMotohours: this.baseMotohours,
-            purchaseDate: this.purchaseDate
-        }));
-    },
+  saveToLocalStorage: function() {
+    var data = {
+        operations: this.operations,
+        settings: this.settings,
+        parts: this.parts,
+        fuelLog: this.fuelLog,
+        tireLog: this.tireLog,
+        workCosts: this.workCosts,
+        serviceRecords: this.serviceRecords,
+        mileageHistory: this.mileageHistory,
+        cars: this.cars,
+        activeCarId: this.activeCarId,
+        baseMileage: this.baseMileage,
+        baseMotohours: this.baseMotohours,
+        purchaseDate: this.purchaseDate,
+        ownershipDays: this.ownershipDays,
+        ownershipDisplayMode: this.ownershipDisplayMode,
+        spreadsheetId: this.spreadsheetId,
+        pendingActions: this.pendingActions
+    };
+    App.indexedDB.saveAllData(data).catch(function(err) {
+        console.error('IndexedDB save error:', err);
+    });
 
     saveServerTimestamps: function() {
         localStorage.setItem('vesta_server_timestamps', JSON.stringify(this.serverTimestamps));
