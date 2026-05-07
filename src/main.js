@@ -19,8 +19,9 @@
     }
 
     function onReady() {
-        // Тема
-        var savedTheme = localStorage.getItem(App.config.THEME_KEY);
+       App.store.initFromLocalStorage().then(function() {
+    // Тема
+    var savedTheme = localStorage.getItem(App.config.THEME_KEY);
         if (savedTheme) {
             App.events.applyTheme(savedTheme);
         } else {
