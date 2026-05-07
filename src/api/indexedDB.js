@@ -27,7 +27,7 @@ function openDB() {
 
 /**
  * Сохраняет все данные приложения в IndexedDB
- * @param {object} data - объект со свойствами (operations, fuelLog, ...)
+ * @param {object} data - полный объект состояния магазина
  */
 App.indexedDB.saveAllData = function(data) {
     return openDB().then(function(db) {
