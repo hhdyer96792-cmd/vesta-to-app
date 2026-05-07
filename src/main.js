@@ -3,9 +3,6 @@
     var isLoggedIn = false;
     var deferredPrompt = null;
 
-    // ... (функции setInstallButtonVisible, doLogout, recoverViaTelegram и т.д. остаются без изменений)
-    // Они уже были в предоставленном коде, просто перемещаем внутрь области видимости.
-
     function setInstallButtonVisible(visible) {
         var installBtn = document.getElementById('pwa-install-btn');
         if (!installBtn) return;
@@ -43,16 +40,13 @@
             });
         }
 
-        // Инициализация IndexedDB и загрузка данных вместо старого initFromLocalStorage
+        // ===== Инициализация хранилища (IndexedDB) =====
         try {
             await App.store.initFromIndexedDB();
         } catch (e) {
-            console.warn('Ошибка инициализации IndexedDB, используется localStorage:', e);
+            console.warn('Ошибка инициализации IndexedDB, пробуем localStorage:', e);
             App.store.initFromLocalStorageFallback();
         }
-
-        // Далее авторизация и UI как раньше, но теперь данные из хранилища уже загружены.
-        // (код авторизации, вкладок, Google, Apple, почты – без изменений, просто копируем из существующего main.js)
 
         // ======================= АВТОРИЗАЦИЯ =======================
         var authPanel = document.getElementById('auth-panel');
@@ -349,7 +343,7 @@
         // ======================= СЕССИЯ (с Realtime) =======================
         async function handleOnlineSession() {
             if (!navigator.onLine) {
-                // Офлайн: просто показываем данные из localStorage
+                // Офлайн: просто показываем данные из IndexedDB (уже загружены)
                 isLoggedIn = true;
                 setInstallButtonVisible(true);
                 if (authPanel) authPanel.style.display = 'none';
@@ -362,6 +356,7 @@
                     display.textContent = '👤 ' + cachedUsername;
                 }
 
+                // loadCars может работать офлайн? Если нет, просто видим старые данные.
                 App.store.loadCars().then(function() {
                     App.ui.pages.renderCarSelector();
                     if (App.store.activeCarId) {
@@ -389,8 +384,9 @@
                         }
                     });
 
-                  App.store.initFromLocalStorage().then(function() {
-        if (event === 'PASSWORD_RECOVERY') { ... }
+                    // App.store.initFromLocalStorage(); <-- удаляем, данные уже загружены
+
+                    if (event === 'PASSWORD_RECOVERY') {
                         var newPassword = prompt('Введите новый пароль (минимум 6 символов):');
                         if (newPassword && newPassword.length >= 6) {
                             App.supabase.auth.updateUser({ password: newPassword }).then(function({ error }) {
@@ -421,14 +417,13 @@
                             }
                             App.storage.loadAllData().then(function() {
                                 if (typeof App.renderAll === 'function') App.renderAll();
-                                // --- Восстановление редиректа после 404.html ---
                                 var redirect = sessionStorage.redirect;
                                 if (redirect) {
                                     sessionStorage.removeItem('redirect');
                                     var url = new URL(redirect);
                                     var inviteCode = url.searchParams.get('invite');
                                     if (inviteCode) {
-                                        App.ui.pages.checkPendingInvites(); // повторно проверит, теперь с параметром
+                                        App.ui.pages.checkPendingInvites();
                                     }
                                 }
                             });
@@ -449,6 +444,7 @@
                     if (App.realtime && App.realtime.unsubscribeAll) {
                         App.realtime.unsubscribeAll();
                     }
+                    // Очищаем данные в локальном хранилище? Обычно оставляют, но сессия удалена.
                     App.store.operations = [];
                     App.store.fuelLog = [];
                     App.store.tireLog = [];
@@ -461,8 +457,8 @@
             });
 
             App.supabase.auth.getSession().then(function({ data: { session } }) {
-    if (session) {
-        isLoggedIn = true;
+                if (session) {
+                    isLoggedIn = true;
                     setInstallButtonVisible(true);
                     if (authPanel) authPanel.style.display = 'none';
                     var dp = document.getElementById('data-panel');
@@ -492,14 +488,13 @@
                             }
                             App.storage.loadAllData().then(function() {
                                 if (typeof App.renderAll === 'function') App.renderAll();
-                                // --- Восстановление редиректа после 404.html ---
                                 var redirect = sessionStorage.redirect;
                                 if (redirect) {
                                     sessionStorage.removeItem('redirect');
                                     var url = new URL(redirect);
                                     var inviteCode = url.searchParams.get('invite');
                                     if (inviteCode) {
-                                        App.ui.pages.checkPendingInvites(); // обработает приглашение
+                                        App.ui.pages.checkPendingInvites();
                                     }
                                 }
                             });
@@ -524,7 +519,6 @@
                             action.partsCost, action.workCost, action.isDIY, action.notes, action.photoUrl
                         );
                     }
-                    // Здесь можно добавить другие типы действий
                 });
                 App.store.clearPendingActions();
             }
