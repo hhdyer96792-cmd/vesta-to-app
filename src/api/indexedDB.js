@@ -25,10 +25,6 @@ function openDB() {
     });
 }
 
-/**
- * Сохраняет все данные приложения в IndexedDB
- * @param {object} data - полный объект состояния магазина
- */
 App.indexedDB.saveAllData = function(data) {
     return openDB().then(function(db) {
         return new Promise(function(resolve, reject) {
@@ -41,10 +37,6 @@ App.indexedDB.saveAllData = function(data) {
     });
 };
 
-/**
- * Загружает все данные приложения из IndexedDB
- * @returns {Promise<object|null>}
- */
 App.indexedDB.loadAllData = function() {
     return openDB().then(function(db) {
         return new Promise(function(resolve, reject) {
@@ -57,9 +49,6 @@ App.indexedDB.loadAllData = function() {
     });
 };
 
-/**
- * Очищает всю базу данных (для служебных целей)
- */
 App.indexedDB.clearDB = function() {
     return new Promise(function(resolve, reject) {
         const request = indexedDB.deleteDatabase(DB_NAME);
