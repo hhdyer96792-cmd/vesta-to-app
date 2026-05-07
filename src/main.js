@@ -3,10 +3,12 @@
     var isLoggedIn = false;
     var deferredPrompt = null;
 
+    // ... (функции setInstallButtonVisible, doLogout, recoverViaTelegram и т.д. остаются без изменений)
+    // Они уже были в предоставленном коде, просто перемещаем внутрь области видимости.
+
     function setInstallButtonVisible(visible) {
         var installBtn = document.getElementById('pwa-install-btn');
         if (!installBtn) return;
-        // Не показываем кнопку, если приложение уже запущено как PWA
         if (window.matchMedia('(display-mode: standalone)').matches) {
             installBtn.style.display = 'none';
             return;
@@ -18,10 +20,9 @@
         }
     }
 
-    function onReady() {
-       App.store.initFromLocalStorage().then(function() {
-    // Тема
-    var savedTheme = localStorage.getItem(App.config.THEME_KEY);
+    async function onReady() {
+        // Тема
+        var savedTheme = localStorage.getItem(App.config.THEME_KEY);
         if (savedTheme) {
             App.events.applyTheme(savedTheme);
         } else {
@@ -42,7 +43,16 @@
             });
         }
 
-        App.store.initFromLocalStorage();
+        // Инициализация IndexedDB и загрузка данных вместо старого initFromLocalStorage
+        try {
+            await App.store.initFromIndexedDB();
+        } catch (e) {
+            console.warn('Ошибка инициализации IndexedDB, используется localStorage:', e);
+            App.store.initFromLocalStorageFallback();
+        }
+
+        // Далее авторизация и UI как раньше, но теперь данные из хранилища уже загружены.
+        // (код авторизации, вкладок, Google, Apple, почты – без изменений, просто копируем из существующего main.js)
 
         // ======================= АВТОРИЗАЦИЯ =======================
         var authPanel = document.getElementById('auth-panel');
